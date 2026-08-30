@@ -1,0 +1,235 @@
+/* ==========================================================================
+   KISANLINK RESPONSIVE STYLES
+   SIH 2026 — PS SIH26132: Market Linkages & Price Discovery
+   Adaptive media queries for desktop, tablet, and mobile screens
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Large Screens & Laptops (Max Width: 1199px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199px) {
+  :root {
+    --container-max-w: 980px;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+  }
+
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer-grid {
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: var(--space-6);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Tablets & Medium Screens (Max Width: 991px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 991px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+
+  .hero-content {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .hero-pill {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-cta-group {
+    justify-content: center;
+  }
+
+  .hero-badges-group {
+    justify-content: center;
+  }
+
+  .recommendation-container {
+    grid-template-columns: 1fr;
+  }
+
+  .buyer-matching-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Mobile Navigation Drawer Activation */
+  .nav-toggle-btn {
+    display: flex;
+  }
+
+  .nav-links {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    flex-direction: column;
+    padding: var(--space-6);
+    gap: var(--space-4);
+    box-shadow: var(--shadow-lg);
+    border-bottom: 1px solid var(--color-slate-200);
+    transform: translateY(-120%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform var(--transition-base), opacity var(--transition-base), visibility var(--transition-base);
+    z-index: 999;
+  }
+
+  .nav-links.nav-open {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .nav-link {
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3) 0;
+    font-size: var(--text-base);
+    border-bottom: 1px solid var(--color-slate-100);
+  }
+
+  .nav-actions .btn-sm {
+    display: none;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Mobile Devices & Small Tablets (Max Width: 767px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  :root {
+    --space-20: 3.5rem;
+    --space-16: 2.75rem;
+    --space-12: 2rem;
+  }
+
+  .section {
+    padding-top: var(--space-16);
+    padding-bottom: var(--space-16);
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+
+  .hero-desc {
+    font-size: var(--text-base);
+  }
+
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .pipeline-grid,
+  .buyer-matching-grid,
+  .trust-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .market-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tab-group {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .rec-header {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+  }
+
+  .sale-window-badge {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .cta-banner {
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .cta-actions-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cta-actions-group .btn {
+    width: 100%;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-3);
+  }
+
+  .toast-container {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+  }
+
+  .toast {
+    min-width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Extra Small Mobile Devices (Max Width: 480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+  }
+
+  .hero-badges-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .best-opp-badge {
+    position: static;
+    display: inline-flex;
+    margin-bottom: var(--space-3);
+  }
+
+  .recommendation-card {
+    padding: var(--space-5);
+  }
+
+  .role-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}

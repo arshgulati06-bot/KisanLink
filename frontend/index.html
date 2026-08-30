@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KisanLink — SIH 2026: Explainable Market Intelligence, Comparative Net Realisation, and Verified Buyer Linkages for Farmers and FPOs.">
+  <meta name="keywords" content="KisanLink, AgriTech, SIH 2026, Farmer Market Linkage, Price Discovery, APMC Mandi, Net Realisation, Crop Selling">
+  <meta name="author" content="KisanLink SIH 2026 Team">
+  <title>KisanLink — From Farm Gate to the Right Market | SIH 2026</title>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <!-- =========================================================================
+       1. NAVIGATION BAR
+       ========================================================================= -->
+  <header class="navbar-header" id="navbar">
+    <div class="container nav-container">
+      <!-- Brand Logo -->
+      <a href="#hero" class="brand-logo" aria-label="KisanLink Home">
+        <div class="brand-icon-wrapper">
+          <!-- Leaf / Link SVG Icon -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+          </svg>
+        </div>
+        <span>Kisan<span class="text-emerald">Link</span></span>
+        <span class="brand-badge">SIH 2026</span>
+      </a>
+
+      <!-- Desktop Nav Links -->
+      <nav class="nav-links" id="nav-menu" aria-label="Main Navigation">
+        <a href="#hero" class="nav-link active">Home</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#market-intel" class="nav-link">Market Intelligence</a>
+        <a href="#recommendations" class="nav-link">Smart Recommendation</a>
+        <a href="#buyer-matching" class="nav-link">For Buyers</a>
+        <a href="#trust" class="nav-link">Trust & Transparency</a>
+      </nav>
+
+      <!-- Nav CTA & Mobile Hamburger -->
+      <div class="nav-actions">
+        <button type="button" class="btn btn-primary btn-sm open-role-modal-btn" data-default-role="farmer" id="nav-get-started-btn">
+          <span>Get Started</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14m-7-7 7 7-7 7"/>
+          </svg>
+        </button>
+
+        <button type="button" class="nav-toggle-btn" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" x2="20" y1="12" y2="12"/>
+            <line x1="4" x2="20" y1="6" y2="6"/>
+            <line x1="4" x2="20" y1="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       2. HERO SECTION
+       ========================================================================= -->
+  <section class="section hero-section bg-gradient-subtle" id="hero">
+    <div class="container">
+      <div class="hero-grid">
+        <!-- Hero Content Left -->
+        <div class="hero-content reveal-init">
+          <div class="hero-pill">
+            <span class="pulse-dot"></span>
+            <span>SIH 2026 Problem Statement SIH26132</span>
+          </div>
+
+          <h1 class="hero-title">
+            From Farm Gate to the <span class="hero-title-highlight">Right Market.</span>
+          </h1>
+
+          <p class="hero-desc">
+            KisanLink helps farmers and FPOs discover better selling opportunities by combining live mandi prices, verified buyer demand, crop quality grades, logistics, storage costs, and payment reliability in one explainable view.
+          </p>
+
+          <div class="hero-cta-group">
+            <button type="button" class="btn btn-primary btn-lg open-role-modal-btn" data-default-role="farmer" id="hero-find-opp-btn">
+              <span>Find My Best Opportunity</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14m-7-7 7 7-7 7"/>
+              </svg>
+            </button>
+            <a href="#buyer-matching" class="btn btn-outline btn-lg" id="hero-explore-buyers-btn">
+              <span>Explore for Buyers</span>
+            </a>
+          </div>
+
+          <div class="hero-badges-group">
+            <div class="hero-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <span>Explainable Net Realisation</span>
+            </div>
+            <div class="hero-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+              <span>Platform-Reviewed Buyers</span>
+            </div>
+            <div class="hero-badge-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              <span>Timing / Sale-Window Support</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hero Value Chain Visual Right -->
+        <div class="hero-visual-wrapper reveal-init reveal-delay-2">
+          <div class="hero-visual-card">
+            <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+              <div class="flex items-center gap-2">
+                <span class="pulse-dot"></span>
+                <span class="font-bold text-xs" style="color: var(--color-primary-800); text-transform: uppercase; letter-spacing: 0.05em;">Connected Market Flow</span>
+              </div>
+              <span class="badge badge-demo">Prototype Engine</span>
+            </div>
+
+            <div class="flow-node-list">
+              <!-- Node 1: Farmer Lot -->
+              <div class="flow-node-item">
+                <div class="flow-node-icon">1</div>
+                <div class="flow-node-text">
+                  <h4>Farmer / FPO Lot Creation</h4>
+                  <p>Commodity, 10 QTL Grade A, Location & Harvest Date</p>
+                </div>
+              </div>
+
+              <!-- Node 2: Market Intelligence -->
+              <div class="flow-node-item">
+                <div class="flow-node-icon">2</div>
+                <div class="flow-node-text">
+                  <h4>Market Intelligence Ingestion</h4>
+                  <p>Mandi Prices, Daily Arrivals, Logistics & Storage Rates</p>
+                </div>
+              </div>
+
+              <!-- Node 3: Net Realisation -->
+              <div class="flow-node-item node-active">
+                <div class="flow-node-icon">3</div>
+                <div class="flow-node-text">
+                  <h4>Explainable Net Realisation Engine</h4>
+                  <p>Gross Price (₹3,200) − Transport (₹100) − Storage (₹30) = ₹3,220/QTL</p>
+                </div>
+              </div>
+
+              <!-- Node 4: Buyer Linkage -->
+              <div class="flow-node-item">
+                <div class="flow-node-icon">4</div>
+                <div class="flow-node-text">
+                  <h4>Verified Buyer Linkage</h4>
+                  <p>Processors, Institutional Buyers & Digital Aggregators</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       LIVE COMMODITY DEMO TICKER BAR
+       ========================================================================= -->
+  <div class="ticker-wrapper" aria-label="Demo Mandi Price Ticker">
+    <div class="container ticker-inner">
+      <div class="ticker-label">
+        <span class="pulse-dot"></span>
+        <span>Maharashtra Mandi Pulse (Demo)</span>
+      </div>
+      <div class="ticker-items">
+        <div class="ticker-item">
+          <span class="ticker-crop">Onion (Pune APMC):</span>
+          <span class="ticker-price">₹3,200/QTL</span>
+          <span class="ticker-badge">+4.7%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-crop">Tomato (Narayangaon):</span>
+          <span class="ticker-price">₹2,650/QTL</span>
+          <span class="ticker-badge">+3.8%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-crop">Soybean (Latur):</span>
+          <span class="ticker-price">₹4,850/QTL</span>
+          <span class="ticker-badge">+2.0%</span>
+        </div>
+        <div class="ticker-item">
+          <span class="ticker-crop">Cotton (Akola):</span>
+          <span class="ticker-price">₹7,100/QTL</span>
+          <span class="ticker-badge">Stable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       3. PROBLEM SECTION (Addressing SIH26132 Root Challenges)
+       ========================================================================= -->
+  <section class="section" id="problem">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">The Core Challenge</div>
+        <h2 class="section-title">Why Traditional Crop Selling Limits Farmer Income</h2>
+        <p class="section-subtitle">
+          Smallholders and producer groups often sell in the dark without comparative visibility of alternative channels, true transport costs, and buyer credentials.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-3 gap-6">
+        <!-- Problem Card 1 -->
+        <div class="problem-card reveal-init">
+          <div class="problem-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h3>Information Asymmetry</h3>
+          <p>
+            Farmers lack real-time visibility into mandi price trends and expected arrivals, leading to hurried sales right at harvest peaks when local prices hit seasonal lows.
+          </p>
+          <div class="problem-impact-pill">Impact: Forced distress selling</div>
+        </div>
+
+        <!-- Problem Card 2 -->
+        <div class="problem-card reveal-init reveal-delay-1">
+          <div class="problem-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3>Weak Bargaining & Middlemen</h3>
+          <p>
+            Without direct access to food processors and institutional buyers, farmers rely solely on local intermediaries who capture the majority of the value chain margin.
+          </p>
+          <div class="problem-impact-pill">Impact: 15–30% value loss</div>
+        </div>
+
+        <!-- Problem Card 3 -->
+        <div class="problem-card reveal-init reveal-delay-2">
+          <div class="problem-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="5" rx="2"/>
+              <line x1="2" x2="22" y1="10" y2="10"/>
+            </svg>
+          </div>
+          <h3>Hidden Logistics & Storage Costs</h3>
+          <p>
+            A higher headline mandi price 150 km away may actually result in lower net take-home cash once freight, handling, and storage losses are accounted for.
+          </p>
+          <div class="problem-impact-pill">Impact: Misleading gross prices</div>
+        </div>
+
+        <!-- Problem Card 4 -->
+        <div class="problem-card reveal-init">
+          <div class="problem-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            </svg>
+          </div>
+          <h3>Volume & Quality Mismatch</h3>
+          <p>
+            Institutional buyers require consistent Grade A volumes that individual smallholders cannot supply alone, while FPO aggregation tools remain fragmented.
+          </p>
+          <div class="problem-impact-pill">Impact: Buyer sourcing friction</div>
+        </div>
+
+        <!-- Problem Card 5 -->
+        <div class="problem-card reveal-init reveal-delay-1">
+          <div class="problem-icon-wrapper">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="18" height="18" x="3" y="3" rx="2"/>
+              <path d="M3 9h18"/>
+              <path d="M9 21V9"/>
+            </svg>
+          </div>
+          <h3>Payment Reliability Uncertainty</h3>
+          <p>
+            Selling to unknown buyers risks delayed settlement cycles and informal deductions without clear dispute or grievance resolution mechanisms.
+          </p>
+          <div class="problem-impact-pill">Impact: Credit and default risk</div>
+        </div>
+
+        <!-- Problem Card 6 (KisanLink Solution Highlight) -->
+        <div class="problem-card reveal-init reveal-delay-2" style="background: linear-gradient(135deg, var(--color-primary-800) 0%, var(--color-primary-900) 100%); color: #FFFFFF; border-color: var(--color-primary-600);">
+          <div class="problem-icon-wrapper" style="background-color: rgba(16, 185, 129, 0.2); color: var(--color-accent-emerald);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <h3 style="color: #FFFFFF;">The KisanLink Solution</h3>
+          <p style="color: var(--color-slate-300);">
+            One unified decision cockpit answering: <em>"Who should I sell to, where should I sell, when should I sell, and what effective price is better?"</em>
+          </p>
+          <div class="problem-impact-pill" style="background-color: rgba(16, 185, 129, 0.2); color: var(--color-accent-emerald);">Empowered Decision Making</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       4. HOW KISANLINK WORKS (6-Step Pipeline)
+       ========================================================================= -->
+  <section class="section bg-gradient-subtle" id="how-it-works">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">Streamlined Workflow</div>
+        <h2 class="section-title">How KisanLink Connects Farm to Market</h2>
+        <p class="section-subtitle">
+          An explainable, step-by-step pipeline designed for both individual farmers and Farmer Producer Organizations (FPOs).
+        </p>
+      </div>
+
+      <div class="pipeline-grid">
+        <!-- Step 1 -->
+        <div class="step-card reveal-init">
+          <span class="step-number">STEP 01</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <h3>Create Crop Lot</h3>
+          <p>Declare your crop commodity, quantity (e.g. 10 QTL), self-assessed Grade A/B/C, farm location, and availability date.</p>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step-card reveal-init reveal-delay-1">
+          <span class="step-number">STEP 02</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <h3>Market Intelligence</h3>
+          <p>System automatically scans APMC mandi rates, daily arrival volumes, price trends, and nearby storage availability.</p>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step-card reveal-init reveal-delay-2">
+          <span class="step-number">STEP 03</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect width="18" height="18" x="3" y="3" rx="2"/>
+              <line x1="3" x2="21" y1="9" y2="9"/>
+              <line x1="9" x2="9" y1="21" y2="9"/>
+            </svg>
+          </div>
+          <h3>Net Realisation Engine</h3>
+          <p>Calculates true take-home value by deducting estimated freight and storage from gross offers to find genuine best yield.</p>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step-card reveal-init">
+          <span class="step-number">STEP 04</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+            </svg>
+          </div>
+          <h3>Verified Buyer Matching</h3>
+          <p>Matches your lot against active demand from food processors and institutional aggregators using weighted compatibility scores.</p>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step-card reveal-init reveal-delay-1">
+          <span class="step-number">STEP 05</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" x2="8" y1="13" y2="13"/>
+              <line x1="16" x2="8" y1="17" y2="17"/>
+            </svg>
+          </div>
+          <h3>Digital Offer & Terms</h3>
+          <p>Receive clear digital purchase offers with guaranteed pickup timeline, agreed grade specs, and transparent settlement terms.</p>
+        </div>
+
+        <!-- Step 6 -->
+        <div class="step-card reveal-init reveal-delay-2">
+          <span class="step-number">STEP 06</span>
+          <div class="step-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              <polyline points="9 12 11 14 15 10"/>
+            </svg>
+          </div>
+          <h3>Transparent Transaction</h3>
+          <p>Track status from Offered → Accepted → Logistics → Settlement, with built-in grievance protection.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       5. MARKET INTELLIGENCE SECTION
+       ========================================================================= -->
+  <section class="section" id="market-intel">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">Market Intelligence</div>
+        <h2 class="section-title">Comparative Mandi & Channel Visibility</h2>
+        <p class="section-subtitle">
+          Compare real-time modal prices against estimated transport costs to uncover actual net realisation across Maharashtra trading hubs.
+        </p>
+      </div>
+
+      <div class="market-intel-wrapper reveal-init">
+        <!-- Market Filter Bar -->
+        <div class="market-filter-bar">
+          <div class="flex items-center gap-3">
+            <span class="font-bold text-xs text-slate" style="text-transform: uppercase;">Select Commodity:</span>
+            <div class="tab-group" role="tablist" aria-label="Commodity tabs">
+              <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-crop="Onion">Onion (कांदा)</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-crop="Tomato">Tomato (टोमॅटो)</button>
+              <button type="button" class="tab-btn" role="tab" aria-selected="false" data-crop="Soybean">Soybean (सोयाबीन)</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <span class="badge badge-success font-medium" id="current-commodity-badge">Onion (कांदा) • Demo Batch: 1,000 kg (10 QTL)</span>
+            <span class="badge badge-demo">Demo Dataset</span>
+          </div>
+        </div>
+
+        <!-- Table View -->
+        <div class="table-responsive">
+          <table class="market-table" id="market-intel-table">
+            <thead>
+              <tr>
+                <th scope="col">Market / Channel</th>
+                <th scope="col">Current Price</th>
+                <th scope="col">Expected Trend</th>
+                <th scope="col">Demand</th>
+                <th scope="col">Daily Arrival</th>
+                <th scope="col">Distance</th>
+                <th scope="col">Est. Transport</th>
+                <th scope="col">Net Realisation</th>
+              </tr>
+            </thead>
+            <tbody id="market-table-body">
+              <!-- Rendered via JS -->
+              <tr>
+                <td>
+                  <div class="font-semibold text-slate-900">Pune APMC (Gultekdi)</div>
+                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Primary APMC</span>
+                </td>
+                <td class="price-cell">₹3,200<span class="text-xs text-slate font-normal"> /QTL</span></td>
+                <td><span class="font-mono text-xs font-semibold text-emerald">Rising (+4.7%)</span></td>
+                <td><span class="badge badge-success">High</span></td>
+                <td class="font-mono text-xs">1,420 MT</td>
+                <td class="text-xs">38 km</td>
+                <td class="font-mono text-xs text-amber font-semibold">-₹100</td>
+                <td class="net-realisation-cell">₹3,220 <span class="badge badge-verified" style="font-size: 0.65rem; margin-left: 4px;">Top Match</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="font-semibold text-slate-900">Lasalgaon APMC</div>
+                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Major Hub</span>
+                </td>
+                <td class="price-cell">₹3,100<span class="text-xs text-slate font-normal"> /QTL</span></td>
+                <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
+                <td><span class="badge badge-success">Very High</span></td>
+                <td class="font-mono text-xs">3,850 MT</td>
+                <td class="text-xs">145 km</td>
+                <td class="font-mono text-xs text-amber font-semibold">-₹280</td>
+                <td class="net-realisation-cell">₹2,840</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="font-semibold text-slate-900">Nashik APMC</div>
+                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Regional APMC</span>
+                </td>
+                <td class="price-cell">₹3,050<span class="text-xs text-slate font-normal"> /QTL</span></td>
+                <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
+                <td><span class="badge badge-amber">Moderate</span></td>
+                <td class="font-mono text-xs">1,890 MT</td>
+                <td class="text-xs">110 km</td>
+                <td class="font-mono text-xs text-amber font-semibold">-₹210</td>
+                <td class="net-realisation-cell">₹2,860</td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="font-semibold text-slate-900">Vashi APMC (Mumbai)</div>
+                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Terminal Market</span>
+                </td>
+                <td class="price-cell">₹3,450<span class="text-xs text-slate font-normal"> /QTL</span></td>
+                <td><span class="font-mono text-xs font-semibold text-amber">Slight Dip (-1.4%)</span></td>
+                <td><span class="badge badge-success">High</span></td>
+                <td class="font-mono text-xs">2,600 MT</td>
+                <td class="text-xs">165 km</td>
+                <td class="font-mono text-xs text-amber font-semibold">-₹340</td>
+                <td class="net-realisation-cell">₹3,020</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       6. SMART RECOMMENDATION SECTION (Hero Feature)
+       ========================================================================= -->
+  <section class="section bg-gradient-subtle" id="recommendations">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">Explainable Recommendation</div>
+        <h2 class="section-title">The Hero Decision: Sell Now or Wait?</h2>
+        <p class="section-subtitle">
+          KisanLink synthesizes commodity trends, distance, holding expenses, and active buyer quotes into a concrete, transparent recommendation.
+        </p>
+      </div>
+
+      <div class="recommendation-container">
+        <!-- Main Recommendation Showcase Card -->
+        <div class="recommendation-card reveal-init">
+          <div class="best-opp-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>Best Selling Opportunity</span>
+          </div>
+
+          <div class="rec-header">
+            <div>
+              <div class="rec-lot-name">Onion (Grade A) — 10 QTL Lot</div>
+              <div class="rec-target-market">Recommended Buyer: Sahyadri Agro Processors (Pune)</div>
+            </div>
+            <div class="sale-window-badge">
+              <span class="sale-window-label">Sale Window</span>
+              <span class="sale-window-action">SELL NOW</span>
+            </div>
+          </div>
+
+          <!-- Breakdown Formula -->
+          <div class="breakdown-table">
+            <div class="breakdown-row">
+              <span class="breakdown-label">Gross Offered Price</span>
+              <span class="breakdown-value">₹3,200 / QTL</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="breakdown-label">Expected APMC Trend (7-Day)</span>
+              <span class="breakdown-value text-emerald">₹3,350 / QTL (+4.7%)</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="breakdown-label">Estimated Transport (38 km)</span>
+              <span class="breakdown-value cost">-₹100 / QTL</span>
+            </div>
+            <div class="breakdown-row">
+              <span class="breakdown-label">Storage & Weight Loss Avoided</span>
+              <span class="breakdown-value cost">-₹30 / QTL</span>
+            </div>
+            <div class="breakdown-row highlight-net">
+              <div>
+                <div class="font-bold text-slate-900">Estimated Net Realisation</div>
+                <div class="text-xs text-slate">Take-home value after verified deductions</div>
+              </div>
+              <span class="breakdown-value net-amount">₹3,220 / QTL</span>
+            </div>
+          </div>
+
+          <!-- Expandable "Why this recommendation?" -->
+          <div class="explainable-accordion">
+            <button type="button" class="explainable-trigger" aria-expanded="false" id="accordion-trigger">
+              <div class="flex items-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <span>Why this recommendation?</span>
+              </div>
+              <svg class="accordion-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="transition: transform 0.3s ease;">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+
+            <div class="explainable-content" id="accordion-content">
+              <div class="explainable-reasons-list">
+                <div class="reason-item">
+                  <div class="reason-icon">✔</div>
+                  <div><strong>Superior Effective Yield:</strong> Net take-home (₹3,220/QTL) is ₹380/QTL higher than shipping to distant hubs like Lasalgaon after deducting freight.</div>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-icon">✔</div>
+                  <div><strong>Full Lot Compatibility:</strong> Buyer requirement exactly matches your 1,000 kg Grade A lot with zero sorting rejections.</div>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-icon">✔</div>
+                  <div><strong>Storage Holding Risk:</strong> While 7-day expected mandi price is ₹3,350, storage shrinkage (~4%) and warehouse rent erode the wait advantage.</div>
+                </div>
+                <div class="reason-item">
+                  <div class="reason-icon">✔</div>
+                  <div><strong>Verified Buyer Trust:</strong> Sahyadri Agro holds a 95% platform reliability rating with 24-hr direct bank settlement history.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Explanatory Decision Architecture Card -->
+        <div class="card-surface reveal-init reveal-delay-2" style="padding: var(--space-8);">
+          <div class="section-tag" style="margin-bottom: var(--space-4);">Decision Framework</div>
+          <h3 style="font-size: var(--text-xl); margin-bottom: var(--space-4);">How the Decision Engine Evaluates</h3>
+          <p style="font-size: var(--text-sm); margin-bottom: var(--space-6);">
+            Unlike generic aggregators that sort merely by headline price, KisanLink applies a multi-variable calculation:
+          </p>
+
+          <div class="flex flex-col gap-4">
+            <div class="flex items-start gap-3">
+              <div class="step-icon-box" style="width: 36px; height: 36px; font-size: 0.8rem; margin-bottom: 0;">1</div>
+              <div>
+                <h4 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Net Realisation vs Gross Price</h4>
+                <p style="font-size: var(--text-xs); color: var(--color-slate-600);"><code>Net = Gross Offer − Route Transport − Handling & Storage Costs</code></p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="step-icon-box" style="width: 36px; height: 36px; font-size: 0.8rem; margin-bottom: 0;">2</div>
+              <div>
+                <h4 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Sale Window Timing</h4>
+                <p style="font-size: var(--text-xs); color: var(--color-slate-600);">Evaluates short-term trend upside against per-day storage loss & perishability.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div class="step-icon-box" style="width: 36px; height: 36px; font-size: 0.8rem; margin-bottom: 0;">3</div>
+              <div>
+                <h4 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Multiple Market Channels</h4>
+                <p style="font-size: var(--text-xs); color: var(--color-slate-600);">Normalizes quotes across APMC mandis, food processors, and bulk institutional buyers.</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+            <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer" style="width: 100%;">
+              <span>Test Recommendation With Custom Crop</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       7. BUYER MATCHING SECTION
+       ========================================================================= -->
+  <section class="section" id="buyer-matching">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">Direct Buyer Linkage</div>
+        <h2 class="section-title">Verified Buyer Compatibility</h2>
+        <p class="section-subtitle">
+          Transparent multi-channel buyer matching based on quantity compatibility, quality grades, distance, and verified trading records.
+        </p>
+      </div>
+
+      <div class="buyer-matching-grid">
+        <!-- Buyer Card 1 -->
+        <div class="buyer-card reveal-init">
+          <div class="buyer-card-header">
+            <div class="buyer-name-group">
+              <h3>Sahyadri Agro Processors</h3>
+              <span class="buyer-category">Food Processor • Pune</span>
+            </div>
+            <div class="match-score-badge" style="--score: 95;">
+              <div class="match-score-inner">95%</div>
+            </div>
+          </div>
+
+          <div class="buyer-factors-list">
+            <div class="factor-row">
+              <span class="factor-name">Quantity Fit (10 QTL)</span>
+              <span class="factor-stat text-emerald">100% Match</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Quality Grade</span>
+              <span class="factor-stat">Grade A (Required)</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Location / Distance</span>
+              <span class="factor-stat">38 km (Pune Sector)</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Offered Rate</span>
+              <span class="factor-stat font-mono font-bold">₹3,200/QTL</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Platform Trust</span>
+              <span class="badge badge-verified">Reviewed Processor</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer" style="width: 100%;">
+            <span>View Match Details</span>
+          </button>
+        </div>
+
+        <!-- Buyer Card 2 -->
+        <div class="buyer-card reveal-init reveal-delay-1">
+          <div class="buyer-card-header">
+            <div class="buyer-name-group">
+              <h3>MahaFresh Institutional</h3>
+              <span class="buyer-category">Institutional Buyer • Navi Mumbai</span>
+            </div>
+            <div class="match-score-badge" style="--score: 87;">
+              <div class="match-score-inner">87%</div>
+            </div>
+          </div>
+
+          <div class="buyer-factors-list">
+            <div class="factor-row">
+              <span class="factor-name">Quantity Fit (10 QTL)</span>
+              <span class="factor-stat text-emerald">85% Match</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Quality Grade</span>
+              <span class="factor-stat">Grade A or B</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Location / Distance</span>
+              <span class="factor-stat">120 km (Navi Mumbai)</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Offered Rate</span>
+              <span class="factor-stat font-mono font-bold">₹3,250/QTL</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Platform Trust</span>
+              <span class="badge badge-verified">Reviewed Institutional</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer" style="width: 100%;">
+            <span>View Match Details</span>
+          </button>
+        </div>
+
+        <!-- Buyer Card 3 -->
+        <div class="buyer-card reveal-init reveal-delay-2">
+          <div class="buyer-card-header">
+            <div class="buyer-name-group">
+              <h3>Deccan Agri Aggregators</h3>
+              <span class="buyer-category">FPO Aggregator • Nashik</span>
+            </div>
+            <div class="match-score-badge" style="--score: 81;">
+              <div class="match-score-inner">81%</div>
+            </div>
+          </div>
+
+          <div class="buyer-factors-list">
+            <div class="factor-row">
+              <span class="factor-name">Quantity Fit (10 QTL)</span>
+              <span class="factor-stat text-emerald">80% Match</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Quality Grade</span>
+              <span class="factor-stat">All Commercial Grades</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Location / Distance</span>
+              <span class="factor-stat">110 km (Nashik Region)</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Offered Rate</span>
+              <span class="factor-stat font-mono font-bold">₹3,050/QTL</span>
+            </div>
+            <div class="factor-row">
+              <span class="factor-name">Platform Trust</span>
+              <span class="badge badge-slate">FPO Verified</span>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer" style="width: 100%;">
+            <span>View Match Details</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       8. TRUST & TRANSPARENCY SECTION
+       ========================================================================= -->
+  <section class="section bg-gradient-subtle" id="trust">
+    <div class="container">
+      <div class="section-header reveal-init">
+        <div class="section-tag">Integrity & Transparency</div>
+        <h2 class="section-title">Built for Trust at Every Transaction Stage</h2>
+        <p class="section-subtitle">
+          Ensuring reliable settlements, transparent dispute mechanisms, and verified buyer profiles without hidden commissions.
+        </p>
+      </div>
+
+      <div class="trust-grid">
+        <!-- Pillar 1 -->
+        <div class="trust-pillar-card reveal-init">
+          <div class="trust-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+            </svg>
+          </div>
+          <h3>Reviewed Credentials</h3>
+          <p>Buyers undergo platform onboarding checks to establish transparent identity and past settlement track record.</p>
+        </div>
+
+        <!-- Pillar 2 -->
+        <div class="trust-pillar-card reveal-init reveal-delay-1">
+          <div class="trust-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+          </div>
+          <h3>Transparent Digital Offers</h3>
+          <p>Terms, quantities, price locks, and quality criteria are timestamped and locked in digital agreements.</p>
+        </div>
+
+        <!-- Pillar 3 -->
+        <div class="trust-pillar-card reveal-init reveal-delay-2">
+          <div class="trust-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <h3>Milestone Tracking</h3>
+          <p>Real-time lifecycle tracking: Lot Created → Match Accepted → In-Transit → Delivered → Paid.</p>
+        </div>
+
+        <!-- Pillar 4 -->
+        <div class="trust-pillar-card reveal-init reveal-delay-3">
+          <div class="trust-icon-box">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3>Grievance & Dispute System</h3>
+          <p>Built-in dispute redressal protocol for lot quality discrepancies or settlement delays.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       9. FINAL CALL TO ACTION SECTION
+       ========================================================================= -->
+  <section class="section" id="get-started">
+    <div class="container">
+      <div class="cta-banner reveal-init">
+        <h2 class="cta-title">Make Your Next Sale More Informed.</h2>
+        <p class="cta-subtitle">
+          Join thousands of farmers, FPOs, and verified buyers discovering true market price transparency and reliable linkages.
+        </p>
+
+        <div class="cta-actions-group">
+          <button type="button" class="btn btn-primary btn-lg open-role-modal-btn" data-default-role="farmer" id="cta-farmer-btn">
+            <span>Get Started as Farmer</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M5 12h14m-7-7 7 7-7 7"/>
+            </svg>
+          </button>
+
+          <button type="button" class="btn btn-outline-white btn-lg open-role-modal-btn" data-default-role="buyer" id="cta-buyer-btn">
+            <span>Join as Verified Buyer</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================================
+       10. FOOTER
+       ========================================================================= -->
+  <footer class="footer-site">
+    <div class="container">
+      <div class="footer-grid">
+        <!-- Brand Col -->
+        <div class="footer-brand">
+          <div class="brand-logo" style="color: #FFFFFF; margin-bottom: var(--space-3);">
+            <div class="brand-icon-wrapper">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+              </svg>
+            </div>
+            <span>Kisan<span class="text-emerald">Link</span></span>
+          </div>
+          <p>
+            An explainable market-intelligence and transaction-enablement platform engineered for Smart India Hackathon 2026.
+          </p>
+          <div class="flex items-center gap-2">
+            <span class="badge badge-success" style="font-size: 0.7rem;">PS SIH26132</span>
+            <span class="badge badge-slate" style="font-size: 0.7rem;">Theme: AgriTech</span>
+          </div>
+        </div>
+
+        <!-- Quick Nav -->
+        <div class="footer-col">
+          <h4>Navigation</h4>
+          <ul>
+            <li><a href="#hero">Home</a></li>
+            <li><a href="#how-it-works">How It Works</a></li>
+            <li><a href="#market-intel">Market Intelligence</a></li>
+            <li><a href="#recommendations">Smart Recommendation</a></li>
+            <li><a href="#buyer-matching">Buyer Matching</a></li>
+          </ul>
+        </div>
+
+        <!-- Architecture Links -->
+        <div class="footer-col">
+          <h4>Platform</h4>
+          <ul>
+            <li><a href="javascript:void(0)" onclick="showToast('Farmer Dashboard will be available in Step 2', 'info')">Farmer Dashboard</a></li>
+            <li><a href="javascript:void(0)" onclick="showToast('Buyer Portal will be available in Step 2', 'info')">Buyer Portal</a></li>
+            <li><a href="javascript:void(0)" onclick="showToast('FPO Aggregator module in development', 'info')">FPO Module</a></li>
+            <li><a href="javascript:void(0)" onclick="showToast('APMC Open Data Integration active in mock mode', 'info')">Mandi Connect</a></li>
+          </ul>
+        </div>
+
+        <!-- Hackathon & Contact -->
+        <div class="footer-col">
+          <h4>SIH 2026 Demonstration</h4>
+          <p style="font-size: var(--text-xs); line-height: var(--leading-relaxed); margin-bottom: var(--space-3);">
+            Developed for the Smart India Hackathon 2026. All mandi figures and buyer names displayed on this landing page are prototype demonstration datasets.
+          </p>
+          <div class="text-xs" style="color: var(--color-slate-500);">
+            Stack: HTML5 / CSS3 / Vanilla JS + Flask REST API
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 KisanLink Project • SIH 2026 PS SIH26132. All rights reserved.</div>
+        <div class="flex items-center gap-4">
+          <a href="javascript:void(0)" onclick="showToast('Demonstration Privacy Policy placeholder', 'info')">Privacy Policy</a>
+          <span>•</span>
+          <a href="javascript:void(0)" onclick="showToast('Demonstration Terms of Service placeholder', 'info')">Terms of Service</a>
+          <span>•</span>
+          <a href="javascript:void(0)" onclick="showToast('SIH 2026 Project Repository: KisanLink', 'info')">SIH 2026</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- =========================================================================
+       INTERACTIVE ROLE SELECTION MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="role-demo-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-dialog">
+      <button type="button" class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">&times;</button>
+      
+      <div class="section-tag" style="margin-bottom: var(--space-2);">SIH 2026 Demo Portal</div>
+      <h3 id="modal-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Choose Your Access Path</h3>
+      <p style="font-size: var(--text-sm); color: var(--color-slate-600);">
+        Select your role to explore the KisanLink explainable marketplace prototype.
+      </p>
+
+      <div class="role-cards-grid">
+        <div class="role-select-card active" data-role="farmer">
+          <div class="brand-icon-wrapper" style="margin: 0 auto var(--space-3) auto;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <h4 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Farmer / FPO</h4>
+          <p style="font-size: var(--text-xs); color: var(--color-slate-500); margin-top: 4px;">Create crop lots, view net realization & get matched</p>
+        </div>
+
+        <div class="role-select-card" data-role="buyer">
+          <div class="brand-icon-wrapper" style="margin: 0 auto var(--space-3) auto; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+            </svg>
+          </div>
+          <h4 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Verified Buyer</h4>
+          <p style="font-size: var(--text-xs); color: var(--color-slate-500); margin-top: 4px;">Post demand, source quality lots & make offers</p>
+        </div>
+      </div>
+
+      <div style="margin-top: var(--space-6);">
+        <button type="button" class="btn btn-primary btn-lg" style="width: 100%;" id="launch-role-demo-btn">
+          <span>Proceed to Dashboard Demo</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M5 12h14m-7-7 7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Application Scripts -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
