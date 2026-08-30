@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files - never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Local databases
+*.sqlite3
+*.db
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

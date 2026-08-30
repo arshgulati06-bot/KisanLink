@@ -52,3 +52,7 @@ htmlcov/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Local SQLite database created by the fallback backend
+kisanlink.sqlite3
+*.sqlite3
