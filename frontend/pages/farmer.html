@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KisanLink Farmer Dashboard — SIH 2026: Crop lot management, live mandi intelligence, explainable recommendations, and verified buyer linkage.">
+  <title>Farmer Dashboard — KisanLink | SIH 2026</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <!-- =======================================================================
+         DASHBOARD SIDEBAR
+         ======================================================================= -->
+    <aside class="dashboard-sidebar" id="farmer-sidebar">
+      <div class="sidebar-header">
+        <a href="../index.html" class="brand-logo" style="font-size: var(--text-lg);">
+          <div class="brand-icon-wrapper" style="width: 32px; height: 32px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <span>Kisan<span class="text-emerald">Link</span></span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Dashboard Navigation">
+        <a href="#overview-section" class="sidebar-link active">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="7" height="9" x="3" y="3" rx="1"/>
+            <rect width="7" height="5" x="14" y="3" rx="1"/>
+            <rect width="7" height="9" x="14" y="12" rx="1"/>
+            <rect width="7" height="5" x="3" y="16" rx="1"/>
+          </svg>
+          <span>Overview</span>
+        </a>
+
+        <a href="#lots-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+          </svg>
+          <span>My Sale Lots</span>
+          <span class="sidebar-link-badge badge-success" id="sidebar-lot-badge">2</span>
+        </a>
+
+        <a href="#market-intel-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span>Market Intelligence</span>
+        </a>
+
+        <a href="#recommendations-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span>Recommendation</span>
+        </a>
+
+        <a href="#buyer-matches-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+          <span>Buyer Matches</span>
+        </a>
+
+        <a href="#offers-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Received Offers</span>
+          <span class="sidebar-link-badge badge-amber">1 New</span>
+        </a>
+
+        <a href="#transactions-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+          <span>Transactions</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar">RP</div>
+          <div class="user-info">
+            <h4>Ramesh Patil</h4>
+            <p>Nashik APMC Zone • Farmer</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =======================================================================
+         MAIN DASHBOARD BODY
+         ======================================================================= -->
+    <main class="dashboard-main">
+      <!-- Topbar Header -->
+      <header class="dashboard-topbar">
+        <div class="topbar-left">
+          <button type="button" class="sidebar-toggle-btn" aria-label="Toggle sidebar menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12"/>
+              <line x1="4" x2="20" y1="6" y2="6"/>
+              <line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="dashboard-title-group">
+            <h1>Farmer / FPO Selling Dashboard</h1>
+            <p>Dindori Taluka, Nashik District • Real-Time Price Discovery & Buyer Linkage</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button type="button" class="btn btn-primary btn-sm open-create-lot-modal">
+            <span>+ Create Sale Lot</span>
+          </button>
+          <a href="buyer.html" class="btn btn-outline btn-sm">
+            <span>Switch to Buyer Portal</span>
+          </a>
+          <a href="../index.html" class="btn btn-ghost btn-sm">
+            <span>Home</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="dashboard-body">
+        <!-- ===================================================================
+             1. KPI METRIC WIDGETS
+             =================================================================== -->
+        <section class="metric-grid" id="overview-section">
+          <div class="stat-widget">
+            <div>
+              <div class="stat-label">Active Sale Lots</div>
+              <div class="stat-value" id="stat-active-lots-count">2</div>
+              <div class="stat-subtext">25 QTL total listed volume</div>
+            </div>
+            <div class="stat-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-amber">
+            <div>
+              <div class="stat-label">Pending Buyer Offers</div>
+              <div class="stat-value" id="stat-pending-offers-count">1</div>
+              <div class="stat-subtext">Avg. Offer: ₹3,200/QTL</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-amber-light); color: var(--color-accent-amber);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-sky">
+            <div>
+              <div class="stat-label">Best Est. Net Realisation</div>
+              <div class="stat-value">₹3,220</div>
+              <div class="stat-subtext">Pune Market (After freight)</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-sky-light); color: var(--color-accent-sky);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-rose">
+            <div>
+              <div class="stat-label">Transactions in Progress</div>
+              <div class="stat-value">1</div>
+              <div class="stat-subtext">Stage: Logistics Scheduled</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-rose-light); color: var(--color-accent-rose);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             2. MY CROPS & SALE LOTS
+             =================================================================== -->
+        <section id="lots-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">My Active Sale Lots</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Batches declared for price discovery and buyer matching</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm open-create-lot-modal">
+              <span>+ Create New Lot</span>
+            </button>
+          </div>
+
+          <div class="lot-grid" id="farmer-lots-container">
+            <!-- Dynamic lots rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             3. BEST OPPORTUNITY & EXPLAINABLE RECOMMENDATION
+             =================================================================== -->
+        <section id="recommendations-section">
+          <div class="section-tag" style="margin-bottom: var(--space-2);">Decision Intelligence</div>
+          <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-4);">
+            "What should this farmer do with this crop right now, and why?"
+          </h2>
+
+          <div class="recommendation-card">
+            <div class="best-opp-badge">
+              <span>Recommended Action</span>
+            </div>
+
+            <div class="rec-header">
+              <div>
+                <div class="rec-lot-name">Onion (Grade A) — 10 QTL Lot</div>
+                <div class="rec-target-market">Recommended Buyer: Sahyadri Agro Processors (Pune)</div>
+              </div>
+              <div class="sale-window-badge">
+                <span class="sale-window-label">Sale Window</span>
+                <span class="sale-window-action">SELL NOW</span>
+              </div>
+            </div>
+
+            <div class="breakdown-table">
+              <div class="breakdown-row">
+                <span class="breakdown-label">Gross Offered Price</span>
+                <span class="breakdown-value">₹3,200 / QTL</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Expected 7-Day APMC Trend</span>
+                <span class="breakdown-value text-emerald">₹3,350 / QTL (+4.7%)</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Estimated Route Transport (38 km)</span>
+                <span class="breakdown-value cost">-₹100 / QTL</span>
+              </div>
+              <div class="breakdown-row">
+                <span class="breakdown-label">Warehouse Storage Loss Avoided</span>
+                <span class="breakdown-value cost">-₹30 / QTL</span>
+              </div>
+              <div class="breakdown-row highlight-net">
+                <div>
+                  <div class="font-bold text-slate-900">Estimated Net Realisation</div>
+                  <div class="text-xs text-slate">Actual cash in hand per QTL</div>
+                </div>
+                <span class="breakdown-value net-amount">₹3,220 / QTL</span>
+              </div>
+            </div>
+
+            <div style="background-color: var(--color-primary-50); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-primary-200);">
+              <h4 style="font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--color-primary-900); margin-bottom: var(--space-2);">Why this recommendation?</h4>
+              <ul style="font-size: var(--text-xs); color: var(--color-slate-700); display: flex; flex-direction: column; gap: 4px;">
+                <li>✔ <strong>Better Net Cash:</strong> Direct delivery yields ₹380/QTL more than shipping to Lasalgaon after deducting freight.</li>
+                <li>✔ <strong>Quality Match:</strong> 100% Grade A compatibility with processor factory specs.</li>
+                <li>✔ <strong>Minimized Holding Loss:</strong> Projected price appreciation is offset by storage shrinkage over a 14-day hold.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             4. MARKET INTELLIGENCE COMPARISON
+             =================================================================== -->
+        <section id="market-intel-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Live Market Rates & APMC Comparison</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Current modal price vs estimated transport deduction across hubs</p>
+            </div>
+            <span class="badge badge-demo">Demo Dataset</span>
+          </div>
+
+          <div class="market-intel-wrapper">
+            <div class="table-responsive">
+              <table class="market-table">
+                <thead>
+                  <tr>
+                    <th>Market Channel</th>
+                    <th>Current Price</th>
+                    <th>Price Trend</th>
+                    <th>Demand</th>
+                    <th>Arrivals</th>
+                    <th>Distance</th>
+                    <th>Transport Est.</th>
+                    <th>Net Realisation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <div class="font-semibold text-slate-900">Pune APMC (Gultekdi)</div>
+                      <span class="badge badge-slate" style="font-size: 0.65rem;">Primary APMC</span>
+                    </td>
+                    <td class="price-cell">₹3,200 /QTL</td>
+                    <td><span class="font-mono text-xs font-semibold text-emerald">Rising (+4.7%)</span></td>
+                    <td><span class="badge badge-success">High</span></td>
+                    <td class="font-mono text-xs">1,420 MT</td>
+                    <td class="text-xs">38 km</td>
+                    <td class="font-mono text-xs text-amber font-semibold">-₹100</td>
+                    <td class="net-realisation-cell">₹3,220 <span class="badge badge-verified" style="font-size: 0.65rem;">Top Match</span></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="font-semibold text-slate-900">Lasalgaon APMC</div>
+                      <span class="badge badge-slate" style="font-size: 0.65rem;">Major Hub</span>
+                    </td>
+                    <td class="price-cell">₹3,100 /QTL</td>
+                    <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
+                    <td><span class="badge badge-success">Very High</span></td>
+                    <td class="font-mono text-xs">3,850 MT</td>
+                    <td class="text-xs">145 km</td>
+                    <td class="font-mono text-xs text-amber font-semibold">-₹280</td>
+                    <td class="net-realisation-cell">₹2,840</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             5. RECEIVED DIGITAL OFFERS
+             =================================================================== -->
+        <section id="offers-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Formal Buyer Offers Received</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Review and accept locked digital terms with verified buyers</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4" id="farmer-offers-container">
+            <!-- Dynamic offers rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             6. TRANSACTION LIFECYCLE TRACKER
+             =================================================================== -->
+        <section id="transactions-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Transaction Milestone Tracker</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Transparent delivery, quality check, and payment milestones</p>
+            </div>
+          </div>
+
+          <div id="farmer-transactions-container">
+            <!-- Dynamic transactions rendered by dashboard.js -->
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       CREATE SALE LOT MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="create-lot-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-lot-title">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <button type="button" class="modal-close-btn" id="close-create-lot-modal" aria-label="Close modal">&times;</button>
+      
+      <div class="section-tag" style="margin-bottom: var(--space-2);">Crop Lot Declaration</div>
+      <h3 id="modal-lot-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Create New Sale Lot</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-600); margin-bottom: var(--space-6);">
+        Declare available crop volume, quality grade, and farm location to discover best net price opportunities.
+      </p>
+
+      <form id="create-lot-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-crop">Crop Commodity *</label>
+            <select class="form-select" id="lot-crop" name="crop" required>
+              <option value="Onion (कांदा)">Onion (कांदा)</option>
+              <option value="Tomato (टोमॅटो)">Tomato (टोमॅटो)</option>
+              <option value="Soybean (सोयाबीन)">Soybean (सोयाबीन)</option>
+              <option value="Cotton (कापूस)">Cotton (कापूस)</option>
+              <option value="Wheat (गहू)">Wheat (गहू)</option>
+              <option value="Pomegranate (डाळिंब)">Pomegranate (डाळिंब)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-variety">Crop Variety</label>
+            <input type="text" class="form-input" id="lot-variety" name="variety" placeholder="e.g. Garwa, Red, Hybrid" value="Garwa Red">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-quantity">Available Quantity *</label>
+            <input type="number" class="form-input" id="lot-quantity" name="quantity" min="1" step="0.5" placeholder="e.g. 10" required value="10">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-unit">Unit of Measure *</label>
+            <select class="form-select" id="lot-unit" name="unit" required>
+              <option value="QTL" selected>Quintals (QTL - 100 kg)</option>
+              <option value="MT">Metric Tonnes (MT - 1000 kg)</option>
+              <option value="kg">Kilograms (kg)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-grade">Quality Grade *</label>
+            <select class="form-select" id="lot-grade" name="grade" required>
+              <option value="Grade A" selected>Grade A (Premium / Export Quality)</option>
+              <option value="Grade B">Grade B (Standard Commercial Quality)</option>
+              <option value="Grade C">Grade C (Processing Grade / Fair Quality)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-harvest">Harvest / Availability Date *</label>
+            <input type="date" class="form-input" id="lot-harvest" name="harvestDate" required value="2026-08-30">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-location">Farm / Pickup Location *</label>
+            <input type="text" class="form-input" id="lot-location" name="location" placeholder="e.g. Dindori, Nashik (Maharashtra)" required value="Dindori, Nashik">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-price">Expected Base Price (₹/Unit)</label>
+            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 3200" value="3200">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-lot-modal').classList.remove('modal-open')">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <span>Publish Sale Lot</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KisanLink Buyer Dashboard — SIH 2026: Direct crop sourcing from verified farmers and FPOs, requirement matching, and digital offers.">
+  <title>Buyer Dashboard — KisanLink | SIH 2026</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <!-- =======================================================================
+         BUYER DASHBOARD SIDEBAR
+         ======================================================================= -->
+    <aside class="dashboard-sidebar" id="buyer-sidebar">
+      <div class="sidebar-header">
+        <a href="../index.html" class="brand-logo" style="font-size: var(--text-lg);">
+          <div class="brand-icon-wrapper" style="width: 32px; height: 32px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <span>Kisan<span class="text-emerald">Link</span></span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Buyer Navigation">
+        <a href="#overview-section" class="sidebar-link active">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="7" height="9" x="3" y="3" rx="1"/>
+            <rect width="7" height="5" x="14" y="3" rx="1"/>
+            <rect width="7" height="9" x="14" y="12" rx="1"/>
+            <rect width="7" height="5" x="3" y="16" rx="1"/>
+          </svg>
+          <span>Procurement Overview</span>
+        </a>
+
+        <a href="#demands-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span>Sourcing Demands</span>
+          <span class="sidebar-link-badge badge-success">2 Active</span>
+        </a>
+
+        <a href="#matched-lots-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+          <span>Matched Farmer Lots</span>
+          <span class="sidebar-link-badge badge-amber">New Supply</span>
+        </a>
+
+        <a href="#transactions-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+          <span>Sourcing Transactions</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-badge">
+          <div class="user-avatar" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">SA</div>
+          <div class="user-info">
+            <h4>Sahyadri Agro</h4>
+            <p>Food Processor • Pune</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =======================================================================
+         MAIN BUYER DASHBOARD BODY
+         ======================================================================= -->
+    <main class="dashboard-main">
+      <!-- Topbar Header -->
+      <header class="dashboard-topbar">
+        <div class="topbar-left">
+          <button type="button" class="sidebar-toggle-btn" aria-label="Toggle sidebar menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12"/>
+              <line x1="4" x2="20" y1="6" y2="6"/>
+              <line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="dashboard-title-group">
+            <h1>Buyer Procurement Cockpit</h1>
+            <p>Sahyadri Agro Processors Ltd. • Verified Commercial Sourcing Portal</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button type="button" class="btn btn-primary btn-sm open-create-demand-modal">
+            <span>+ Create Requirement</span>
+          </button>
+          <a href="farmer.html" class="btn btn-outline btn-sm">
+            <span>Switch to Farmer Portal</span>
+          </a>
+          <a href="../index.html" class="btn btn-ghost btn-sm">
+            <span>Home</span>
+          </a>
+        </div>
+      </header>
+
+      <div class="dashboard-body">
+        <!-- ===================================================================
+             1. PROCUREMENT METRICS
+             =================================================================== -->
+        <section class="metric-grid" id="overview-section">
+          <div class="stat-widget">
+            <div>
+              <div class="stat-label">Active Sourcing Demands</div>
+              <div class="stat-value">2</div>
+              <div class="stat-subtext">90 QTL total target volume</div>
+            </div>
+            <div class="stat-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-amber">
+            <div>
+              <div class="stat-label">Matched Farmer Lots</div>
+              <div class="stat-value">2</div>
+              <div class="stat-subtext">Compatibility > 90%</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-amber-light); color: var(--color-accent-amber);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-sky">
+            <div>
+              <div class="stat-label">Active Digital Offers</div>
+              <div class="stat-value">1</div>
+              <div class="stat-subtext">Pending farmer acceptance</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-sky-light); color: var(--color-accent-sky);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-rose">
+            <div>
+              <div class="stat-label">Procured Volume (MTD)</div>
+              <div class="stat-value">20 QTL</div>
+              <div class="stat-subtext">Soybean Batch in Transit</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-rose-light); color: var(--color-accent-rose);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             2. ACTIVE SOURCING DEMANDS
+             =================================================================== -->
+        <section id="demands-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Active Sourcing Requirements</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Open demand requirements visible to matching farmers and FPOs</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm open-create-demand-modal">
+              <span>+ Create Sourcing Requirement</span>
+            </button>
+          </div>
+
+          <div class="lot-grid" id="buyer-demands-container">
+            <!-- Dynamic demands rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             3. MATCHED FARMER LOTS
+             =================================================================== -->
+        <section id="matched-lots-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Direct Farmer Supply Matches</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Verified farmer lots in Maharashtra matching your grade and volume criteria</p>
+            </div>
+            <span class="badge badge-verified">Direct Farm-Gate Sourcing</span>
+          </div>
+
+          <div class="buyer-matching-grid" id="buyer-matched-lots-container">
+            <!-- Dynamic matched supply rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             4. SOURCING TRANSACTIONS
+             =================================================================== -->
+        <section id="transactions-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Procurement Milestone Tracker</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Real-time dispatch, weighing, inspection, and payment settlement</p>
+            </div>
+          </div>
+
+          <div class="transaction-card">
+            <div class="tx-header">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-900">TX-2026-044</span>
+                  <span class="badge badge-sky">Soybean (Standard Yellow) • 20 QTL</span>
+                </div>
+                <div class="text-xs text-slate" style="margin-top: 2px;">
+                  Supplier: <strong>Deccan Agri Aggregators (Nashik)</strong> • Agreed Total: <span class="font-mono font-bold text-slate-900">₹97,000</span>
+                </div>
+              </div>
+              <span class="badge badge-verified">LOGISTICS IN TRANSIT</span>
+            </div>
+
+            <!-- Stepper Lifecycle -->
+            <div class="stepper-track">
+              <div class="step-node completed">
+                <div class="step-node-icon">1</div>
+                <span class="step-node-label">Offer Accepted</span>
+              </div>
+              <div class="step-node completed">
+                <div class="step-node-icon">2</div>
+                <span class="step-node-label">Contract Locked</span>
+              </div>
+              <div class="step-node active">
+                <div class="step-node-icon">3</div>
+                <span class="step-node-label">In Transit</span>
+              </div>
+              <div class="step-node">
+                <div class="step-node-icon">4</div>
+                <span class="step-node-label">Quality Check</span>
+              </div>
+              <div class="step-node">
+                <div class="step-node-icon">5</div>
+                <span class="step-node-label">Direct Settlement</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       CREATE SOURCING REQUIREMENT MODAL
+       ========================================================================= -->
+  <div class="modal-backdrop" id="create-demand-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-demand-title">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <button type="button" class="modal-close-btn" id="close-create-demand-modal" aria-label="Close modal">&times;</button>
+      
+      <div class="section-tag" style="margin-bottom: var(--space-2);">Procurement Demand</div>
+      <h3 id="modal-demand-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Post Sourcing Requirement</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-600); margin-bottom: var(--space-6);">
+        Specify required crop volume, quality grade requirements, and plant delivery terms.
+      </p>
+
+      <form id="create-demand-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="demand-crop">Crop Commodity *</label>
+            <select class="form-select" id="demand-crop" name="crop" required>
+              <option value="Onion (कांदा)">Onion (कांदा)</option>
+              <option value="Tomato (टोमॅटो)">Tomato (टोमॅटो)</option>
+              <option value="Soybean (सोयाबीन)">Soybean (सोयाबीन)</option>
+              <option value="Cotton (कापूस)">Cotton (कापूस)</option>
+              <option value="Wheat (गहू)">Wheat (गहू)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="demand-grade">Required Grade *</label>
+            <select class="form-select" id="demand-grade" name="grade" required>
+              <option value="Grade A" selected>Grade A (Processing Grade)</option>
+              <option value="Grade A or B">Grade A or B</option>
+              <option value="Standard Commercial">Standard Commercial</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="demand-quantity">Required Volume *</label>
+            <input type="number" class="form-input" id="demand-quantity" name="quantity" min="1" step="1" placeholder="e.g. 50" required value="50">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="demand-unit">Unit of Measure *</label>
+            <select class="form-select" id="demand-unit" name="unit" required>
+              <option value="QTL" selected>Quintals (QTL)</option>
+              <option value="MT">Metric Tonnes (MT)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="demand-location">Plant / Delivery Location *</label>
+            <input type="text" class="form-input" id="demand-location" name="deliveryLocation" placeholder="e.g. Pune Processing Plant" required value="Pune Food Park, Sanaswadi">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="demand-date">Required Delivery Date *</label>
+            <input type="date" class="form-input" id="demand-date" name="requiredDate" required value="2026-09-05">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="demand-price">Max Target Offer Rate (₹/Unit)</label>
+          <input type="number" class="form-input" id="demand-price" name="offeredRate" placeholder="e.g. 3200" value="3200">
+        </div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-demand-modal').classList.remove('modal-open')">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <span>Publish Sourcing Demand</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Scripts -->
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <script src="../js/dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KisanLink Portal Access — Role Entry and Authentication for Farmers, Buyers, and FPOs.">
+  <title>Access Portal — KisanLink | SIH 2026</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <style>
+    .auth-page-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-6);
+      background: radial-gradient(circle at 10% 10%, rgba(16, 185, 129, 0.08) 0%, transparent 45%),
+                  radial-gradient(circle at 90% 90%, rgba(217, 119, 6, 0.06) 0%, transparent 45%),
+                  var(--bg-page);
+    }
+    .auth-card {
+      background-color: #FFFFFF;
+      border: 1px solid var(--color-slate-200);
+      border-radius: var(--radius-2xl);
+      max-width: 540px;
+      width: 100%;
+      padding: var(--space-8);
+      box-shadow: var(--shadow-xl);
+    }
+    .role-grid-auth {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+      margin: var(--space-6) 0;
+    }
+    .role-auth-btn {
+      border: 2px solid var(--color-slate-200);
+      border-radius: var(--radius-xl);
+      padding: var(--space-5) var(--space-4);
+      text-align: center;
+      cursor: pointer;
+      background-color: #FFFFFF;
+      transition: all var(--transition-base);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-2);
+      text-decoration: none;
+      color: inherit;
+    }
+    .role-auth-btn:hover {
+      border-color: var(--color-primary-500);
+      background-color: var(--color-primary-50);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+    .role-auth-btn.active {
+      border-color: var(--color-primary-600);
+      background-color: var(--color-primary-100);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="auth-page-wrapper">
+    <div class="auth-card">
+      <div class="text-center" style="margin-bottom: var(--space-6);">
+        <a href="../index.html" class="brand-logo" style="justify-content: center; margin-bottom: var(--space-2);">
+          <div class="brand-icon-wrapper" style="width: 36px; height: 36px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <span>Kisan<span class="text-emerald">Link</span></span>
+        </a>
+        <span class="brand-badge">SIH 2026 Demonstration Portal</span>
+        <h1 style="font-size: var(--text-2xl); font-weight: var(--weight-bold); margin-top: var(--space-3);">Choose Your Portal</h1>
+        <p style="font-size: var(--text-xs); color: var(--color-slate-600);">Select your operational role to launch the prototype dashboard</p>
+      </div>
+
+      <div class="role-grid-auth">
+        <!-- Farmer Role -->
+        <a href="farmer.html" class="role-auth-btn active">
+          <div class="brand-icon-wrapper" style="width: 44px; height: 44px;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <h3 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Farmer / Producer</h3>
+          <p style="font-size: 0.7rem; color: var(--color-slate-500);">Sell lots, compare mandi prices & get buyer offers</p>
+        </a>
+
+        <!-- Buyer Role -->
+        <a href="buyer.html" class="role-auth-btn">
+          <div class="brand-icon-wrapper" style="width: 44px; height: 44px; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+            </svg>
+          </div>
+          <h3 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Verified Buyer</h3>
+          <p style="font-size: 0.7rem; color: var(--color-slate-500);">Post demands, match supply & send digital offers</p>
+        </a>
+      </div>
+
+      <!-- Quick Demo Access Banner -->
+      <div style="background-color: var(--color-primary-50); border: 1px solid var(--color-primary-200); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-6);">
+        <div class="flex items-center gap-2" style="margin-bottom: var(--space-2);">
+          <span class="badge badge-demo">SIH Evaluator Quick Access</span>
+        </div>
+        <div class="flex flex-col gap-2">
+          <a href="farmer.html" class="btn btn-primary btn-sm" style="width: 100%; justify-content: space-between;">
+            <span>⚡ Launch as Farmer (Ramesh Patil • Nashik)</span>
+            <span>→</span>
+          </a>
+          <a href="buyer.html" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: space-between;">
+            <span>⚡ Launch as Buyer (Sahyadri Agro • Pune)</span>
+            <span>→</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="text-center" style="font-size: var(--text-xs); color: var(--color-slate-500);">
+        <a href="../index.html" style="color: var(--color-primary-700); font-weight: var(--weight-semibold);">← Back to Landing Page</a>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

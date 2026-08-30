@@ -1,7 +1,7 @@
 /* ==========================================================================
    KISANLINK RESPONSIVE STYLES
    SIH 2026 — PS SIH26132: Market Linkages & Price Discovery
-   Adaptive media queries for desktop, tablet, and mobile screens
+   Adaptive media queries for landing page and role dashboards
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
@@ -28,6 +28,10 @@
   .footer-grid {
     grid-template-columns: 1.5fr 1fr 1fr 1fr;
     gap: var(--space-6);
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -111,6 +115,24 @@
     grid-template-columns: 1fr 1fr;
     gap: var(--space-8);
   }
+
+  /* Dashboard Responsive Collapse */
+  .dashboard-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .dashboard-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+  }
+
+  .sidebar-toggle-btn {
+    display: flex;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -141,8 +163,65 @@
   .grid-cols-4,
   .pipeline-grid,
   .buyer-matching-grid,
-  .trust-grid {
+  .trust-grid,
+  .metric-grid,
+  .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-body {
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-6);
+  }
+
+  .dashboard-topbar {
+    padding: 0 var(--space-4);
+  }
+
+  .topbar-right .btn-sm span {
+    display: none;
+  }
+
+  .offer-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .offer-card .flex-col {
+    align-items: flex-start !important;
+    width: 100%;
+  }
+
+  .offer-card .text-right {
+    text-align: left !important;
+  }
+
+  /* Stepper Responsive Adaptation */
+  .stepper-track {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding-left: var(--space-2);
+  }
+
+  .stepper-track::before {
+    top: 18px;
+    bottom: 18px;
+    left: 20px;
+    width: 3px;
+    height: auto;
+    right: auto;
+  }
+
+  .step-node {
+    flex-direction: row;
+    gap: var(--space-3);
+    text-align: left;
+  }
+
+  .step-node-label {
+    max-width: none;
   }
 
   .market-filter-bar {

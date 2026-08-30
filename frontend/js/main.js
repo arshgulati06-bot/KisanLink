@@ -222,8 +222,8 @@ function initRoleDemoModal() {
     launchBtn.addEventListener('click', () => {
       modal.classList.remove('modal-open');
       modal.setAttribute('aria-hidden', 'true');
-      const roleName = selectedRole === 'farmer' ? 'Farmer / FPO Dashboard' : 'Verified Buyer Dashboard';
-      showToast(`${roleName} will be integrated in Frontend Step 2. Foundation verified!`, 'info');
+      const targetUrl = selectedRole === 'farmer' ? 'pages/farmer.html' : 'pages/buyer.html';
+      window.location.href = targetUrl;
     });
   }
 }
