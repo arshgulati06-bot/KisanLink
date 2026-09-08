@@ -582,7 +582,7 @@
         </section>
 
         <!-- ===================================================================
-             8. PRICE OUTLOOK & 7-DAY FORECAST — Step 4
+             8. PRICE OUTLOOK & 7-DAY FORECAST — ML Connected
              =================================================================== -->
         <section id="price-forecast-section" aria-labelledby="pf-heading">
           <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
@@ -590,60 +590,77 @@
               <div class="section-tag">Price Outlook</div>
               <h2 id="pf-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
                   data-i18n="section.priceOutlook">Price Outlook &amp; 7-Day Forecast</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Integration boundary: <code>getPriceForecast(crop, location)</code> — ML API not yet connected.</p>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Powered by Amazon Chronos (chronos-t5-tiny) pretrained model.</p>
             </div>
-            <span class="badge badge-demo">ML Placeholder</span>
+            <span class="badge badge-success" id="pf-ml-badge">ML Connected</span>
           </div>
 
-          <!-- Crop & Location selector -->
-          <div class="pf-controls">
-            <div class="form-group" style="flex:1;">
-              <label class="form-label" for="pf-crop-select">Crop</label>
+          <!-- Cascading Selectors: Crop → State → District → Market -->
+          <div class="pf-controls" style="flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-crop-select">Commodity / Crop</label>
               <select class="form-input" id="pf-crop-select">
-                <option value="Onion">Onion</option>
-                <option value="Tomato">Tomato</option>
-                <option value="Soybean">Soybean</option>
+                <option value="">Loading...</option>
               </select>
             </div>
-            <div class="form-group" style="flex:1;">
-              <label class="form-label" for="pf-location-input">Market / Location</label>
-              <input type="text" class="form-input" id="pf-location-input" value="Nashik" placeholder="e.g. Nashik, Pune">
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-state-select">State</label>
+              <select class="form-input" id="pf-state-select" disabled>
+                <option value="">-- Select Crop first --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-district-select">District</label>
+              <select class="form-input" id="pf-district-select" disabled>
+                <option value="">-- Select State first --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-market-select">Market</label>
+              <select class="form-input" id="pf-market-select" disabled>
+                <option value="">-- Select District first --</option>
+              </select>
             </div>
             <div style="align-self:flex-end;">
-              <button type="button" id="pf-fetch-btn" class="btn btn-primary btn-sm">Get Forecast</button>
+              <button type="button" id="pf-fetch-btn" class="btn btn-primary btn-sm" disabled>Generate Forecast</button>
             </div>
           </div>
 
           <!-- Forecast Result Area -->
           <div id="pf-result-area">
             <!-- IDLE -->
-            <div id="pf-idle-state" class="pf-state-box" hidden>
-              <p style="color:var(--color-slate-500);font-size:var(--text-xs);">Select a crop and click &ldquo;Get Forecast&rdquo;.</p>
+            <div id="pf-idle-state" class="pf-state-box">
+              <p style="color:var(--color-slate-500);font-size:var(--text-xs);">Select Crop, State, District and Market, then click &ldquo;Generate Forecast&rdquo;.</p>
             </div>
             <!-- LOADING -->
             <div id="pf-loading-state" class="pf-state-box" hidden aria-live="polite">
               <div class="cqa-spinner-ring" style="width:32px;height:32px;border-width:3px;"></div>
-              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Fetching forecast&hellip;</p>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Running Chronos forecast model&hellip; This may take 15-30 seconds.</p>
             </div>
             <!-- RESULT -->
-            <div id="pf-result-state" class="pf-result-grid" hidden aria-live="polite">
-              <div class="pf-price-block">
-                <div class="pf-block-label">Current Price (Demo)</div>
-                <div id="pf-current-price" class="pf-price-value">—</div>
-                <div class="pf-direction-row">
-                  <span id="pf-direction-icon" class="pf-dir-icon">→</span>
-                  <span id="pf-direction-label" class="pf-direction-label">Stable</span>
+            <div id="pf-result-state" hidden aria-live="polite">
+              <!-- Summary Row -->
+              <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-4);">
+                <div class="pf-price-block" style="flex:1;min-width:180px;">
+                  <div class="pf-block-label">Selection</div>
+                  <div id="pf-selection-info" style="font-size:var(--text-xs);color:var(--color-slate-600);line-height:1.6;"></div>
+                </div>
+                <div class="pf-price-block" style="flex:1;min-width:180px;">
+                  <div class="pf-block-label">Data Source</div>
+                  <div id="pf-data-info" style="font-size:var(--text-xs);color:var(--color-slate-600);line-height:1.6;"></div>
                 </div>
               </div>
-              <div class="pf-chart-block">
-                <div class="pf-block-label">7-Day Trend (Illustrative — not a real prediction)</div>
+              <!-- 7-Day Forecast Table -->
+              <div style="margin-bottom:var(--space-4);">
+                <div class="pf-block-label" style="margin-bottom:var(--space-2);">7-Day Price Forecast</div>
                 <div id="pf-sparkline" class="pf-sparkline"></div>
                 <div class="pf-day-labels"><span>D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span><span>D6</span><span>D7</span></div>
+                <div id="pf-forecast-table" style="margin-top:var(--space-3);"></div>
               </div>
-              <div class="pf-label-block">
-                <div class="pf-block-label">Trend Observation</div>
-                <div id="pf-trend-label" class="pf-trend-text">—</div>
-                <div id="pf-api-status" class="pf-api-note"></div>
+              <!-- Evaluation Metrics -->
+              <div id="pf-eval-block" hidden>
+                <div class="pf-block-label" style="margin-bottom:var(--space-2);">Model Evaluation (Holdout Backtest)</div>
+                <div id="pf-eval-metrics" style="display:flex;gap:var(--space-4);flex-wrap:wrap;"></div>
               </div>
             </div>
             <!-- ERROR -->

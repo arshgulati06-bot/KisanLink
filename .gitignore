@@ -1,0 +1,40 @@
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# ── Virtual Environments ──
+.venv/
+venv/
+ENV/
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS ──
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ── HuggingFace / Model Cache ──
+.cache/
+
+# ── ML Outputs (generated at runtime) ──
+ml/outputs/*.png
+
+# ── ML Dataset (52 MB — use Git LFS or download separately) ──
+ml/data/*.csv
+
+# ── Node (if any) ──
+node_modules/
+
+# ── Byte-compiled ──
+*.pyc

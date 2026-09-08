@@ -1,62 +1,45 @@
 /**
- * KisanLink — Price Forecast / Price Outlook Module
+ * KisanLink — Price Forecast Module (ML Connected)
  * SIH 2026 — PS SIH26132: Market Linkages & Price Discovery
- * Frontend Step 4
  *
- * Integration boundary: getPriceForecast(crop, location)
- *   → Will call GET /api/ml/price-forecast?crop=...&location=... (NOT YET CONNECTED)
+ * Connects the farmer dashboard "Price Outlook & 7-Day Forecast" section
+ * to the Flask backend API which runs the frozen Chronos ML pipeline.
  *
- * Current behaviour: renders demo data from CONFIG.DEMO_DATA with a
- * clear "Forecast service pending" message. No fake ML predictions.
+ * Flow:
+ *   Cascading selectors (Crop → State → District → Market)
+ *   → POST /api/forecast
+ *   → Display real 7-day Chronos forecast + evaluation metrics
  */
 
 var KL_PriceForecast = (function () {
 
-  /* ── Demo sparkline data (illustrative bar heights, NOT real predictions) ── */
-  var DEMO_TRENDS = {
-    'Onion': {
-      bars:      [60, 65, 68, 72, 70, 75, 78],   // relative heights 0-100
-      direction: 'rising',
-      label:     'Gradual upward trend over 7 days (demo)',
-      current:   3200,
-      unit:      'QTL'
-    },
-    'Tomato': {
-      bars:      [70, 68, 65, 72, 74, 76, 75],
-      direction: 'rising',
-      label:     'Recovering after mid-week dip (demo)',
-      current:   2650,
-      unit:      'QTL'
-    },
-    'Soybean': {
-      bars:      [80, 82, 81, 83, 85, 84, 86],
-      direction: 'rising',
-      label:     'Steady upward momentum (demo)',
-      current:   4850,
-      unit:      'QTL'
-    }
-  };
+  /* ── API base URL ──────────────────────────────────────────────────── */
+  var API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
+    ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
+    : 'http://localhost:5000';
 
-  /* ── DOM element IDs ──────────────────────────────────────────────────── */
+  /* ── DOM element IDs ──────────────────────────────────────────────── */
   var IDS = {
     section:        'price-forecast-section',
     cropSelect:     'pf-crop-select',
-    locationInput:  'pf-location-input',
+    stateSelect:    'pf-state-select',
+    districtSelect: 'pf-district-select',
+    marketSelect:   'pf-market-select',
     fetchBtn:       'pf-fetch-btn',
-    resultArea:     'pf-result-area',
     idleState:      'pf-idle-state',
     loadingState:   'pf-loading-state',
     resultState:    'pf-result-state',
     errorState:     'pf-error-state',
     errorMsg:       'pf-error-msg',
-    currentPrice:   'pf-current-price',
-    directionIcon:  'pf-direction-icon',
-    directionLabel: 'pf-direction-label',
-    trendLabel:     'pf-trend-label',
+    selectionInfo:  'pf-selection-info',
+    dataInfo:       'pf-data-info',
     sparkContainer: 'pf-sparkline',
-    apiStatus:      'pf-api-status'
+    forecastTable:  'pf-forecast-table',
+    evalBlock:      'pf-eval-block',
+    evalMetrics:    'pf-eval-metrics'
   };
 
+  /* ── State management ──────────────────────────────────────────────── */
   function _setResultState(state) {
     ['idle', 'loading', 'result', 'error'].forEach(function (s) {
       var el = document.getElementById('pf-' + s + '-state');
@@ -64,122 +47,285 @@ var KL_PriceForecast = (function () {
     });
   }
 
-  function _renderSparkline(bars, direction) {
+  function _populateSelect(selectId, items, placeholder) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = '<option value="">' + placeholder + '</option>';
+    items.forEach(function (item) {
+      var opt = document.createElement('option');
+      opt.value = item;
+      opt.textContent = item;
+      el.appendChild(opt);
+    });
+    el.disabled = (items.length === 0);
+  }
+
+  function _resetSelect(selectId, placeholder) {
+    var el = document.getElementById(selectId);
+    if (!el) return;
+    el.innerHTML = '<option value="">' + placeholder + '</option>';
+    el.disabled = true;
+  }
+
+  function _updateFetchButton() {
+    var btn = document.getElementById(IDS.fetchBtn);
+    var market = document.getElementById(IDS.marketSelect);
+    if (btn && market) {
+      btn.disabled = !market.value;
+    }
+  }
+
+  /* ── API helpers ───────────────────────────────────────────────────── */
+  function _fetchJSON(url) {
+    return fetch(API_BASE + url).then(function (res) {
+      if (!res.ok) throw new Error('API error: ' + res.status);
+      return res.json();
+    });
+  }
+
+  /* ── Cascading dropdown loaders ────────────────────────────────────── */
+  function loadCrops() {
+    _fetchJSON('/api/commodities').then(function (crops) {
+      _populateSelect(IDS.cropSelect, crops, '-- Select Commodity --');
+    }).catch(function (err) {
+      console.error('[PriceForecast] Failed to load commodities:', err);
+      _populateSelect(IDS.cropSelect, [], 'API unavailable');
+    });
+  }
+
+  function onCropChange() {
+    var crop = document.getElementById(IDS.cropSelect).value;
+    _resetSelect(IDS.stateSelect, '-- Loading... --');
+    _resetSelect(IDS.districtSelect, '-- Select State first --');
+    _resetSelect(IDS.marketSelect, '-- Select District first --');
+    _updateFetchButton();
+
+    if (!crop) {
+      _resetSelect(IDS.stateSelect, '-- Select Crop first --');
+      return;
+    }
+
+    _fetchJSON('/api/states?commodity=' + encodeURIComponent(crop)).then(function (states) {
+      _populateSelect(IDS.stateSelect, states, '-- Select State --');
+    }).catch(function () {
+      _resetSelect(IDS.stateSelect, 'Failed to load');
+    });
+  }
+
+  function onStateChange() {
+    var crop = document.getElementById(IDS.cropSelect).value;
+    var state = document.getElementById(IDS.stateSelect).value;
+    _resetSelect(IDS.districtSelect, '-- Loading... --');
+    _resetSelect(IDS.marketSelect, '-- Select District first --');
+    _updateFetchButton();
+
+    if (!state) {
+      _resetSelect(IDS.districtSelect, '-- Select State first --');
+      return;
+    }
+
+    _fetchJSON('/api/districts?commodity=' + encodeURIComponent(crop) +
+               '&state=' + encodeURIComponent(state)).then(function (districts) {
+      _populateSelect(IDS.districtSelect, districts, '-- Select District --');
+    }).catch(function () {
+      _resetSelect(IDS.districtSelect, 'Failed to load');
+    });
+  }
+
+  function onDistrictChange() {
+    var crop = document.getElementById(IDS.cropSelect).value;
+    var state = document.getElementById(IDS.stateSelect).value;
+    var district = document.getElementById(IDS.districtSelect).value;
+    _resetSelect(IDS.marketSelect, '-- Loading... --');
+    _updateFetchButton();
+
+    if (!district) {
+      _resetSelect(IDS.marketSelect, '-- Select District first --');
+      return;
+    }
+
+    _fetchJSON('/api/markets?commodity=' + encodeURIComponent(crop) +
+               '&state=' + encodeURIComponent(state) +
+               '&district=' + encodeURIComponent(district)).then(function (markets) {
+      _populateSelect(IDS.marketSelect, markets, '-- Select Market --');
+    }).catch(function () {
+      _resetSelect(IDS.marketSelect, 'Failed to load');
+    });
+  }
+
+  function onMarketChange() {
+    _updateFetchButton();
+  }
+
+  /* ── Sparkline renderer ────────────────────────────────────────────── */
+  function _renderSparkline(forecast) {
     var container = document.getElementById(IDS.sparkContainer);
-    if (!container) return;
-    var color = direction === 'rising' ? '#10B981' : direction === 'falling' ? '#E11D48' : '#94A3B8';
-    var html = bars.map(function (h, i) {
-      return '<div class="pf-spark-bar" style="height:' + h + '%;background-color:' + color + ';' +
-             'opacity:' + (0.5 + (i / bars.length) * 0.5) + ';" ' +
-             'title="Day ' + (i + 1) + '"></div>';
+    if (!container || !forecast || forecast.length === 0) return;
+
+    var prices = forecast.map(function (f) { return f.price; });
+    var maxP = Math.max.apply(null, prices);
+    var minP = Math.min.apply(null, prices);
+    var range = maxP - minP || 1;
+
+    // Determine trend direction
+    var rising = prices[prices.length - 1] > prices[0];
+    var color = rising ? '#10B981' : '#E11D48';
+
+    var html = forecast.map(function (f, i) {
+      var pct = 30 + ((f.price - minP) / range) * 70; // 30-100% height
+      return '<div class="pf-spark-bar" style="height:' + pct + '%;background-color:' + color + ';' +
+             'opacity:' + (0.5 + (i / forecast.length) * 0.5) + ';" ' +
+             'title="Day ' + f.day + ': Rs.' + f.price.toLocaleString('en-IN') + '"></div>';
     }).join('');
     container.innerHTML = html;
   }
 
+  /* ── Forecast result renderer ──────────────────────────────────────── */
   function _renderResult(data) {
-    var priceEl  = document.getElementById(IDS.currentPrice);
-    var dirIcon  = document.getElementById(IDS.directionIcon);
-    var dirLabel = document.getElementById(IDS.directionLabel);
-    var trendLbl = document.getElementById(IDS.trendLabel);
-    var statusEl = document.getElementById(IDS.apiStatus);
-
-    if (priceEl)  priceEl.textContent  = '\u20b9' + data.current.toLocaleString('en-IN') + ' / ' + data.unit;
-    if (dirLabel) dirLabel.textContent = data.direction === 'rising' ? 'Rising' : data.direction === 'falling' ? 'Falling' : 'Stable';
-    if (dirLabel) {
-      dirLabel.className = 'pf-direction-label';
-      if (data.direction === 'rising')  dirLabel.classList.add('pf-dir-rising');
-      if (data.direction === 'falling') dirLabel.classList.add('pf-dir-falling');
+    // Selection info
+    var selEl = document.getElementById(IDS.selectionInfo);
+    if (selEl) {
+      selEl.innerHTML =
+        '<strong>' + data.commodity + '</strong><br>' +
+        data.state + ' &rarr; ' + data.district + ' &rarr; ' + data.market;
     }
-    if (dirIcon) {
-      dirIcon.textContent = data.direction === 'rising' ? '\u2197' : data.direction === 'falling' ? '\u2198' : '\u2192';
-    }
-    if (trendLbl) trendLbl.textContent = data.label;
-    if (statusEl) statusEl.textContent = 'Forecast service not yet connected — showing demo data only.';
 
-    _renderSparkline(data.bars, data.direction);
+    // Data source info
+    var dataEl = document.getElementById(IDS.dataInfo);
+    if (dataEl) {
+      var lines = data.data_source + '<br>' +
+        'Records: ' + data.historical_records;
+      if (data.date_range) {
+        lines += '<br>' + data.date_range.start + ' to ' + data.date_range.end;
+      }
+      dataEl.innerHTML = lines;
+    }
+
+    // Sparkline
+    _renderSparkline(data.forecast);
+
+    // Forecast table
+    var tableEl = document.getElementById(IDS.forecastTable);
+    if (tableEl) {
+      var rows = data.forecast.map(function (f) {
+        return '<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--color-slate-100);">' +
+          '<span style="font-size:var(--text-xs);color:var(--color-slate-500);">Day ' + f.day + '</span>' +
+          '<span style="font-size:var(--text-xs);font-weight:var(--weight-semibold);">Rs.' + f.price.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>' +
+          '</div>';
+      }).join('');
+      tableEl.innerHTML = rows;
+    }
+
+    // Evaluation metrics
+    var evalBlock = document.getElementById(IDS.evalBlock);
+    var evalMetrics = document.getElementById(IDS.evalMetrics);
+    if (evalBlock && evalMetrics) {
+      if (data.evaluation) {
+        evalBlock.hidden = false;
+        evalMetrics.innerHTML =
+          _metricCard('MAE', 'Rs.' + data.evaluation.mae.toLocaleString('en-IN', {minimumFractionDigits: 2})) +
+          _metricCard('RMSE', 'Rs.' + data.evaluation.rmse.toLocaleString('en-IN', {minimumFractionDigits: 2})) +
+          _metricCard('MAPE', data.evaluation.mape.toFixed(2) + '%');
+      } else {
+        evalBlock.hidden = true;
+        evalMetrics.innerHTML = '';
+      }
+    }
+
     _setResultState('result');
   }
 
-  /* ════════════════════════════════════════════════════════════════════════
-     ML INTEGRATION PLACEHOLDER — getPriceForecast(crop, location)
-     ════════════════════════════════════════════════════════════════════════
-
-     PURPOSE:
-       Single integration boundary for the 7-day price forecast service.
-
-     WHEN THE ML API IS READY, replace the function body to call:
-       GET /api/ml/price-forecast?crop=<crop>&location=<location>
-
-     EXPECTED RESPONSE FORMAT:
-       {
-         crop:      "Onion",
-         location:  "Nashik",
-         current:   3200,       // current modal price ₹/QTL
-         unit:      "QTL",
-         direction: "rising",   // "rising" | "falling" | "stable"
-         label:     "Short trend description",
-         bars:      [60,65,...] // 7 relative bar heights 0-100
-       }
-
-     CURRENT BEHAVIOUR:
-       Returns demo data from CONFIG with a 1 s simulated delay.
-       No fake ML predictions — data is clearly labelled "(demo)".
-  ════════════════════════════════════════════════════════════════════════ */
-  function getPriceForecast(crop, location) {
-    /* ── INTEGRATION POINT ────────────────────────────────────────────────
-       When ML API is ready, replace with:
-
-       var params = new URLSearchParams({ crop: crop, location: location });
-       return fetch(
-         (window.CONFIG ? window.CONFIG.API_BASE_URL : 'http://localhost:5000/api') +
-         '/ml/price-forecast?' + params.toString()
-       ).then(function (res) {
-         if (!res.ok) throw new Error('Forecast service error: ' + res.status);
-         return res.json();
-       });
-    ──────────────────────────────────────────────────────────────────────── */
-
-    return new Promise(function (resolve, reject) {
-      setTimeout(function () {
-        var key = crop ? crop.split(' ')[0] : 'Onion';  // extract base crop name
-        var demo = DEMO_TRENDS[key];
-        if (!demo) {
-          reject(new Error('No demo data available for crop: ' + crop + '. Connect ML API for live forecast.'));
-          return;
-        }
-        resolve(Object.assign({}, demo, { crop: crop, location: location || 'Nashik', _placeholder: true }));
-      }, 900);
-    });
+  function _metricCard(label, value) {
+    return '<div style="background:var(--color-slate-50);border-radius:var(--radius-lg);padding:var(--space-3) var(--space-4);min-width:100px;">' +
+      '<div style="font-size:var(--text-xs);color:var(--color-slate-500);margin-bottom:2px;">' + label + '</div>' +
+      '<div style="font-size:var(--text-sm);font-weight:var(--weight-bold);color:var(--color-slate-800);">' + value + '</div>' +
+      '</div>';
   }
 
-  /* ── UI wiring ──────────────────────────────────────────────────────── */
+  /* ── Forecast request ──────────────────────────────────────────────── */
   function _onFetchClick() {
-    var cropEl = document.getElementById(IDS.cropSelect);
-    var locEl  = document.getElementById(IDS.locationInput);
-    var crop   = cropEl ? cropEl.value : 'Onion';
-    var loc    = locEl  ? locEl.value  : 'Nashik';
+    var crop     = document.getElementById(IDS.cropSelect).value;
+    var state    = document.getElementById(IDS.stateSelect).value;
+    var district = document.getElementById(IDS.districtSelect).value;
+    var market   = document.getElementById(IDS.marketSelect).value;
+
+    if (!crop || !state || !district || !market) {
+      var msgEl = document.getElementById(IDS.errorMsg);
+      if (msgEl) msgEl.textContent = 'Please select Commodity, State, District and Market.';
+      _setResultState('error');
+      return;
+    }
 
     _setResultState('loading');
 
-    getPriceForecast(crop, loc).then(function (data) {
-      _renderResult(data);
-    }).catch(function (err) {
+    // Disable button during request
+    var btn = document.getElementById(IDS.fetchBtn);
+    if (btn) { btn.disabled = true; btn.textContent = 'Running...'; }
+
+    fetch(API_BASE + '/api/forecast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commodity: crop,
+        state: state,
+        district: district,
+        market: market
+      })
+    })
+    .then(function (res) {
+      return res.json().then(function (data) {
+        return { status: res.status, data: data };
+      });
+    })
+    .then(function (result) {
+      if (result.data.success) {
+        _renderResult(result.data);
+      } else {
+        // API returned an error (e.g. insufficient data)
+        var errMsg = result.data.error || 'Forecast failed.';
+        if (result.data.available_markets && result.data.available_markets.length > 0) {
+          errMsg += '\n\nAvailable markets: ' + result.data.available_markets.join(', ');
+        }
+        var msgEl = document.getElementById(IDS.errorMsg);
+        if (msgEl) msgEl.textContent = errMsg;
+        _setResultState('error');
+      }
+    })
+    .catch(function (err) {
       var msgEl = document.getElementById(IDS.errorMsg);
-      if (msgEl) msgEl.textContent = err.message;
+      if (msgEl) {
+        msgEl.textContent = 'Could not connect to the forecast API. Make sure the backend is running (python backend/app.py). Error: ' + err.message;
+      }
       _setResultState('error');
+    })
+    .finally(function () {
+      if (btn) { btn.disabled = false; btn.textContent = 'Generate Forecast'; }
+      _updateFetchButton();
     });
   }
 
+  /* ── Initialization ────────────────────────────────────────────────── */
   function init() {
     var section = document.getElementById(IDS.section);
     if (!section) return;
 
-    var btn = document.getElementById(IDS.fetchBtn);
-    if (btn) btn.addEventListener('click', _onFetchClick);
+    // Wire cascading selectors
+    var cropEl     = document.getElementById(IDS.cropSelect);
+    var stateEl    = document.getElementById(IDS.stateSelect);
+    var districtEl = document.getElementById(IDS.districtSelect);
+    var marketEl   = document.getElementById(IDS.marketSelect);
+    var btn        = document.getElementById(IDS.fetchBtn);
 
-    // Auto-load for the default crop on page load
-    _onFetchClick();
-    console.info('[KL_PriceForecast] Module initialised (ML placeholder active).');
+    if (cropEl)     cropEl.addEventListener('change', onCropChange);
+    if (stateEl)    stateEl.addEventListener('change', onStateChange);
+    if (districtEl) districtEl.addEventListener('change', onDistrictChange);
+    if (marketEl)   marketEl.addEventListener('change', onMarketChange);
+    if (btn)        btn.addEventListener('click', _onFetchClick);
+
+    // Load initial crop list from API
+    loadCrops();
+
+    console.info('[KL_PriceForecast] Module initialised (ML API connected).');
   }
 
   if (document.readyState === 'loading') {
@@ -188,8 +334,7 @@ var KL_PriceForecast = (function () {
     init();
   }
 
-  return { getPriceForecast: getPriceForecast };
+  return { loadCrops: loadCrops };
 })();
 
 window.KL_PriceForecast = KL_PriceForecast;
-window.getPriceForecast  = KL_PriceForecast.getPriceForecast;
