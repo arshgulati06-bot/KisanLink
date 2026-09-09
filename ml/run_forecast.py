@@ -23,7 +23,7 @@ if __name__ == "__main__" and __package__ is None:
         sys.path.insert(0, _parent)
 
 from ml import config
-from ml.data_loader import load_data, clean_data, get_market_data, prepare_context
+from ml.data_loader import load_data, load_combined_data, clean_data, get_market_data, prepare_context
 from ml.forecaster import load_model, forecast_prices
 from ml.evaluator import evaluate_model
 from ml.visualizer import plot_historical, plot_forecast
@@ -55,7 +55,7 @@ def parse_args():
     )
     parser.add_argument(
         "--csv", type=str, default=None,
-        help=f"Path to CSV dataset (default: {config.DEFAULT_CSV_PATH})",
+        help="Path to a single CSV file (overrides default combined dataset).",
     )
     parser.add_argument(
         "--no-plots", action="store_true",
@@ -120,14 +120,20 @@ def run_pipeline(commodity, state, district, market, csv_path=None, generate_plo
     print(f"  Market    : {market}")
     print("-" * 55)
 
-    print("\n[1/6] Loading dataset...")
-    df = load_data(csv_path)
-    print(f"  Loaded {len(df):,} raw records.")
-
-    # ── Step 2: Clean Data ──
-    print("\n[2/6] Cleaning data...")
-    df = clean_data(df)
-    print(f"  {len(df):,} records after cleaning.")
+    if csv_path:
+        # Single-file override via --csv flag
+        print(f"\n[1/6] Loading single dataset: {csv_path}")
+        df = load_data(csv_path)
+        print(f"  Loaded {len(df):,} raw records.")
+        print("\n[2/6] Cleaning data...")
+        df = clean_data(df)
+        print(f"  {len(df):,} records after cleaning.")
+    else:
+        # Default: combine all 3 datasets
+        print("\n[1/6] Loading combined dataset (Agriculture + 2022 + 2026)...")
+        df = load_combined_data()
+        print(f"  {len(df):,} combined records loaded and normalized.")
+        print("\n[2/6] (Normalization already applied during loading.)")
 
     # ── Step 3: Filter Market Data ──
     print("\n[3/6] Filtering market data...")

@@ -29,7 +29,7 @@ if _PROJECT_ROOT not in sys.path:
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
-from ml.data_loader import load_data, clean_data, get_market_data, prepare_context
+from ml.data_loader import load_combined_data, get_market_data, prepare_context
 from ml.forecaster import load_model, forecast_prices
 from ml.evaluator import evaluate_model
 from ml import config as ml_config
@@ -47,9 +47,9 @@ FRONTEND_DIR = os.path.join(_PROJECT_ROOT, "frontend")
 # Startup: Load data + model ONCE
 # ═══════════════════════════════════════════════════════════════════════
 
-print("[KisanLink API] Loading and cleaning dataset...")
-_df = clean_data(load_data())
-print(f"[KisanLink API] Dataset ready: {len(_df):,} records.")
+print("[KisanLink API] Loading and normalizing all datasets (Agriculture + 2022 + 2026)...")
+_df = load_combined_data()
+print(f"[KisanLink API] Combined dataset ready: {len(_df):,} records.")
 
 print("[KisanLink API] Loading Chronos model (this may take a moment)...")
 _pipeline = load_model()
