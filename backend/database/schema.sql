@@ -150,17 +150,18 @@ CREATE TABLE IF NOT EXISTS markets (
 -- 3. MARKET INTELLIGENCE
 -- ---------------------------------------------------------------------------
 
--- One row per market + crop + variety + day.
+-- One row per market + crop + variety + grade + day.
 -- source records where the number came from so the UI can label it honestly.
 CREATE TABLE IF NOT EXISTS market_data (
     id INT AUTO_INCREMENT PRIMARY KEY,
     market_id INT NOT NULL,
     crop_id INT NOT NULL,
     variety VARCHAR(120) NOT NULL DEFAULT 'General',
+    grade VARCHAR(40) NOT NULL DEFAULT 'General',
     price_date DATE NOT NULL,
     min_price DECIMAL(12, 2),
     max_price DECIMAL(12, 2),
-    modal_price DECIMAL(12, 2) NOT NULL,
+    modal_price DECIMAL(12, 2),
     -- Arrival volume is explicitly called for by the problem statement.
     -- NULL means "not published by the source", never zero.
     arrival_quantity DECIMAL(14, 2),
@@ -169,7 +170,7 @@ CREATE TABLE IF NOT EXISTS market_data (
     -- AGMARKNET | DATA_GOV_IN | ENAM | MANUAL | SEED_DEMO
     source VARCHAR(40) NOT NULL DEFAULT 'MANUAL',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (market_id, crop_id, variety, price_date),
+    UNIQUE (market_id, crop_id, variety, grade, price_date),    
     FOREIGN KEY (market_id) REFERENCES markets(id) ON DELETE CASCADE,
     FOREIGN KEY (crop_id) REFERENCES crops(id) ON DELETE CASCADE
 );

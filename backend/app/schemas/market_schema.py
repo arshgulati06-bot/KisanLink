@@ -32,6 +32,7 @@ NEARBY_SCHEMA = {
     "district": Field(str, max_len=120),
     "state": Field(str, max_len=120),
     "crop_id": Field(int, min_value=1),
+    "grade": Field(str, max_len=40),
     "limit": Field(int, default=10, min_value=1, max_value=50),
     "max_distance_km": Field(float, default=200, min_value=1, max_value=2000),
 }
@@ -40,6 +41,7 @@ PRICE_QUERY_SCHEMA = {
     "crop_id": Field(int, required=True, min_value=1),
     "district": Field(str, max_len=120),
     "state": Field(str, max_len=120),
+    "grade": Field(str, max_len=40),
     "limit": Field(int, default=50, min_value=1, max_value=200),
 }
 
@@ -48,12 +50,14 @@ TREND_QUERY_SCHEMA = {
     "market_id": Field(int, min_value=1),
     "days": Field(int, default=30, min_value=2, max_value=365),
     "variety": Field(str, max_len=120),
+    "grade": Field(str, max_len=40),
 }
 
 RECORD_PRICE_SCHEMA = {
     "market_id": Field(int, required=True, min_value=1),
     "crop_id": Field(int, required=True, min_value=1),
     "variety": Field(str, default="General", max_len=120),
+    "grade": Field(str, default="General", max_len=40),
     "price_date": Field(dt.date, required=True),
     "min_price": Field(float, min_value=0),
     "max_price": Field(float, min_value=0),

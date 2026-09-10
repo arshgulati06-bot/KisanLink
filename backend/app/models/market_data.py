@@ -1,6 +1,6 @@
 """
-One observed price (and, where published, arrival volume) for a market, crop
-and day.
+One observed price (and, where published, arrival volume) for a market,
+crop, variety, grade and day.
 
 ``arrival_quantity`` is nullable on purpose: when the source does not publish
 arrivals we say so rather than storing a misleading zero.
@@ -28,6 +28,7 @@ class MarketData(BaseModel):
     market_id: int = None
     crop_id: int = None
     variety: str = "General"
+    grade: str = "General"
     price_date: str = None
     min_price: float = None
     max_price: float = None

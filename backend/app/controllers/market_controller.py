@@ -49,6 +49,7 @@ def nearby():
             district=filters.get("district"),
             state=filters.get("state"),
             crop_id=filters.get("crop_id"),
+            grade=filters.get("grade"),
             limit=filters.get("limit", 10),
             max_distance_km=filters.get("max_distance_km", 200),
         )
@@ -65,6 +66,7 @@ def prices():
             district=filters.get("district"),
             state=filters.get("state"),
             limit=filters.get("limit", 50),
+            grade=filters.get("grade"),
         )
     )
 
@@ -79,6 +81,7 @@ def overview():
             district=filters.get("district"),
             state=filters.get("state"),
             limit=filters.get("limit", 10),
+            grade=filters.get("grade"),
         )
     )
 
@@ -93,6 +96,7 @@ def trends():
             market_id=filters.get("market_id"),
             days=filters.get("days", 30),
             variety=filters.get("variety"),
+            grade=filters.get("grade"),
         )
     )
 
@@ -115,6 +119,7 @@ def benchmark():
             crop_id,
             district=request.args.get("district"),
             target_unit=request.args.get("unit", "QUINTAL"),
+            grade=request.args.get("grade"),
         )
     )
 

@@ -70,7 +70,7 @@ def recommend_for_lot(lot_id, horizon_days=None, include_markets=True, limit=10,
     horizon_days = int(horizon_days or settings.FORECAST_DEFAULT_HORIZON_DAYS)
 
     benchmark = market_service.benchmark_price(
-        lot.crop_id, district=lot.district, target_unit=lot.unit
+        lot.crop_id, district=lot.district, target_unit=lot.unit, grade=lot.grade
     )
 
     options = []
@@ -99,6 +99,7 @@ def recommend_for_lot(lot_id, horizon_days=None, include_markets=True, limit=10,
         lot.crop_id,
         market_id=_reference_market_id(lot),
         horizon_days=horizon_days,
+        grade=lot.grade,
         store=False,
     )
     storage = storage_service.storage_context(lot, days=horizon_days, crop=crop)
@@ -236,6 +237,7 @@ def _market_options(lot, crop):
         district=lot.district,
         state=lot.state,
         crop_id=lot.crop_id,
+        grade=lot.grade,
         limit=MARKET_OPTION_LIMIT,
         max_distance_km=settings.MAX_MATCH_DISTANCE_KM,
     )
@@ -313,19 +315,69 @@ def _market_options(lot, crop):
 
 
 def _reference_market_id(lot):
-    """The nearest market that actually reports this crop, for forecasting."""
-    markets = market_repository.markets_trading_crop(lot.crop_id, limit=20)
-    if not markets:
-        return None
-    origin = matching_service.lot_location(lot)
-    ranked = maps_service.nearest(origin, markets, limit=1)
-    return ranked[0]["id"] if ranked else markets[0]["id"]
+    """
+    Choose a reference market for forecasting.
+
+    Priority:
+    1. Same district + same state + same crop + same grade
+    2. Same state + same crop + same grade
+    3. Same crop + same grade across all markets
+    """
+
+    # 1. Prefer the same district.
+    markets = market_repository.markets_trading_crop(
+        lot.crop_id,
+        district=lot.district,
+        state=lot.state,
+        grade=lot.grade,
+        limit=20,
+    )
+
+    if markets:
+        # Prefer the market with the most observations.
+        markets.sort(
+            key=lambda market: market.get("observation_count", 0),
+            reverse=True,
+        )
+        return markets[0]["id"]
+
+    # 2. If no market exists in the district,
+    #    fall back to the same state.
+    markets = market_repository.markets_trading_crop(
+        lot.crop_id,
+        state=lot.state,
+        grade=lot.grade,
+        limit=20,
+    )
+
+    if markets:
+        markets.sort(
+            key=lambda market: market.get("observation_count", 0),
+            reverse=True,
+        )
+        return markets[0]["id"]
+
+    # 3. Final fallback: any market with the same crop + grade.
+    markets = market_repository.markets_trading_crop(
+        lot.crop_id,
+        grade=lot.grade,
+        limit=20,
+    )
+
+    if markets:
+        markets.sort(
+            key=lambda market: market.get("observation_count", 0),
+            reverse=True,
+        )
+        return markets[0]["id"]
+
+    return None
 
 
 def _market_context(lot, crop):
     """The intelligence panel: spread across markets, plus arrivals."""
     overview = market_service.market_overview(
-        lot.crop_id, district=lot.district, state=lot.state, limit=10
+        lot.crop_id, district=lot.district, state=lot.state, grade=lot.grade, limit=10
     )
     market_id = _reference_market_id(lot)
     if market_id:

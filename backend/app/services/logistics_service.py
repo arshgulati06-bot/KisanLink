@@ -183,26 +183,69 @@ def update_status(request_id, new_status, user, notes=None, actual_cost=None):
     request = logistics_repository.find_by_id(request_id)
     if not request:
         raise NotFoundError("Logistics request not found.")
+
     new_status = new_status.upper()
+
     if new_status not in STATUSES:
-        raise ValidationError(f"'status' must be one of: {', '.join(STATUSES)}.")
+        raise ValidationError(
+            f"'status' must be one of: {', '.join(STATUSES)}."
+        )
+
     allowed = STATUS_FLOW.get(request.status, ())
     if new_status not in allowed:
         raise ValidationError(
             f"A '{request.status}' request cannot move to '{new_status}'. "
             f"Allowed next steps: {', '.join(allowed) if allowed else 'none'}."
         )
+
     if request.requested_by_user_id != user.id and user.role != "ADMIN":
-        raise ForbiddenError("Only the requester or an administrator can update this request.")
+        raise ForbiddenError(
+            "Only the requester or an administrator can update this request."
+        )
+
+    # Keep the related transaction status synchronized with logistics.
+    transaction = None
+    transaction_status = None
+
+    if request.transaction_id:
+        transaction = transaction_repository.find_by_id(request.transaction_id)
+
+        if not transaction:
+            raise NotFoundError("Related transaction not found.")
+
+        transaction_status_map = {
+            "IN_TRANSIT": "IN_TRANSIT",
+            "DELIVERED": "DELIVERED",
+            "CANCELLED": "CANCELLED",
+        }
+
+        transaction_status = transaction_status_map.get(new_status)
+
+        if transaction_status:
+            from app.services import transaction_service
+
+            transaction_service.update_status(
+                user,
+                request.transaction_id,
+                transaction_status,
+                notes or f"Logistics request moved to {new_status}.",
+            )
 
     payload = {"status": new_status}
+
     if notes:
         payload["notes"] = notes
+
     if actual_cost is not None:
         payload["actual_cost"] = actual_cost
+
     if new_status == "DELIVERED":
-        payload["scheduled_date"] = request.scheduled_date or dt.date.today().isoformat()
+        payload["scheduled_date"] = (
+            request.scheduled_date or dt.date.today().isoformat()
+        )
+
     logistics_repository.update(request_id, payload)
+
     return logistics_repository.detail(request_id)
 
 

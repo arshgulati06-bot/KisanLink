@@ -32,7 +32,7 @@ CREATE_REQUIREMENT_SCHEMA = {
     "variety": Field(str, max_len=120),
     "required_quantity": Field(float, required=True, min_value=0.01),
     "unit": Field(str, choices=UNITS),
-    "min_grade": Field(str, choices=GRADES, default="C"),
+    "min_grade": Field(str, max_len=40, default="FAQ"),
     "max_moisture_percent": Field(float, min_value=0, max_value=100),
     "quality_notes": Field(str, max_len=500),
     "price_min": Field(float, min_value=0),

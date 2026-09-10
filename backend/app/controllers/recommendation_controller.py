@@ -80,6 +80,7 @@ def forecast():
             market_id=filters.get("market_id"),
             horizon_days=filters.get("horizon_days"),
             variety=filters.get("variety"),
+            grade=filters.get("grade"),
             store=False,
         )
     )

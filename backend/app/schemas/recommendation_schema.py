@@ -20,6 +20,7 @@ FORECAST_SCHEMA = {
     "market_id": Field(int, min_value=1),
     "horizon_days": Field(int, min_value=1, max_value=30),
     "variety": Field(str, max_len=120),
+    "grade": Field(str, max_len=40),
 }
 
 SALE_WINDOW_SCHEMA = {

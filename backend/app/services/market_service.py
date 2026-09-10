@@ -49,7 +49,7 @@ def create_market(data):
 
 
 def nearby_markets(latitude=None, longitude=None, district=None, state=None,
-                   crop_id=None, limit=10, max_distance_km=200):
+                   crop_id=None, grade=None, limit=10, max_distance_km=200):
     """
     Markets near a location, with each one's latest price for the crop.
 
@@ -71,19 +71,19 @@ def nearby_markets(latitude=None, longitude=None, district=None, state=None,
 
     if crop_id:
         for market in ranked:
-            latest = market_data_repository.latest_for(market["id"], crop_id)
+            latest = market_data_repository.latest_for(market["id"], crop_id, grade=grade)
             market["latest_price"] = latest.to_dict() if latest else None
             market["price_available"] = latest is not None
     return ranked
 
 
-def latest_prices(crop_id, district=None, state=None, limit=50):
+def latest_prices(crop_id, district=None, state=None, limit=50, grade=None):
     """Newest observation per market for one crop, highest modal price first."""
     crop = crop_repository.find_by_id(crop_id)
     if not crop:
         raise NotFoundError("Crop not found.")
     rows = market_data_repository.latest_prices_for_crop(
-        crop_id, district=district, state=state, limit=limit
+        crop_id, district=district, state=state, limit=limit, grade=grade
     )
     for row in rows:
         row["arrival_available"] = row.get("arrival_quantity") is not None
@@ -114,7 +114,7 @@ def _source_note(rows):
     )
 
 
-def price_trend(crop_id, market_id=None, days=DEFAULT_TREND_DAYS, variety=None):
+def price_trend(crop_id, market_id=None, days=DEFAULT_TREND_DAYS, variety=None, grade=None):
     """
     Historical price series for charting, with a 7-day smoothing line.
 
@@ -129,7 +129,7 @@ def price_trend(crop_id, market_id=None, days=DEFAULT_TREND_DAYS, variety=None):
     market = None
     if market_id:
         market = get_market(market_id)
-        observations = market_data_repository.history(market_id, crop_id, days=days, variety=variety)
+        observations = market_data_repository.history(market_id, crop_id, days=days, variety=variety, grade=grade)
         series = [
             {
                 "price_date": str(row.price_date)[:10],
@@ -145,10 +145,10 @@ def price_trend(crop_id, market_id=None, days=DEFAULT_TREND_DAYS, variety=None):
         ]
         if len(series) < 3:
             scope = "ALL_MARKETS"
-            series = _crop_wide_series(crop_id, days)
+            series = _crop_wide_series(crop_id, days, grade)
     else:
         scope = "ALL_MARKETS"
-        series = _crop_wide_series(crop_id, days)
+        series = _crop_wide_series(crop_id, days, grade)
 
     prices = [point["modal_price"] for point in series]
     smoothed = moving_average(prices, window=7) if prices else []
@@ -177,8 +177,8 @@ def price_trend(crop_id, market_id=None, days=DEFAULT_TREND_DAYS, variety=None):
     }
 
 
-def _crop_wide_series(crop_id, days):
-    rows = market_data_repository.crop_history_all_markets(crop_id, days=days)
+def _crop_wide_series(crop_id, days, grade=None):
+    rows = market_data_repository.crop_history_all_markets(crop_id, days=days, grade=grade)
     return [
         {
             "price_date": str(row["price_date"])[:10],
@@ -193,14 +193,14 @@ def _crop_wide_series(crop_id, days):
     ]
 
 
-def benchmark_price(crop_id, district=None, target_unit="QUINTAL"):
+def benchmark_price(crop_id, district=None, target_unit="QUINTAL", grade=None):
     """
     One reference price for the crop, converted into the caller's unit.
 
     Used by the matching engine to judge whether an offer is good in absolute
     terms rather than only relative to the other offers on the table.
     """
-    result = market_data_repository.benchmark_price(crop_id, district=district)
+    result = market_data_repository.benchmark_price(crop_id, district=district, grade=grade)
     price = result.get("avg_price")
     if price is None:
         return {
@@ -222,10 +222,10 @@ def benchmark_price(crop_id, district=None, target_unit="QUINTAL"):
     }
 
 
-def arrivals(market_id, crop_id, days=30):
+def arrivals(market_id, crop_id, days=30, variety=None, grade=None):
     """Arrival volume series, or an explicit statement that none is published."""
     get_market(market_id)
-    rows = market_data_repository.arrivals_series(market_id, crop_id, days=days)
+    rows = market_data_repository.arrivals_series(market_id, crop_id, days=days, variety=variety, grade=grade)
     summary = summarise_arrivals(rows)
     return {
         "market_id": market_id,
@@ -247,8 +247,8 @@ def arrivals(market_id, crop_id, days=30):
 
 def record_observation(data):
     """
-    Store one price observation, replacing that market/crop/day if reloaded.
-
+Store one price observation, replacing that
+market/crop/variety/grade/day combination if reloaded.
     Used by the admin ingest endpoint and by the data pipeline.
     """
     if not market_repository.find_by_id(data["market_id"]):
@@ -277,14 +277,14 @@ def bulk_record_observations(rows):
     return {"created": created, "updated": updated, "failed": len(errors), "errors": errors}
 
 
-def market_overview(crop_id, district=None, state=None, limit=10):
+def market_overview(crop_id, district=None, state=None, limit=10, grade=None):
     """
     The market-intelligence panel for one crop: best price, spread and arrivals.
 
     The spread between the highest and lowest reporting market is the clearest
     single measure of the information asymmetry this project targets.
     """
-    data = latest_prices(crop_id, district=district, state=state, limit=limit)
+    data = latest_prices(crop_id, district=district, state=state, limit=limit, grade=grade)
     prices = [float(row["modal_price"]) for row in data["prices"] if row.get("modal_price")]
     overview = {
         **data,

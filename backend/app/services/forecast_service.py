@@ -19,7 +19,7 @@ from app.utils.responses import NotFoundError, ValidationError
 from ml.forecast_model import forecast_prices
 
 
-def forecast_for(crop_id, market_id=None, horizon_days=None, variety=None, store=True):
+def forecast_for(crop_id, market_id=None, horizon_days=None, variety=None, grade=None, store=True):
     """
     Forecast the modal price for a crop, optionally at one market.
 
@@ -52,13 +52,13 @@ def forecast_for(crop_id, market_id=None, horizon_days=None, variety=None, store
         observations = [
             {"price_date": row.price_date, "modal_price": row.modal_price,
              "arrival_quantity": row.arrival_quantity}
-            for row in market_data_repository.history(market_id, crop_id, days=180, variety=variety)
+            for row in market_data_repository.history(market_id, crop_id, days=180, variety=variety, grade=grade)
         ]
         scope = "MARKET"
 
     if len(observations) < settings.MIN_FORECAST_HISTORY_POINTS:
         # One market may be sparse while the crop as a whole is well covered.
-        wider = market_data_repository.crop_history_all_markets(crop_id, days=180)
+        wider = market_data_repository.crop_history_all_markets(crop_id, days=180, grade=grade)
         if len(wider) > len(observations):
             observations = wider
             scope = "ALL_MARKETS"

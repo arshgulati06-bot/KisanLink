@@ -36,27 +36,62 @@ class MarketRepository(BaseRepository):
         filters.eq("state", state)
         return self.find_where(filters)
 
-    def markets_trading_crop(self, crop_id, since_date=None, limit=100):
+    def markets_trading_crop(
+        self,
+        crop_id,
+        since_date=None,
+        district=None,
+        state=None,
+        grade=None,
+        limit=100,
+    ):
         """
         Markets that have actually reported a price for this crop.
 
-        Sorted by how recently they reported, because a market that stopped
-        publishing is not a live option for the farmer.
+        Optional filters allow callers to restrict the results to a
+        particular district, state, or grade.
+
+        Sorted by how recently they reported.
         """
         sql = """
-            SELECT m.*, MAX(md.price_date) AS last_price_date, COUNT(md.id) AS observation_count
+            SELECT
+                m.*,
+                MAX(md.price_date) AS last_price_date,
+                COUNT(md.id) AS observation_count
             FROM markets m
-            JOIN market_data md ON md.market_id = m.id
-            WHERE md.crop_id = ? AND m.is_active = 1
+            JOIN market_data md
+                ON md.market_id = m.id
+            WHERE md.crop_id = ?
+            AND m.is_active = 1
         """
+
         params = [crop_id]
+
         if since_date:
             sql += " AND md.price_date >= ?"
             params.append(since_date)
-        sql += " GROUP BY m.id ORDER BY last_price_date DESC LIMIT ?"
-        params.append(int(limit))
-        return rows_to_dicts(db.query_all(sql, params))
 
+        if district:
+            sql += " AND LOWER(m.district) = LOWER(?)"
+            params.append(district)
+
+        if state:
+            sql += " AND LOWER(m.state) = LOWER(?)"
+            params.append(state)
+
+        if grade:
+            sql += " AND md.grade = ?"
+            params.append(grade)
+
+        sql += """
+            GROUP BY m.id
+            ORDER BY last_price_date DESC
+            LIMIT ?
+        """
+
+        params.append(int(limit))
+
+        return rows_to_dicts(db.query_all(sql, params))
 
 class MarketDataRepository(BaseRepository):
     table = "market_data"
@@ -65,32 +100,46 @@ class MarketDataRepository(BaseRepository):
     default_order = "price_date DESC, id DESC"
     has_updated_at = False
 
-    def latest_for(self, market_id, crop_id, variety=None):
+    def latest_for(self, market_id, crop_id, variety=None, grade=None):
         sql = "SELECT * FROM market_data WHERE market_id = ? AND crop_id = ?"
         params = [market_id, crop_id]
+
         if variety:
             sql += " AND variety = ?"
             params.append(variety)
+
+        if grade:
+            sql += " AND grade = ?"
+            params.append(grade)
+
         sql += " ORDER BY price_date DESC LIMIT 1"
+
         row = db.query_one(sql, params)
         return self.model.from_row(row) if row else None
 
-    def history(self, market_id, crop_id, days=90, variety=None):
+    def history(self, market_id, crop_id, days=90, variety=None, grade=None):
         """Oldest-first series, which is what the forecasting model expects."""
         sql = """
             SELECT * FROM market_data
             WHERE market_id = ? AND crop_id = ?
         """
         params = [market_id, crop_id]
+
         if variety:
             sql += " AND variety = ?"
             params.append(variety)
+
+        if grade:
+            sql += " AND grade = ?"
+            params.append(grade)
+
         sql += " ORDER BY price_date DESC LIMIT ?"
         params.append(int(days))
+
         rows = db.query_all(sql, params)
         return list(reversed(self.model.from_rows(rows)))
 
-    def crop_history_all_markets(self, crop_id, days=90):
+    def crop_history_all_markets(self, crop_id, days=90, grade=None):
         """Daily average across every market - used when one market is too sparse."""
         sql = """
             SELECT price_date,
@@ -99,49 +148,115 @@ class MarketDataRepository(BaseRepository):
                    COUNT(*) AS market_count
             FROM market_data
             WHERE crop_id = ?
+        """
+        params = [crop_id]
+
+        if grade:
+            sql += " AND grade = ?"
+            params.append(grade)
+
+        sql += """
             GROUP BY price_date
             ORDER BY price_date DESC
             LIMIT ?
         """
-        rows = db.query_all(sql, (crop_id, int(days)))
+        params.append(int(days))
+
+        rows = db.query_all(sql, params)
         return list(reversed(rows_to_dicts(rows)))
-
-    def latest_prices_for_crop(self, crop_id, district=None, state=None, limit=50):
+        
+    def latest_prices_for_crop(
+        self,
+        crop_id,
+        district=None,
+        state=None,
+        limit=50,
+        grade=None,
+    ):
         """
-        The newest observation per market for one crop.
+        Return the latest available price observation(s) for each market
+        for the selected crop.
 
-        The correlated subquery picks each market's own latest date, so a
-        market that reported yesterday is not hidden by one that reported today.
+        Uses a grouped subquery instead of a correlated subquery so that
+        MySQL can find the latest date for each market more efficiently.
         """
+
         sql = """
-            SELECT md.*, m.name AS market_name, m.district AS market_district,
-                   m.state AS market_state, m.market_type,
-                   m.latitude AS market_latitude, m.longitude AS market_longitude,
-                   c.name AS crop_name
+            SELECT
+                md.*,
+                m.name AS market_name,
+                m.district AS market_district,
+                m.state AS market_state,
+                m.market_type,
+                m.latitude AS market_latitude,
+                m.longitude AS market_longitude,
+                c.name AS crop_name
             FROM market_data md
-            JOIN markets m ON m.id = md.market_id
-            JOIN crops c ON c.id = md.crop_id
-            WHERE md.crop_id = ?
-              AND md.price_date = (
-                    SELECT MAX(md2.price_date) FROM market_data md2
-                    WHERE md2.market_id = md.market_id AND md2.crop_id = md.crop_id
-              )
+            JOIN markets m
+                ON m.id = md.market_id
+            JOIN crops c
+                ON c.id = md.crop_id
+            JOIN (
+                SELECT
+                    market_id,
+                    crop_id,
+                    MAX(price_date) AS latest_date
+                FROM market_data
+                WHERE crop_id = ?
         """
-        params = [crop_id]
-        if district:
-            sql += " AND m.district = ?"
-            params.append(district)
-        if state:
-            sql += " AND m.state = ?"
-            params.append(state)
-        sql += " ORDER BY md.modal_price DESC LIMIT ?"
-        params.append(int(limit))
-        return rows_to_dicts(db.query_all(sql, params))
 
-    def benchmark_price(self, crop_id, district=None, days=7):
+        params = [crop_id]
+
+        if grade:
+            sql += """
+                    AND grade = ?
+            """
+            params.append(grade)
+
+        sql += """
+                GROUP BY market_id, crop_id
+            ) latest
+                ON latest.market_id = md.market_id
+                AND latest.crop_id = md.crop_id
+                AND latest.latest_date = md.price_date
+            WHERE md.crop_id = ?
+        """
+
+        params.append(crop_id)
+
+        if grade:
+            sql += """
+                AND md.grade = ?
+            """
+            params.append(grade)
+
+        if district:
+            sql += """
+                AND m.district = ?
+            """
+            params.append(district)
+
+        if state:
+            sql += """
+                AND m.state = ?
+            """
+            params.append(state)
+
+        sql += """
+            ORDER BY md.modal_price DESC
+            LIMIT ?
+        """
+
+        params.append(int(limit))
+
+        rows = db.query_all(sql, params)
+
+        return rows_to_dicts(rows)
+
+    def benchmark_price(self, crop_id, district=None, days=7, grade=None):
         """
         A single reference price for the crop, used to judge whether an offer
-        is good. Averaged over recent days so one odd day cannot skew it.
+        is good. Averaged over recent observations.
         """
         sql = """
             SELECT AVG(md.modal_price) AS avg_price, COUNT(*) AS observations,
@@ -150,63 +265,103 @@ class MarketDataRepository(BaseRepository):
             JOIN markets m ON m.id = md.market_id
             WHERE md.crop_id = ?
               AND md.price_date >= (
-                    SELECT MAX(price_date) FROM market_data WHERE crop_id = ?
-              )
+                    SELECT MAX(price_date)
+                    FROM market_data
+                    WHERE crop_id = ?
         """
         params = [crop_id, crop_id]
+
+        if grade:
+            sql += " AND grade = ?"
+            params.append(grade)
+
+        sql += """
+              )
+        """
+
+        if grade:
+            sql += " AND md.grade = ?"
+            params.append(grade)
+
         if district:
             sql += " AND m.district = ?"
             params.append(district)
+
         row = db.query_one(sql, params)
         result = row_to_dict(row) or {}
+
         if not result.get("avg_price"):
             # Nothing for the latest date in that district - widen to the crop.
-            row = db.query_one(
-                """
-                SELECT AVG(modal_price) AS avg_price, COUNT(*) AS observations,
+            fallback_sql = """
+                SELECT AVG(modal_price) AS avg_price,
+                       COUNT(*) AS observations,
                        MAX(price_date) AS latest_date
-                FROM market_data WHERE crop_id = ?
-                """,
-                (crop_id,),
-            )
+                FROM market_data
+                WHERE crop_id = ?
+            """
+            fallback_params = [crop_id]
+
+            if grade:
+                fallback_sql += " AND grade = ?"
+                fallback_params.append(grade)
+
+            row = db.query_one(fallback_sql, fallback_params)
             result = row_to_dict(row) or {}
+
         return result
 
     def upsert_observation(self, data):
         """
-        Insert a price observation, or refresh it if that day was already loaded.
+        Insert a price observation, or refresh it if that exact
+        market/crop/variety/grade/day combination was already loaded.
 
         Re-running an ingest should correct data, not duplicate it.
         """
         existing = db.query_one(
             """
             SELECT id FROM market_data
-            WHERE market_id = ? AND crop_id = ? AND variety = ? AND price_date = ?
+            WHERE market_id = ?
+              AND crop_id = ?
+              AND variety = ?
+              AND grade = ?
+              AND price_date = ?
             """,
             (
                 data["market_id"],
                 data["crop_id"],
                 data.get("variety") or "General",
+                data.get("grade") or "General",
                 data["price_date"],
             ),
         )
+
         if existing:
             self.update(existing["id"], data)
             return existing["id"], False
+
         return self.insert(data), True
 
-    def arrivals_series(self, market_id, crop_id, days=30):
-        rows = db.query_all(
-            """
+    def arrivals_series(self, market_id, crop_id, days=30, variety=None, grade=None):
+        sql = """
             SELECT price_date, arrival_quantity, arrival_unit, modal_price
             FROM market_data
             WHERE market_id = ? AND crop_id = ?
-            ORDER BY price_date DESC LIMIT ?
-            """,
-            (market_id, crop_id, int(days)),
-        )
-        return list(reversed(rows_to_dicts(rows)))
+        """
+        params = [market_id, crop_id]
 
+        if variety:
+            sql += " AND variety = ?"
+            params.append(variety)
+
+        if grade:
+            sql += " AND grade = ?"
+            params.append(grade)
+
+        sql += " ORDER BY price_date DESC LIMIT ?"
+        params.append(int(days))
+
+        rows = db.query_all(sql, params)
+        return list(reversed(rows_to_dicts(rows)))
 
 class PriceForecastRepository(BaseRepository):
     table = "price_forecasts"
