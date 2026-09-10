@@ -106,47 +106,26 @@ function initMarketIntelligenceTabs() {
       renderMarketTable(commodityKey, tableBody, activeCropBadge);
     });
   });
+  const first = document.querySelector('.tab-btn.active') || tabButtons[0];
+  renderMarketTable(first ? first.getAttribute('data-crop') : '', tableBody, activeCropBadge);
 }
 
 function renderMarketTable(cropKey, tableBody, activeCropBadge) {
-  const data = window.CONFIG?.DEMO_DATA?.COMMODITIES?.[cropKey];
-  if (!data) return;
-
   if (activeCropBadge) {
-    activeCropBadge.textContent = `${data.crop} • Demo Batch: ${data.lotSize}`;
+    activeCropBadge.textContent = cropKey
+      ? `${cropKey} — open Farmer Dashboard for live mandi forecasts`
+      : 'Open Farmer Dashboard for live mandi data';
   }
-
-  // Smooth fade transition
-  tableBody.style.opacity = '0';
-  setTimeout(() => {
-    tableBody.innerHTML = data.markets.map(item => `
-      <tr>
-        <td>
-          <div class="font-semibold text-slate-900">${item.market}</div>
-          <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">${item.type}</span>
-        </td>
-        <td class="price-cell">₹${item.currentPrice.toLocaleString('en-IN')}<span class="text-xs text-slate font-normal"> /QTL</span></td>
-        <td>
-          <span class="font-mono text-xs font-semibold ${item.trend.includes('Rising') ? 'text-emerald' : item.trend.includes('Dip') ? 'text-amber' : 'text-slate'}">
-            ${item.trend}
-          </span>
-        </td>
-        <td>
-          <span class="badge ${item.demand === 'Very High' || item.demand === 'High' ? 'badge-success' : 'badge-amber'}">
-            ${item.demand}
-          </span>
-        </td>
-        <td class="font-mono text-xs">${item.arrival}</td>
-        <td class="text-xs">${item.distance}</td>
-        <td class="font-mono text-xs text-amber font-semibold">-₹${item.transportCost}</td>
-        <td class="net-realisation-cell">
-          ₹${item.netRealisation.toLocaleString('en-IN')}
-          ${item.isRecommended ? '<span class="badge badge-verified" style="font-size: 0.65rem; margin-left: 4px;">Top Match</span>' : ''}
-        </td>
-      </tr>
-    `).join('');
-    tableBody.style.opacity = '1';
-  }, 150);
+  if (!tableBody) return;
+  tableBody.style.opacity = '1';
+  tableBody.innerHTML = `
+    <tr>
+      <td colspan="8" style="padding: 16px; font-size: 0.85rem; color: var(--color-slate-600);">
+        This landing page no longer shows fabricated APMC prices.
+        Use the <a href="pages/farmer.html">Farmer Dashboard</a> Price Outlook section to load
+        real historical mandi records and Chronos forecasts for a chosen commodity, state, district and market.
+      </td>
+    </tr>`;
 }
 
 /**

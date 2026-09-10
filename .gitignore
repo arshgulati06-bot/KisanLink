@@ -31,7 +31,12 @@ desktop.ini
 ml/outputs/*.png
 
 # ── ML Dataset (52 MB — use Git LFS or download separately) ──
+# ── ML Dataset (large CSVs — not in git) ──
 ml/data/*.csv
+ml/data/_cache/
+ml/data/ingested/ingest.log
+ml/data/ingested/records.csv
+*.bak
 
 # ── Node (if any) ──
 node_modules/

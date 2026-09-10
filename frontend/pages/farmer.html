@@ -51,7 +51,7 @@
             <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
           </svg>
           <span>My Sale Lots</span>
-          <span class="sidebar-link-badge badge-success" id="sidebar-lot-badge">2</span>
+          <span class="sidebar-link-badge badge-success" id="sidebar-lot-badge">0</span>
         </a>
 
         <a href="#best-action-section" class="sidebar-link">
@@ -108,7 +108,7 @@
             <polyline points="14 2 14 8 20 8"/>
           </svg>
           <span data-i18n="nav.offers">Received Offers</span>
-          <span class="sidebar-link-badge badge-amber">1 New</span>
+          <span class="sidebar-link-badge badge-amber" id="sidebar-offer-badge">0</span>
         </a>
 
         <a href="#transactions-section" class="sidebar-link">
@@ -193,7 +193,7 @@
           </button>
           <div class="dashboard-title-group">
             <h1>Farmer / FPO Selling Dashboard</h1>
-            <p>Dindori Taluka, Nashik District • Real-Time Price Discovery & Buyer Linkage</p>
+            <p id="ingest-status-banner">Loading dataset freshness…</p>
           </div>
         </div>
 
@@ -227,7 +227,7 @@
             <div id="kl-notifications" class="notif-dropdown" hidden aria-label="Notifications panel">
               <div class="notif-dropdown-header">
                 <span class="notif-dropdown-title" data-i18n="section.notifications">Activity &amp; Notifications</span>
-                <span class="badge badge-demo">Demo</span>
+            <span class="badge badge-success">Activity</span>
               </div>
               <div id="kl-notifications-list" class="notif-list"></div>
             </div>
@@ -283,8 +283,8 @@
           <div class="stat-widget">
             <div>
               <div class="stat-label">Active Sale Lots</div>
-              <div class="stat-value" id="stat-active-lots-count">2</div>
-              <div class="stat-subtext">25 QTL total listed volume</div>
+              <div class="stat-value" id="stat-active-lots-count">0</div>
+              <div class="stat-subtext">Listed lots you created</div>
             </div>
             <div class="stat-icon-wrapper">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -296,8 +296,8 @@
           <div class="stat-widget widget-amber">
             <div>
               <div class="stat-label">Pending Buyer Offers</div>
-              <div class="stat-value" id="stat-pending-offers-count">1</div>
-              <div class="stat-subtext">Avg. Offer: ₹3,200/QTL</div>
+              <div class="stat-value" id="stat-pending-offers-count">0</div>
+              <div class="stat-subtext" id="stat-avg-offer-subtext">No pending offers</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-amber-light); color: var(--color-accent-amber);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -309,8 +309,8 @@
           <div class="stat-widget widget-sky">
             <div>
               <div class="stat-label">Best Est. Net Realisation</div>
-              <div class="stat-value">₹3,220</div>
-              <div class="stat-subtext">Pune Market (After freight)</div>
+              <div class="stat-value" id="stat-best-net-realisation">—</div>
+              <div class="stat-subtext" id="stat-best-net-subtext">Generate a forecast to see</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-sky-light); color: var(--color-accent-sky);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -322,8 +322,8 @@
           <div class="stat-widget widget-rose">
             <div>
               <div class="stat-label">Transactions in Progress</div>
-              <div class="stat-value">1</div>
-              <div class="stat-subtext">Stage: Logistics Scheduled</div>
+              <div class="stat-value" id="stat-tx-count">0</div>
+              <div class="stat-subtext">Accept an offer to start a tracker</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-rose-light); color: var(--color-accent-rose);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -358,58 +358,25 @@
         <section id="recommendations-section">
           <div class="section-tag" style="margin-bottom: var(--space-2);">Decision Intelligence</div>
           <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-4);">
-            "What should this farmer do with this crop right now, and why?"
+            Market-Based Sale Recommendation
           </h2>
 
-          <div class="recommendation-card">
-            <div class="best-opp-badge">
-              <span>Recommended Action</span>
+          <div id="rec-card-container">
+            <!-- Initial state: prompt user to generate a forecast -->
+            <div id="rec-idle-state" class="recommendation-card" style="text-align:center;padding:var(--space-8);">
+              <div style="font-size:2rem;margin-bottom:var(--space-3);">📊</div>
+              <h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);margin-bottom:var(--space-2);">No Forecast Generated Yet</h3>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);max-width:400px;margin:0 auto;">
+                Use the <strong>Price Outlook &amp; 7-Day Forecast</strong> section above to select a
+                Commodity, State, District and Market, then click "Generate Forecast".
+                The recommendation will update automatically from real market data.
+              </p>
             </div>
-
-            <div class="rec-header">
-              <div>
-                <div class="rec-lot-name">Onion (Grade A) — 10 QTL Lot</div>
-                <div class="rec-target-market">Recommended Buyer: Sahyadri Agro Processors (Pune)</div>
-              </div>
-              <div class="sale-window-badge">
-                <span class="sale-window-label">Sale Window</span>
-                <span class="sale-window-action">SELL NOW</span>
-              </div>
-            </div>
-
-            <div class="breakdown-table">
-              <div class="breakdown-row">
-                <span class="breakdown-label">Gross Offered Price</span>
-                <span class="breakdown-value">₹3,200 / QTL</span>
-              </div>
-              <div class="breakdown-row">
-                <span class="breakdown-label">Expected 7-Day APMC Trend</span>
-                <span class="breakdown-value text-emerald">₹3,350 / QTL (+4.7%)</span>
-              </div>
-              <div class="breakdown-row">
-                <span class="breakdown-label">Estimated Route Transport (38 km)</span>
-                <span class="breakdown-value cost">-₹100 / QTL</span>
-              </div>
-              <div class="breakdown-row">
-                <span class="breakdown-label">Warehouse Storage Loss Avoided</span>
-                <span class="breakdown-value cost">-₹30 / QTL</span>
-              </div>
-              <div class="breakdown-row highlight-net">
-                <div>
-                  <div class="font-bold text-slate-900">Estimated Net Realisation</div>
-                  <div class="text-xs text-slate">Actual cash in hand per QTL</div>
-                </div>
-                <span class="breakdown-value net-amount">₹3,220 / QTL</span>
-              </div>
-            </div>
-
-            <div style="background-color: var(--color-primary-50); padding: var(--space-4); border-radius: var(--radius-md); border: 1px solid var(--color-primary-200);">
-              <h4 style="font-size: var(--text-xs); font-weight: var(--weight-bold); color: var(--color-primary-900); margin-bottom: var(--space-2);">Why this recommendation?</h4>
-              <ul style="font-size: var(--text-xs); color: var(--color-slate-700); display: flex; flex-direction: column; gap: 4px;">
-                <li>✔ <strong>Better Net Cash:</strong> Direct delivery yields ₹380/QTL more than shipping to Lasalgaon after deducting freight.</li>
-                <li>✔ <strong>Quality Match:</strong> 100% Grade A compatibility with processor factory specs.</li>
-                <li>✔ <strong>Minimized Holding Loss:</strong> Projected price appreciation is offset by storage shrinkage over a 14-day hold.</li>
-              </ul>
+            <!-- Populated by kl:forecastReady event in price-forecast.js -->
+            <div id="rec-result-state" class="recommendation-card" hidden>
+              <div class="best-opp-badge"><span>Data-Driven Recommendation</span></div>
+              <div id="rec-content" style="margin-top:var(--space-3);"></div>
+              <p style="font-size:0.65rem;color:var(--color-slate-400);margin-top:var(--space-3);">Based on available government mandi historical data and Chronos forecast. Not financial advice. Always verify with local mandi before selling.</p>
             </div>
           </div>
         </section>
@@ -420,10 +387,10 @@
         <section id="market-intel-section">
           <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
             <div>
-              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Live Market Rates & APMC Comparison</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Current modal price vs estimated transport deduction across hubs</p>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Market Rates &amp; APMC Comparison</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Latest modal price in the historical dataset for the selected market</p>
             </div>
-            <span class="badge badge-demo">Demo Dataset</span>
+            <span class="badge badge-success">Real Data</span>
           </div>
 
           <div class="market-intel-wrapper">
@@ -432,41 +399,19 @@
                 <thead>
                   <tr>
                     <th>Market Channel</th>
-                    <th>Current Price</th>
-                    <th>Price Trend</th>
-                    <th>Demand</th>
-                    <th>Arrivals</th>
-                    <th>Distance</th>
-                    <th>Transport Est.</th>
-                    <th>Net Realisation</th>
+                    <th>Latest modal (₹/QTL)</th>
+                    <th>As-of date</th>
+                    <th>Records</th>
+                    <th>Context</th>
+                    <th>Gaps / outliers</th>
+                    <th>Confidence</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody id="market-intel-body">
                   <tr>
-                    <td>
-                      <div class="font-semibold text-slate-900">Pune APMC (Gultekdi)</div>
-                      <span class="badge badge-slate" style="font-size: 0.65rem;">Primary APMC</span>
+                    <td colspan="7" style="font-size:var(--text-xs);color:var(--color-slate-400);padding:12px;text-align:center;">
+                      Generate a forecast above to load real market price data for the selected commodity and district.
                     </td>
-                    <td class="price-cell">₹3,200 /QTL</td>
-                    <td><span class="font-mono text-xs font-semibold text-emerald">Rising (+4.7%)</span></td>
-                    <td><span class="badge badge-success">High</span></td>
-                    <td class="font-mono text-xs">1,420 MT</td>
-                    <td class="text-xs">38 km</td>
-                    <td class="font-mono text-xs text-amber font-semibold">-₹100</td>
-                    <td class="net-realisation-cell">₹3,220 <span class="badge badge-verified" style="font-size: 0.65rem;">Top Match</span></td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <div class="font-semibold text-slate-900">Lasalgaon APMC</div>
-                      <span class="badge badge-slate" style="font-size: 0.65rem;">Major Hub</span>
-                    </td>
-                    <td class="price-cell">₹3,100 /QTL</td>
-                    <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
-                    <td><span class="badge badge-success">Very High</span></td>
-                    <td class="font-mono text-xs">3,850 MT</td>
-                    <td class="text-xs">145 km</td>
-                    <td class="font-mono text-xs text-amber font-semibold">-₹280</td>
-                    <td class="net-realisation-cell">₹2,840</td>
                   </tr>
                 </tbody>
               </table>
@@ -515,28 +460,28 @@
               <div class="section-tag">Decision Engine</div>
               <h2 id="ba-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
                   data-i18n="section.bestAction">Best Action for Your Crop</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Explainable selling recommendation — connect ML API for real predictions.</p>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Explainable selling recommendation from the forecast decision engine.</p>
             </div>
-            <span class="badge badge-demo">Demo Dataset</span>
+            <span class="badge badge-success">ML Connected</span>
           </div>
 
           <!-- Decision Input Grid -->
           <div class="ba-inputs-grid">
             <div class="ba-input-block">
               <div class="ba-input-label">Crop</div>
-              <div id="ba-crop" class="ba-input-val">Onion</div>
+              <div id="ba-crop" class="ba-input-val">—</div>
             </div>
             <div class="ba-input-block">
               <div class="ba-input-label">Quality Grade</div>
-              <div id="ba-quality" class="ba-input-val">Grade A</div>
+              <div id="ba-quality" class="ba-input-val">—</div>
             </div>
             <div class="ba-input-block">
               <div class="ba-input-label">Location</div>
-              <div id="ba-location" class="ba-input-val">Nashik District</div>
+              <div id="ba-location" class="ba-input-val">—</div>
             </div>
             <div class="ba-input-block">
               <div class="ba-input-label">Quantity</div>
-              <div id="ba-quantity" class="ba-input-val">15 QTL</div>
+              <div id="ba-quantity" class="ba-input-val">—</div>
             </div>
             <div class="ba-input-block">
               <div class="ba-input-label">Current Market Price</div>
@@ -565,7 +510,7 @@
           <div class="ba-net-block">
             <div class="ba-net-label">Expected Net Realisation</div>
             <div id="ba-net-realisation" class="ba-net-value">—</div>
-            <div class="ba-net-note">After estimated logistics. Demo arithmetic only.</div>
+            <div class="ba-net-note">After the forecast runs. Not labelled as today&rsquo;s live quote.</div>
           </div>
 
           <!-- Arrow flow -->
@@ -573,11 +518,11 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
           </div>
 
-          <!-- Recommendation -->
+          <!-- Recommendation — populated by kl:forecastReady event -->
           <div class="ba-recommendation-block">
             <div class="ba-rec-label">Recommended Action</div>
-            <div id="ba-recommendation-chip" class="ba-rec-chip ba-rec-sell">SELL NOW</div>
-            <p id="ba-rec-reason" class="ba-rec-reason">Connect ML API for real analysis.</p>
+            <div id="ba-recommendation-chip" class="ba-rec-chip" style="background:var(--color-slate-200);color:var(--color-slate-600);">Generate Forecast First</div>
+            <p id="ba-rec-reason" class="ba-rec-reason" style="font-size:0.7rem;color:var(--color-slate-500);">Select a market and generate a forecast above — the recommendation will update from real data.</p>
           </div>
         </section>
 
@@ -682,40 +627,25 @@
                   data-i18n="section.marketCompare">Compare Nearby Markets</h2>
               <p style="font-size: var(--text-xs); color: var(--color-slate-500);">INTEGRATION NOTE: Google Maps / location services can be connected here later. No fake GPS used.</p>
             </div>
-            <span class="badge badge-demo">Demo Data</span>
+            <span class="badge badge-success" id="mc-data-badge">Real Data</span>
           </div>
 
-          <!-- Location Form -->
-          <div class="mc-location-form">
-            <div class="form-group">
-              <label class="form-label" for="mc-state">State</label>
-              <select class="form-input" id="mc-state">
-                <option value="MH">Maharashtra</option>
-                <option value="KA">Karnataka</option>
-                <option value="AP">Andhra Pradesh</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="mc-district">District</label>
-              <input type="text" class="form-input" id="mc-district" value="Nashik" placeholder="e.g. Nashik">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="mc-taluka">Taluka</label>
-              <input type="text" class="form-input" id="mc-taluka" value="Dindori" placeholder="e.g. Dindori">
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="mc-apmc">APMC / Market</label>
-              <input type="text" class="form-input" id="mc-apmc" value="Nashik APMC" placeholder="e.g. Nashik APMC">
-            </div>
-            <div style="align-self:flex-end;">
-              <button type="button" id="mc-fetch-btn" class="btn btn-primary btn-sm">Compare Markets</button>
-            </div>
+          <!-- Note: Market comparison is auto-populated when you generate a forecast above -->
+          <div id="mc-api-note" class="cqa-disclaimer" role="note" style="margin-bottom:var(--space-4);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#10B981;"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            <p style="font-size:var(--text-xs);color:#065F46;">
+              Market comparison loads automatically when you <strong>Generate Forecast</strong> above for a Commodity + District.
+              Shows latest modal prices from the combined historical CSVs for all markets in the selected district.
+              Or use the Compare button below to select a different district.
+            </p>
           </div>
 
-          <!-- API note (shown after button click) -->
-          <div id="mc-api-note" class="cqa-disclaimer" hidden role="note" style="margin-bottom:var(--space-4);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:var(--color-accent-amber);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            <p style="font-size:var(--text-xs);color:#78350F;">Showing demo data for <strong id="mc-origin-label">Nashik (Dindori Taluka)</strong>. Connect <code>GET /api/markets/compare</code> for live data.</p>
+          <!-- Manual trigger form -->
+          <div class="mc-location-form" style="flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-3);">
+            <div style="font-size:var(--text-xs);color:var(--color-slate-500);align-self:center;">Current selection: <strong id="mc-origin-label">—</strong> &nbsp;|&nbsp; Crop: <strong id="mc-crop-label">—</strong></div>
+            <div style="align-self:flex-end;margin-left:auto;">
+              <button type="button" id="mc-fetch-btn" class="btn btn-outline btn-sm">Refresh Comparison</button>
+            </div>
           </div>
 
           <!-- Results Table -->
@@ -724,19 +654,19 @@
               <thead>
                 <tr>
                   <th>Market / APMC</th>
-                  <th>Distance</th>
-                  <th>Modal Price</th>
-                  <th>Est. Freight</th>
-                  <th>Net Realisation</th>
-                  <th></th>
+                  <th>Latest modal (₹/QTL)</th>
+                  <th>As-of date</th>
+                  <th>Age</th>
+                  <th>Records</th>
+                  <th>Coverage</th>
                 </tr>
               </thead>
               <tbody id="mc-table-body">
-                <!-- Populated by step4-farmer.js -->
+                <tr><td colspan="6" style="font-size:var(--text-xs);color:var(--color-slate-400);padding:12px;">Generate a forecast above to load real market comparison data.</td></tr>
               </tbody>
             </table>
           </div>
-          <p style="font-size:0.68rem;color:var(--color-slate-400);margin-top:var(--space-2);">Crop: <strong id="mc-crop-label">Onion</strong> &bull; All values are illustrative demo data.</p>
+          <p style="font-size:0.68rem;color:var(--color-slate-400);margin-top:var(--space-2);">Source: combined historical mandi CSVs in this project. Prices are the latest modal prices in that dataset, not a live official API quote. Distance data is not available.</p>
         </section>
 
         <!-- ===================================================================
@@ -750,10 +680,15 @@
                   data-i18n="section.buyerMatches">Buyer Opportunities</h2>
               <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Matched based on crop, quality, and location. Integration-ready for backend buyer matching API.</p>
             </div>
-            <span class="badge badge-demo">Demo Dataset</span>
+            <span class="badge badge-success" id="bm-status-badge">API Connected</span>
           </div>
           <div id="buyer-matches-container" class="bmc-grid">
-            <!-- Populated by step4-farmer.js -->
+            <!-- Initial state -->
+            <div class="empty-state" style="grid-column:1/-1;">
+              <div class="empty-state-icon">🤝</div>
+              <h3>Click "View Matches" on a Lot Card</h3>
+              <p>Select a lot from "My Active Sale Lots" above and click <strong>View Matches</strong> to see real buyer matching results for that commodity.</p>
+            </div>
           </div>
         </section>
 
@@ -792,14 +727,14 @@
               <div class="dp-step-icon dp-icon-amber">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
-              <div class="dp-step-label">Market Prices<br><small>APMC data — API pending</small></div>
+              <div class="dp-step-label">Market Prices<br><small>Combined mandi CSVs + ingest</small></div>
               <div class="dp-arrow">&#8595;</div>
             </div>
             <div class="dp-step" role="listitem">
               <div class="dp-step-icon dp-icon-primary">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               </div>
-              <div class="dp-step-label">Price Forecast<br><small>7-day outlook — ML pending</small></div>
+              <div class="dp-step-label">Price Forecast<br><small>Chronos 7-day P10/P50/P90</small></div>
               <div class="dp-arrow">&#8595;</div>
             </div>
             <div class="dp-step" role="listitem">
@@ -1249,7 +1184,7 @@
 
           <div class="form-group">
             <label class="form-label" for="lot-variety">Crop Variety</label>
-            <input type="text" class="form-input" id="lot-variety" name="variety" placeholder="e.g. Garwa, Red, Hybrid" value="Garwa Red">
+            <input type="text" class="form-input" id="lot-variety" name="variety" placeholder="e.g. Garwa, Red, Hybrid">
           </div>
         </div>
 
@@ -1288,12 +1223,13 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-location">Farm / Pickup Location *</label>
-            <input type="text" class="form-input" id="lot-location" name="location" placeholder="e.g. Dindori, Nashik (Maharashtra)" required value="Dindori, Nashik">
+            <input type="text" class="form-input" id="lot-location" name="location" placeholder="e.g. Dindori, Nashik (Maharashtra)" required>
+          </div>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="lot-price">Expected Base Price (₹/Unit)</label>
-            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 3200" value="3200">
+            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000">
           </div>
         </div>
 

@@ -25,10 +25,10 @@ class DashboardStateManager {
     return {
       farmerProfile: initial.FARMER_PROFILE || {},
       buyerProfile: initial.BUYER_PROFILE || {},
-      lots: initial.LOTS ? [...initial.LOTS] : [],
-      demands: initial.BUYER_DEMANDS ? [...initial.BUYER_DEMANDS] : [],
-      offers: initial.OFFERS ? [...initial.OFFERS] : [],
-      transactions: initial.TRANSACTIONS ? [...initial.TRANSACTIONS] : []
+      lots: [],
+      demands: [],
+      offers: [],
+      transactions: []
     };
   }
 
@@ -53,9 +53,9 @@ class DashboardStateManager {
       quantity: Number(lotData.quantity),
       unit: lotData.unit || 'QTL',
       grade: lotData.grade || 'Grade A',
-      location: lotData.location || 'Nashik District',
+      location: lotData.location || '',
       harvestDate: lotData.harvestDate || new Date().toISOString().split('T')[0],
-      expectedPrice: Number(lotData.expectedPrice) || 3000,
+      expectedPrice: Number(lotData.expectedPrice) || 0,
       status: 'ACTIVE_MARKET',
       createdDate: new Date().toISOString().split('T')[0]
     };
@@ -73,14 +73,14 @@ class DashboardStateManager {
   createDemand(demandData) {
     const newDemand = {
       id: `DEMAND-2026-${String(this.state.demands.length + 105).padStart(3, '0')}`,
-      buyerName: this.state.buyerProfile.name || 'Sahyadri Agro Processors',
-      buyerType: this.state.buyerProfile.type || 'Food Processor',
+      buyerName: this.state.buyerProfile.name || 'Buyer',
+      buyerType: this.state.buyerProfile.type || '',
       crop: demandData.crop,
       quantity: Number(demandData.quantity),
       unit: demandData.unit || 'QTL',
       grade: demandData.grade || 'Grade A',
-      deliveryLocation: demandData.deliveryLocation || 'Pune Hub',
-      offeredRate: Number(demandData.offeredRate) || 3100,
+      deliveryLocation: demandData.deliveryLocation || '',
+      offeredRate: Number(demandData.offeredRate) || 0,
       requiredDate: demandData.requiredDate || new Date().toISOString().split('T')[0],
       status: 'ACTIVE'
     };
@@ -246,9 +246,11 @@ function renderFarmerLots() {
           <span class="text-xs text-slate">Expected Base:</span>
           <span class="font-mono font-bold text-slate-900" style="margin-left: 4px;">₹${lot.expectedPrice.toLocaleString('en-IN')}/${lot.unit}</span>
         </div>
-        <a href="#recommendations-section" class="btn btn-outline btn-sm">
+        <button type="button" class="btn btn-outline btn-sm"
+          onclick="handleViewMatches('${lot.id}', '${lot.crop}', ${lot.quantity}, '${lot.unit}', '${lot.grade}', '${lot.location}', ${lot.expectedPrice})"
+          aria-label="View matched buyers for ${lot.crop} lot">
           <span>View Matches</span>
-        </a>
+        </button>
       </div>
     </div>
   `).join('');
@@ -458,49 +460,140 @@ function renderBuyerDemands() {
   `).join('');
 }
 
-function renderBuyerMatchedSupply() {
-  const container = document.getElementById('buyer-matched-lots-container');
+function renderBuyerMatchedSupply(commodity, lotQty, grade, state, expectedPrice) {
+  const container = document.getElementById('buyer-matches-container');
   if (!container) return;
 
-  const lots = window.dashboardState.getLots();
-  container.innerHTML = lots.map(lot => `
-    <div class="buyer-card">
-      <div class="buyer-card-header">
-        <div>
-          <div class="flex items-center gap-2">
-            <h3 style="font-size: var(--text-base); font-weight: var(--weight-bold);">${lot.crop}</h3>
-            <span class="badge badge-success">${lot.grade}</span>
-          </div>
-          <p style="font-size: var(--text-xs); color: var(--color-slate-500); margin-top: 2px;">
-            Origin: ${lot.location} • Available: <strong>${lot.quantity} ${lot.unit}</strong>
-          </p>
-        </div>
-        <div class="match-score-badge" style="--score: 92;">
-          <div class="match-score-inner">92%</div>
-        </div>
-      </div>
+  var selection = window.KL_PriceForecast && window.KL_PriceForecast.getCurrentSelection
+    ? window.KL_PriceForecast.getCurrentSelection()
+    : {};
+  commodity    = selection.commodity || commodity || '';
+  lotQty       = lotQty       || 10;
+  grade        = grade        || 'Grade A';
+  state        = selection.state || state || '';
+  expectedPrice = expectedPrice || 0;
+  var matchRequestId = (window.__kisanlinkBuyerMatchRequestId || 0) + 1;
+  window.__kisanlinkBuyerMatchRequestId = matchRequestId;
 
-      <div class="buyer-factors-list">
-        <div class="factor-row">
-          <span class="factor-name">Volume Fit</span>
-          <span class="factor-stat text-emerald">100% Compatible</span>
-        </div>
-        <div class="factor-row">
-          <span class="factor-name">Declared Grade</span>
-          <span class="factor-stat">${lot.grade}</span>
-        </div>
-        <div class="factor-row">
-          <span class="factor-name">Farmer Base Price</span>
-          <span class="factor-stat font-mono">₹${lot.expectedPrice}/${lot.unit}</span>
-        </div>
-      </div>
+  // Show loading
+  container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:8px;">Finding matched buyers…</p></div>';
 
-      <button type="button" class="btn btn-primary btn-sm" style="width: 100%;" onclick="handleSendDigitalOffer('${lot.id}', '${lot.crop}', ${lot.quantity})">
-        <span>Make Digital Offer</span>
-      </button>
-    </div>
-  `).join('');
+  const API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
+    ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
+    : 'http://localhost:5000';
+
+  fetch(API_BASE + '/api/buyer-match', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      commodity:      commodity,
+      state:          state,
+      quantity_qtl:   lotQty,
+      grade:          grade,
+      expected_price: expectedPrice,
+      district:       selection.district || '',
+      market:         selection.market || '',
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (matchRequestId !== window.__kisanlinkBuyerMatchRequestId) return;
+    if (!data.success || !data.matches || data.matches.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🤝</div><h3>No Buyer Matches Found</h3><p>No registered buyers currently match this commodity. Try creating a sale lot to attract buyer attention.</p></div>';
+      return;
+    }
+
+    const html = data.matches.map(function(m) {
+      const scoreColor = m.match_score >= 75 ? 'var(--color-accent-green)' : m.match_score >= 50 ? '#D97706' : '#E11D48';
+      const factorsHtml = (m.matched_criteria || []).map(function(c) {
+        const barW = Math.round(c.score);
+        return '<div class="factor-row"><span class="factor-name">' + c.name + '</span><span class="factor-stat" style="font-size:0.7rem;">' + c.score + '/100</span></div>';
+      }).join('');
+
+      const unmatchedHtml = m.unmatched_criteria && m.unmatched_criteria.length
+        ? '<div style="font-size:0.65rem;color:#E11D48;margin-top:4px;">Note: ' + m.unmatched_criteria.join('; ') + '</div>'
+        : '';
+
+      return '<div class="buyer-card">' +
+        '<div class="buyer-card-header">' +
+          '<div>' +
+            '<div class="flex items-center gap-2">' +
+              '<h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);">' + m.buyer_name + '</h3>' +
+              '<span class="badge badge-success">' + m.required_grade + '</span>' +
+            '</div>' +
+            '<p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:2px;">' +
+              m.delivery_location + ' • Needs <strong>' + m.required_qty + ' QTL</strong>' +
+            '</p>' +
+            '<p style="font-size:0.68rem;color:var(--color-slate-400);margin-top:2px;">' + m.buyer_type + '</p>' +
+          '</div>' +
+          '<div class="match-score-badge" style="--score:' + m.match_score + ';">' +
+            '<div class="match-score-inner" style="color:' + scoreColor + ';">' + m.match_score + '%</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="buyer-factors-list">' + factorsHtml + '</div>' +
+        unmatchedHtml +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--space-3);padding-top:var(--space-3);border-top:1px solid var(--color-slate-100);">' +
+          '<span style="font-size:var(--text-sm);font-weight:var(--weight-bold);">₹' + (m.offered_rate||0).toLocaleString('en-IN') + '/QTL</span>' +
+          '<span style="font-size:0.65rem;color:var(--color-slate-400);">Needed by: ' + (m.required_date || '—') + '</span>' +
+        '</div>' +
+        '<button type="button" class="btn btn-primary btn-sm" style="width:100%;margin-top:var(--space-2);" ' +
+          'onclick="handleSendDigitalOffer(\'' + m.buyer_id + '\', \'' + (commodity||'') + '\', ' + lotQty + ')">' +
+          '<span>Send Digital Offer</span>' +
+        '</button>' +
+      '</div>';
+    }).join('');
+
+    container.innerHTML = html;
+
+    // Remove demo badge from buyer matches section
+    var bmsSection = document.getElementById('buyer-matches-section');
+    if (bmsSection) {
+      var demoBadge = bmsSection.querySelector('.badge-demo');
+      if (demoBadge) { demoBadge.textContent = 'API Matched'; demoBadge.className = 'badge badge-success'; }
+    }
+  })
+  .catch(function(err) {
+    if (matchRequestId !== window.__kisanlinkBuyerMatchRequestId) return;
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">⚠️</div><h3>Buyer Match Unavailable</h3><p>Could not load buyer data: ' + err.message + '</p></div>';
+  });
 }
+
+/**
+ * handleViewMatches — called by View Matches button on each lot card.
+ * Passes lot data to buyer matching engine and scrolls to results.
+ */
+window.handleViewMatches = function(lotId, crop, qty, unit, grade, location, expectedPrice) {
+  // Scroll to buyer matches section
+  var target = document.getElementById('buyer-matches-section');
+  if (target) {
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  var currentSelection = window.KL_PriceForecast && window.KL_PriceForecast.getCurrentSelection
+    ? window.KL_PriceForecast.getCurrentSelection()
+    : {};
+  var selectedCommodity = currentSelection.commodity || crop;
+  var lotState = currentSelection.state || '';
+
+  // Update section heading to show which lot
+  var heading = document.getElementById('bm-heading');
+  if (heading) heading.textContent = 'Buyer Opportunities for ' + selectedCommodity;
+
+  // Load real matches
+  renderBuyerMatchedSupply(selectedCommodity, qty, grade, lotState, expectedPrice);
+
+  if (typeof showToast === 'function') {
+    showToast('Finding verified buyers for ' + crop + '…', 'info');
+  }
+};
+
+document.addEventListener('kl:forecastCleared', function () {
+  window.__kisanlinkBuyerMatchRequestId = (window.__kisanlinkBuyerMatchRequestId || 0) + 1;
+  var container = document.getElementById('buyer-matches-container');
+  if (container) {
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🤝</div><h3>Click "View Matches" on a Lot Card</h3><p>Select a current market and view matches for its commodity.</p></div>';
+  }
+});
 
 window.handleSendDigitalOffer = function(lotId, crop, quantity) {
   if (typeof showToast === 'function') {

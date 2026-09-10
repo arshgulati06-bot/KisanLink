@@ -2,7 +2,13 @@
 KisanLink ML Pipeline — Model Evaluation
 ==========================================
 Backtesting evaluation using holdout split on historical data.
-Metrics: MAE, RMSE, MAPE.
+
+Metrics for Chronos:
+  - MAE, RMSE, MAPE
+
+Baseline models for comparison:
+  - Naive (last-value): predict last known price for all test days
+  - MA7 (7-day moving average): predict rolling mean of last 7 train days
 """
 
 import numpy as np
@@ -13,37 +19,67 @@ from . import config
 
 
 # =============================================================================
+# _compute_metrics
+# =============================================================================
+
+def _compute_metrics(actuals, predicted):
+    """
+    Compute MAE, RMSE, MAPE for a pair of actual/predicted arrays.
+    Returns dict with mae, rmse, mape (float). mape is a percentage.
+    """
+    actuals   = np.asarray(actuals,   dtype=float)
+    predicted = np.asarray(predicted, dtype=float)
+
+    mae  = float(mean_absolute_error(actuals, predicted))
+    rmse = float(np.sqrt(mean_squared_error(actuals, predicted)))
+
+    nonzero = actuals != 0
+    if nonzero.any():
+        mape = float(
+            np.mean(np.abs((actuals[nonzero] - predicted[nonzero])
+                           / actuals[nonzero])) * 100
+        )
+    else:
+        mape = float("inf")
+
+    return {"mae": mae, "rmse": rmse, "mape": mape}
+
+
+# =============================================================================
 # evaluate_model
 # =============================================================================
 
 def evaluate_model(pipeline, prices, test_size=None):
     """
-    Evaluate the Chronos model using a holdout backtesting approach.
+    Evaluate Chronos plus two simple baselines using holdout backtesting.
 
-    Splits the historical price series into train and test.
-    Uses the train portion as context, forecasts `test_size` steps,
-    and compares against the actual held-out prices.
+    The function splits the historical price series into train and test,
+    runs Chronos on the train context, then evaluates both Chronos and
+    two naive baselines against the held-out test window.
+
+    Baselines:
+      - Naive: predict last train price for every test day
+      - MA7:   predict the 7-day rolling mean of the last 7 train prices
 
     Parameters
     ----------
     pipeline : ChronosPipeline
-        Loaded Chronos model.
     prices : np.ndarray
-        Full daily price series (chronologically ordered).
+        Full cleaned daily price series (chronological order).
     test_size : int, optional
-        Number of days to hold out for testing.
-        Defaults to config.EVAL_TEST_SIZE.
+        Number of test days. Defaults to config.EVAL_TEST_SIZE (= 7).
 
     Returns
     -------
     dict or None
-        If enough data exists, returns dict with keys:
-            "mae"       : float
-            "rmse"      : float
-            "mape"      : float (percentage)
-            "actuals"   : np.ndarray
-            "predicted" : np.ndarray
-        Returns None if insufficient data for evaluation.
+        If sufficient data: dict with keys:
+            "mae", "rmse", "mape"       — Chronos metrics
+            "actuals"                   — np.ndarray of test actuals
+            "predicted"                 — np.ndarray of Chronos predictions
+            "baseline_naive"            — {"mae", "rmse", "mape"}
+            "baseline_ma7"              — {"mae", "rmse", "mape"}
+            "chronos_vs_naive_pct"      — % improvement over naive (negative = worse)
+        Returns None if < config.MIN_EVAL_RECORDS available.
     """
     if test_size is None:
         test_size = config.EVAL_TEST_SIZE
@@ -51,48 +87,46 @@ def evaluate_model(pipeline, prices, test_size=None):
     if len(prices) < config.MIN_EVAL_RECORDS:
         return None
 
-    # Split into train and test
-    train_prices = prices[:-test_size]
+    train_prices  = prices[:-test_size]
     actual_prices = prices[-test_size:]
 
-    # Build context from training portion
+    # ── Chronos evaluation ──
     eval_context = torch.tensor(
-        train_prices,
-        dtype=torch.float32,
+        train_prices, dtype=torch.float32
     ).unsqueeze(0)
 
-    # Forecast
     eval_forecast = pipeline.predict(
         eval_context,
         prediction_length=test_size,
     )
-
     predicted_prices = eval_forecast[0].median(dim=0).values.numpy()
     predicted_prices = np.maximum(predicted_prices, 0)
 
-    # Compute metrics
-    mae = mean_absolute_error(actual_prices, predicted_prices)
+    chronos_metrics = _compute_metrics(actual_prices, predicted_prices)
 
-    rmse = np.sqrt(
-        mean_squared_error(actual_prices, predicted_prices)
-    )
+    # ── Naive baseline (last-value) ──
+    naive_pred = np.full(test_size, train_prices[-1])
+    naive_metrics = _compute_metrics(actual_prices, naive_pred)
 
-    # MAPE — guard against division by zero
-    nonzero_mask = actual_prices != 0
-    if nonzero_mask.any():
-        mape = np.mean(
-            np.abs(
-                (actual_prices[nonzero_mask] - predicted_prices[nonzero_mask])
-                / actual_prices[nonzero_mask]
-            )
-        ) * 100
+    # ── MA7 baseline ──
+    ma7_window = train_prices[-7:] if len(train_prices) >= 7 else train_prices
+    ma7_val    = float(np.mean(ma7_window))
+    ma7_pred   = np.full(test_size, ma7_val)
+    ma7_metrics = _compute_metrics(actual_prices, ma7_pred)
+
+    # ── Relative improvement over naive ──
+    if naive_metrics["mae"] > 0:
+        vs_naive = (naive_metrics["mae"] - chronos_metrics["mae"]) / naive_metrics["mae"] * 100
     else:
-        mape = float("inf")
+        vs_naive = 0.0
 
     return {
-        "mae": mae,
-        "rmse": rmse,
-        "mape": mape,
-        "actuals": actual_prices,
-        "predicted": predicted_prices,
+        "mae":                   chronos_metrics["mae"],
+        "rmse":                  chronos_metrics["rmse"],
+        "mape":                  chronos_metrics["mape"],
+        "actuals":               actual_prices,
+        "predicted":             predicted_prices,
+        "baseline_naive":        naive_metrics,
+        "baseline_ma7":          ma7_metrics,
+        "chronos_vs_naive_pct":  round(vs_naive, 1),
     }

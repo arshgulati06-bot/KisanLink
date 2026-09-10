@@ -108,6 +108,8 @@ def run_pipeline(commodity, state, district, market, csv_path=None, generate_plo
         "date_range": None,
         "context_length": 0,
         "plots": {"historical": None, "forecast": None},
+        "gap_info": None,
+        "n_winsorized": 0,
     }
 
     # ── Step 1: Load Data ──
@@ -163,10 +165,16 @@ def run_pipeline(commodity, state, district, market, csv_path=None, generate_plo
     date_end = ctx["dates"].max()
     result["date_range"] = (date_start, date_end)
     result["context_length"] = ctx["context_length"]
+    result["gap_info"]       = ctx.get("gap_info")
+    result["n_winsorized"]   = ctx.get("n_winsorized", 0)
 
     print(f"  Daily price points: {len(ctx['prices'])}")
     print(f"  Context length:     {ctx['context_length']}")
     print(f"  Date range:         {date_start.date()} to {date_end.date()}")
+    if ctx.get('gap_info'):
+        print(f"  [GAP] {ctx['gap_info']}")
+    if ctx.get('n_winsorized', 0) > 0:
+        print(f"  [WINSOR] {ctx['n_winsorized']} value(s) clipped by 5*IQR fence.")
 
     # ── Step 5: Load Model & Forecast ──
     print("\n[5/6] Loading pretrained Chronos model...")

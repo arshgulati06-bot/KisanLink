@@ -196,7 +196,7 @@
                 <div class="flow-node-icon">3</div>
                 <div class="flow-node-text">
                   <h4>Explainable Net Realisation Engine</h4>
-                  <p>Gross Price (₹3,200) − Transport (₹100) − Storage (₹30) = ₹3,220/QTL</p>
+                  <p>Gross historical modal − logistics − storage, computed after a real forecast</p>
                 </div>
               </div>
 
@@ -218,32 +218,15 @@
   <!-- =========================================================================
        LIVE COMMODITY DEMO TICKER BAR
        ========================================================================= -->
-  <div class="ticker-wrapper" aria-label="Demo Mandi Price Ticker">
+  <div class="ticker-wrapper" aria-label="Mandi data status">
     <div class="container ticker-inner">
       <div class="ticker-label">
         <span class="pulse-dot"></span>
-        <span>Maharashtra Mandi Pulse (Demo)</span>
+        <span>Mandi history is loaded from local CSVs — not a live tick</span>
       </div>
       <div class="ticker-items">
         <div class="ticker-item">
-          <span class="ticker-crop">Onion (Pune APMC):</span>
-          <span class="ticker-price">₹3,200/QTL</span>
-          <span class="ticker-badge">+4.7%</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-crop">Tomato (Narayangaon):</span>
-          <span class="ticker-price">₹2,650/QTL</span>
-          <span class="ticker-badge">+3.8%</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-crop">Soybean (Latur):</span>
-          <span class="ticker-price">₹4,850/QTL</span>
-          <span class="ticker-badge">+2.0%</span>
-        </div>
-        <div class="ticker-item">
-          <span class="ticker-crop">Cotton (Akola):</span>
-          <span class="ticker-price">₹7,100/QTL</span>
-          <span class="ticker-badge">Stable</span>
+          <span class="ticker-crop">Open Farmer Dashboard → Price Outlook to forecast a real market.</span>
         </div>
       </div>
     </div>
@@ -508,9 +491,8 @@
           </div>
 
           <div class="flex items-center gap-3">
-            <span class="badge badge-success font-medium" id="current-commodity-badge">Onion (कांदा) • Demo Batch: 1,000
-              kg (10 QTL)</span>
-            <span class="badge badge-demo">Demo Dataset</span>
+            <span class="badge badge-success font-medium" id="current-commodity-badge">Open Farmer Dashboard for live mandi data</span>
+            <span class="badge badge-success">API-driven</span>
           </div>
         </div>
 
@@ -530,59 +512,10 @@
               </tr>
             </thead>
             <tbody id="market-table-body">
-              <!-- Rendered via JS -->
               <tr>
-                <td>
-                  <div class="font-semibold text-slate-900">Pune APMC (Gultekdi)</div>
-                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Primary APMC</span>
+                <td colspan="8" style="padding: 16px; font-size: 0.85rem; color: var(--color-slate-600);">
+                  Loading market guidance… Historical mandi prices and forecasts are available on the Farmer Dashboard.
                 </td>
-                <td class="price-cell">₹3,200<span class="text-xs text-slate font-normal"> /QTL</span></td>
-                <td><span class="font-mono text-xs font-semibold text-emerald">Rising (+4.7%)</span></td>
-                <td><span class="badge badge-success">High</span></td>
-                <td class="font-mono text-xs">1,420 MT</td>
-                <td class="text-xs">38 km</td>
-                <td class="font-mono text-xs text-amber font-semibold">-₹100</td>
-                <td class="net-realisation-cell">₹3,220 <span class="badge badge-verified"
-                    style="font-size: 0.65rem; margin-left: 4px;">Top Match</span></td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="font-semibold text-slate-900">Lasalgaon APMC</div>
-                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Major Hub</span>
-                </td>
-                <td class="price-cell">₹3,100<span class="text-xs text-slate font-normal"> /QTL</span></td>
-                <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
-                <td><span class="badge badge-success">Very High</span></td>
-                <td class="font-mono text-xs">3,850 MT</td>
-                <td class="text-xs">145 km</td>
-                <td class="font-mono text-xs text-amber font-semibold">-₹280</td>
-                <td class="net-realisation-cell">₹2,840</td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="font-semibold text-slate-900">Nashik APMC</div>
-                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Regional APMC</span>
-                </td>
-                <td class="price-cell">₹3,050<span class="text-xs text-slate font-normal"> /QTL</span></td>
-                <td><span class="font-mono text-xs font-semibold text-slate">Stable (+1.6%)</span></td>
-                <td><span class="badge badge-amber">Moderate</span></td>
-                <td class="font-mono text-xs">1,890 MT</td>
-                <td class="text-xs">110 km</td>
-                <td class="font-mono text-xs text-amber font-semibold">-₹210</td>
-                <td class="net-realisation-cell">₹2,860</td>
-              </tr>
-              <tr>
-                <td>
-                  <div class="font-semibold text-slate-900">Vashi APMC (Mumbai)</div>
-                  <span class="badge badge-slate" style="font-size: 0.65rem; margin-top: 2px;">Terminal Market</span>
-                </td>
-                <td class="price-cell">₹3,450<span class="text-xs text-slate font-normal"> /QTL</span></td>
-                <td><span class="font-mono text-xs font-semibold text-amber">Slight Dip (-1.4%)</span></td>
-                <td><span class="badge badge-success">High</span></td>
-                <td class="font-mono text-xs">2,600 MT</td>
-                <td class="text-xs">165 km</td>
-                <td class="font-mono text-xs text-amber font-semibold">-₹340</td>
-                <td class="net-realisation-cell">₹3,020</td>
               </tr>
             </tbody>
           </table>
@@ -618,39 +551,27 @@
 
           <div class="rec-header">
             <div>
-              <div class="rec-lot-name">Onion (Grade A) — 10 QTL Lot</div>
-              <div class="rec-target-market">Recommended Buyer: Sahyadri Agro Processors (Pune)</div>
+              <div class="rec-lot-name">Sell / wait decisions come from Chronos + the decision engine</div>
+              <div class="rec-target-market">Open the Farmer Dashboard, select a real market, and generate a forecast.</div>
             </div>
             <div class="sale-window-badge">
               <span class="sale-window-label">Sale Window</span>
-              <span class="sale-window-action">SELL NOW</span>
+              <span class="sale-window-action">Generate forecast</span>
             </div>
           </div>
 
           <!-- Breakdown Formula -->
           <div class="breakdown-table">
             <div class="breakdown-row">
-              <span class="breakdown-label">Gross Offered Price</span>
-              <span class="breakdown-value">₹3,200 / QTL</span>
-            </div>
-            <div class="breakdown-row">
-              <span class="breakdown-label">Expected APMC Trend (7-Day)</span>
-              <span class="breakdown-value text-emerald">₹3,350 / QTL (+4.7%)</span>
-            </div>
-            <div class="breakdown-row">
-              <span class="breakdown-label">Estimated Transport (38 km)</span>
-              <span class="breakdown-value cost">-₹100 / QTL</span>
-            </div>
-            <div class="breakdown-row">
-              <span class="breakdown-label">Storage & Weight Loss Avoided</span>
-              <span class="breakdown-value cost">-₹30 / QTL</span>
+              <span class="breakdown-label">How it works</span>
+              <span class="breakdown-value">Historical mandi modal prices → Chronos P10/P50/P90 → SELL_NOW or WAIT</span>
             </div>
             <div class="breakdown-row highlight-net">
               <div>
-                <div class="font-bold text-slate-900">Estimated Net Realisation</div>
-                <div class="text-xs text-slate">Take-home value after verified deductions</div>
+                <div class="font-bold text-slate-900">No placeholder prices on this page</div>
+                <div class="text-xs text-slate">Recommendations are computed only after a real forecast request</div>
               </div>
-              <span class="breakdown-value net-amount">₹3,220 / QTL</span>
+              <span class="breakdown-value net-amount"><a href="pages/farmer.html">Open dashboard</a></span>
             </div>
           </div>
 
@@ -675,23 +596,19 @@
               <div class="explainable-reasons-list">
                 <div class="reason-item">
                   <div class="reason-icon">✔</div>
-                  <div><strong>Superior Effective Yield:</strong> Net take-home (₹3,220/QTL) is ₹380/QTL higher than
-                    shipping to distant hubs like Lasalgaon after deducting freight.</div>
+                  <div><strong>Data-driven only:</strong> Sell/wait is produced by the backend decision engine from the selected market’s Chronos forecast. This landing page does not embed a sample SELL NOW outcome.</div>
                 </div>
                 <div class="reason-item">
                   <div class="reason-icon">✔</div>
-                  <div><strong>Full Lot Compatibility:</strong> Buyer requirement exactly matches your 1,000 kg Grade A
-                    lot with zero sorting rejections.</div>
+                  <div><strong>Market-specific history:</strong> Forecasts use the chosen commodity/state/district/market series from the combined CSV datasets plus any ingested rows.</div>
                 </div>
                 <div class="reason-item">
                   <div class="reason-icon">✔</div>
-                  <div><strong>Storage Holding Risk:</strong> While 7-day expected mandi price is ₹3,350, storage
-                    shrinkage (~4%) and warehouse rent erode the wait advantage.</div>
+                  <div><strong>Stale-data warning:</strong> The UI shows the latest observation date in the dataset. Old history is never labelled as today’s live quote.</div>
                 </div>
                 <div class="reason-item">
                   <div class="reason-icon">✔</div>
-                  <div><strong>Verified Buyer Trust:</strong> Sahyadri Agro holds a 95% platform reliability rating with
-                    24-hr direct bank settlement history.</div>
+                  <div><strong>Buyer scores:</strong> Match percentages are computed from lot vs demand fields in the project buyer file, not a fixed 92% badge.</div>
                 </div>
               </div>
             </div>
@@ -765,128 +682,20 @@
       </div>
 
       <div class="buyer-matching-grid">
-        <!-- Buyer Card 1 -->
-        <div class="buyer-card reveal-init">
+        <div class="buyer-card reveal-init" style="grid-column: 1 / -1;">
           <div class="buyer-card-header">
             <div class="buyer-name-group">
-              <h3>Sahyadri Agro Processors</h3>
-              <span class="buyer-category">Food Processor • Pune</span>
-            </div>
-            <div class="match-score-badge" style="--score: 95;">
-              <div class="match-score-inner">95%</div>
+              <h3>Buyer scores are computed on the Farmer Dashboard</h3>
+              <span class="buyer-category">Weighted fit of crop, quantity, grade, location, and trust — not a fixed percentage</span>
             </div>
           </div>
-
-          <div class="buyer-factors-list">
-            <div class="factor-row">
-              <span class="factor-name">Quantity Fit (10 QTL)</span>
-              <span class="factor-stat text-emerald">100% Match</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Quality Grade</span>
-              <span class="factor-stat">Grade A (Required)</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Location / Distance</span>
-              <span class="factor-stat">38 km (Pune Sector)</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Offered Rate</span>
-              <span class="factor-stat font-mono font-bold">₹3,200/QTL</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Platform Trust</span>
-              <span class="badge badge-verified">Reviewed Processor</span>
-            </div>
-          </div>
-
-          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer"
-            style="width: 100%;">
-            <span>View Match Details</span>
-          </button>
+          <p style="font-size: var(--text-sm); color: var(--color-slate-600); margin: var(--space-3) 0;">
+            Create a sale lot and click View Matches. The backend matcher reads project buyer-requirement records
+            and returns a calculated score. This landing page does not display sample 95% badges.
+          </p>
+          <a href="pages/farmer.html" class="btn btn-primary btn-sm">Open Farmer Dashboard</a>
         </div>
-
-        <!-- Buyer Card 2 -->
-        <div class="buyer-card reveal-init reveal-delay-1">
-          <div class="buyer-card-header">
-            <div class="buyer-name-group">
-              <h3>MahaFresh Institutional</h3>
-              <span class="buyer-category">Institutional Buyer • Navi Mumbai</span>
-            </div>
-            <div class="match-score-badge" style="--score: 87;">
-              <div class="match-score-inner">87%</div>
-            </div>
-          </div>
-
-          <div class="buyer-factors-list">
-            <div class="factor-row">
-              <span class="factor-name">Quantity Fit (10 QTL)</span>
-              <span class="factor-stat text-emerald">85% Match</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Quality Grade</span>
-              <span class="factor-stat">Grade A or B</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Location / Distance</span>
-              <span class="factor-stat">120 km (Navi Mumbai)</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Offered Rate</span>
-              <span class="factor-stat font-mono font-bold">₹3,250/QTL</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Platform Trust</span>
-              <span class="badge badge-verified">Reviewed Institutional</span>
-            </div>
-          </div>
-
-          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer"
-            style="width: 100%;">
-            <span>View Match Details</span>
-          </button>
-        </div>
-
-        <!-- Buyer Card 3 -->
-        <div class="buyer-card reveal-init reveal-delay-2">
-          <div class="buyer-card-header">
-            <div class="buyer-name-group">
-              <h3>Deccan Agri Aggregators</h3>
-              <span class="buyer-category">FPO Aggregator • Nashik</span>
-            </div>
-            <div class="match-score-badge" style="--score: 81;">
-              <div class="match-score-inner">81%</div>
-            </div>
-          </div>
-
-          <div class="buyer-factors-list">
-            <div class="factor-row">
-              <span class="factor-name">Quantity Fit (10 QTL)</span>
-              <span class="factor-stat text-emerald">80% Match</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Quality Grade</span>
-              <span class="factor-stat">All Commercial Grades</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Location / Distance</span>
-              <span class="factor-stat">110 km (Nashik Region)</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Offered Rate</span>
-              <span class="factor-stat font-mono font-bold">₹3,050/QTL</span>
-            </div>
-            <div class="factor-row">
-              <span class="factor-name">Platform Trust</span>
-              <span class="badge badge-slate">FPO Verified</span>
-            </div>
-          </div>
-
-          <button type="button" class="btn btn-outline btn-sm open-role-modal-btn" data-default-role="farmer"
-            style="width: 100%;">
-            <span>View Match Details</span>
-          </button>
-        </div>
+      </div>
       </div>
     </div>
   </section>

@@ -10,40 +10,7 @@
 var KL_Notifications = (function () {
 
   /* ── Demo notification items (sourced from CONFIG demo data) ─────────── */
-  var DEMO_ITEMS = [
-    {
-      id: 'n1',
-      type: 'offer',
-      title: 'New Buyer Offer Received',
-      body: 'Sahyadri Agro Processors offered ₹3,200/QTL for 10 QTL Onion (LOT-2026-084).',
-      ts: '2026-09-02 • 14:30',
-      read: false,
-    },
-    {
-      id: 'n2',
-      type: 'quality',
-      title: 'Quality Assessment Complete',
-      body: 'Crop Quality Check for LOT-2026-084 returned Grade A (ML service pending).',
-      ts: '2026-09-02 • 11:15',
-      read: false,
-    },
-    {
-      id: 'n3',
-      type: 'logistics',
-      title: 'Logistics Scheduled',
-      body: 'Transport for LOT-2026-083 confirmed — pickup at Dindori on 03 Sep 2026.',
-      ts: '2026-09-01 • 18:02',
-      read: true,
-    },
-    {
-      id: 'n4',
-      type: 'payment',
-      title: 'Payment Status Update',
-      body: 'Advance payment ₹8,000 received for Transaction TXN-2026-083.',
-      ts: '2026-09-01 • 09:44',
-      read: true,
-    },
-  ];
+  var DEMO_ITEMS = [];
 
   var _items = DEMO_ITEMS.slice();
 
