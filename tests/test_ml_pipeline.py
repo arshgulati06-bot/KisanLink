@@ -10,8 +10,7 @@ evaluation behaviour, and sparse-segment fallback.
 Run from project root: python -m pytest tests/test_ml_pipeline.py -v
 OR:                    python tests/test_ml_pipeline.py
 """
-import sys, os, io
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np

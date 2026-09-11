@@ -597,7 +597,7 @@ document.addEventListener('kl:forecastCleared', function () {
 
 window.handleSendDigitalOffer = function(lotId, crop, quantity) {
   if (typeof showToast === 'function') {
-    showToast(`Digital Purchase Offer sent for ${crop} (${quantity} QTL). Farmer notified!`, 'success');
+    showToast(`Digital Purchase Offers are not connected to a backend yet for ${crop} (${quantity} QTL).`, 'warning');
   }
 };
 

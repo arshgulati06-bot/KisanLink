@@ -90,7 +90,7 @@ def _write_cache(df: pd.DataFrame, sig: str) -> None:
         df.to_pickle(config.COMBINED_CACHE_PATH)
         with open(config.COMBINED_CACHE_SIG, "w", encoding="utf-8") as f:
             f.write(sig)
-    except OSError:
+    except (OSError, MemoryError):
         pass
 
 

@@ -104,7 +104,7 @@ def _confidence_payload(ctx, latest_date):
 def _ingest_authorized():
     token = ml_config.INGEST_TOKEN
     if not token:
-        return True
+        return bool(current_app.config.get("TESTING", False))
     header = request.headers.get("Authorization", "")
     provided = header[7:].strip() if header.lower().startswith("bearer ") else ""
     if not provided:
@@ -350,12 +350,13 @@ def register_routes(app):
             response["message"] = market_result["message"]
         return jsonify(response), 200
 
-    @app.route("/api/market-intel", methods=["GET"])
+    @app.route("/api/market-intel", methods=["GET", "POST"])
     def market_intel():
-        commodity = request.args.get("commodity", "").strip()
-        state = request.args.get("state", "").strip()
-        district = request.args.get("district", "").strip()
-        market = request.args.get("market", "").strip()
+        data = request.get_json(silent=True) or {}
+        commodity = (request.args.get("commodity") or data.get("commodity") or "").strip()
+        state = (request.args.get("state") or data.get("state") or "").strip()
+        district = (request.args.get("district") or data.get("district") or "").strip()
+        market = (request.args.get("market") or data.get("market") or "").strip()
         if not all([commodity, state, district, market]):
             return _public_error("Missing required parameter(s).")
 
@@ -399,11 +400,12 @@ def register_routes(app):
             "data_source": _source_label(),
         }), 200
 
-    @app.route("/api/market-compare", methods=["GET"])
+    @app.route("/api/market-compare", methods=["GET", "POST"])
     def market_compare():
-        commodity = request.args.get("commodity", "").strip()
-        state = request.args.get("state", "").strip()
-        district = request.args.get("district", "").strip()
+        data = request.get_json(silent=True) or {}
+        commodity = (request.args.get("commodity") or data.get("commodity") or "").strip()
+        state = (request.args.get("state") or data.get("state") or "").strip()
+        district = (request.args.get("district") or data.get("district") or "").strip()
         if not all([commodity, state, district]):
             return _public_error("Missing required parameter(s).")
 
@@ -482,7 +484,12 @@ def register_routes(app):
             fc = forecast_with_quantiles(pipe, ctx["context_tensor"])
         except Exception:
             return _public_error("Could not compute a sale-window recommendation.", 500)
-        latest_price = float(ctx["prices"][-1])
+        raw_latest_date = market_result["data"][ml_config.COL_DATE].max()
+        raw_latest_price = market_result["data"].loc[
+            market_result["data"][ml_config.COL_DATE] == raw_latest_date,
+            ml_config.COL_MODAL_PRICE,
+        ]
+        latest_price = float(raw_latest_price.median())
         decision = recommend_sale_window(
             forecast_median=fc["median"],
             forecast_low=fc["low"],
@@ -496,7 +503,7 @@ def register_routes(app):
         decision["commodity"] = commodity
         decision["market"] = market_result.get("resolved_market", market)
         decision["latest_price"] = latest_price
-        decision["latest_actual_date"] = str(ctx["dates"].max().date())
+        decision["latest_actual_date"] = str(raw_latest_date.date())
         return jsonify(decision), 200
 
     @app.route("/api/buyer-demands", methods=["GET"])
