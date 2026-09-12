@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="KisanLink Farmer Dashboard — SIH 2026: Crop lot management, live mandi intelligence, explainable recommendations, and verified buyer linkage.">
   <title>Farmer Dashboard — KisanLink | SIH 2026</title>
@@ -282,6 +283,10 @@
       </header>
 
       <div class="dashboard-body">
+        <!-- Data provenance warning: only shown when the backend reports it is
+             running on the synthetic development fixture. -->
+        <div id="kl-data-banner" class="kl-data-banner" role="status" hidden></div>
+
         <!-- ===================================================================
              0. FARMER QUICK ACTIONS BANNER (Step 5)
              =================================================================== -->
@@ -1214,7 +1219,160 @@
 
         </section><!-- /#crop-quality-section -->
 
+      </div><!-- /.dashboard-body -->
+
+      <!-- =====================================================================
+           FARMER RESOURCE SECTIONS
+           These live inside .dashboard-main so they pick up the sidebar offset
+           and page padding. As direct children of <body> they rendered at
+           left:0 underneath the 260px sidebar, clipping their own headings and
+           controls, and sat below the full-height layout leaving a large band
+           of empty space above them.
+           ===================================================================== -->
+  <section id="market-prices-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Mandi Prices</div>
+        <h2 class="section-heading">Mandi Prices</h2>
+        <p class="section-subtext">Search crop, state, district, and market. LIVE only after a successful official feed for today; otherwise latest verified records with their real dates.</p>
       </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="mp-commodity-search" class="form-input" placeholder="Search crop (Onion, Tomato…)" style="max-width:220px;">
+      <select id="mp-commodity" class="form-select" style="max-width:220px;">
+        <option value="">Select Commodity…</option>
+      </select>
+      <input type="text" id="mp-state" class="form-input" placeholder="State" style="max-width:150px;">
+      <input type="text" id="mp-district" class="form-input" placeholder="District" style="max-width:150px;">
+      <input type="text" id="mp-market" class="form-input" placeholder="Market (optional)" style="max-width:150px;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadMarketPrices()">Search</button>
+    </div>
+    <div id="mp-label" style="font-size:0.75rem;color:var(--color-slate-500);margin-bottom:8px;"></div>
+    <div id="mp-container">
+      <div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3><p>Choose a commodity above to view latest available mandi prices.</p></div>
+    </div>
+  </section>
+
+  <!-- WEATHER SECTION -->
+  <section id="weather-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Open-Meteo</div>
+        <h2 class="section-heading">Weather Forecast</h2>
+        <p class="section-subtext">Real weather data for your location. Source: Open-Meteo (open-meteo.com)</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="wx-district" class="form-input" placeholder="District (e.g. Nashik)" style="max-width:180px;">
+      <input type="text" id="wx-state" class="form-input" placeholder="State (e.g. Maharashtra)" style="max-width:180px;">
+      <button type="button" class="btn btn-sm" id="wx-gps-btn">Use My Current Location</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadWeather()">Get Weather</button>
+    </div>
+    <div id="wx-container">
+      <div class="empty-state"><div class="empty-state-icon">🌤️</div><h3>Enter Your Location</h3><p>Enter district and state to get current weather and 5-day forecast.</p></div>
+    </div>
+  </section>
+
+  <!-- GOVT SCHEMES SECTION -->
+  <section id="schemes-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Government of India</div>
+        <h2 class="section-heading">Government Schemes for Farmers</h2>
+        <p class="section-subtext">Curated information about central government agricultural schemes. Verify eligibility on official portals before applying.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="sch-search" class="form-input" placeholder="Search schemes…" style="max-width:240px;" oninput="klLoadSchemes()">
+    </div>
+    <div id="schemes-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading schemes…</p></div>
+    </div>
+  </section>
+
+  <!-- KNOWLEDGE SECTION -->
+  <section id="knowledge-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Ministry of Agriculture</div>
+        <h2 class="section-heading">Farming Knowledge</h2>
+        <p class="section-subtext">Practical farming guidance. All content is advisory — consult your local KVK for specific recommendations.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <select id="kn-category" class="form-select" style="max-width:200px;" onchange="klLoadKnowledge()">
+        <option value="">All Categories</option>
+        <option value="Soil">Soil</option>
+        <option value="Irrigation">Irrigation</option>
+        <option value="Pest">Pest Awareness</option>
+        <option value="Crop">Crop Planning</option>
+        <option value="Post-Harvest">Post-Harvest</option>
+        <option value="Market">Market</option>
+        <option value="Storage">Storage</option>
+        <option value="Organic">Organic Farming</option>
+      </select>
+      <input type="text" id="kn-search" class="form-input" placeholder="Search topic…" style="max-width:200px;" oninput="klLoadKnowledge()">
+    </div>
+    <div id="knowledge-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading…</p></div>
+    </div>
+  </section>
+
+  <!-- LEARNING SECTION -->
+  <section id="learning-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Doordarshan / Official Sources</div>
+        <h2 class="section-heading">Learn &amp; Video Resources</h2>
+        <p class="section-subtext">Official educational resources from government agricultural institutions. Links open external sites.</p>
+      </div>
+    </div>
+    <div style="margin-bottom:var(--space-4);">
+      <input type="text" id="ln-search" class="form-input" placeholder="Search learning topics…" style="max-width:240px;" oninput="klLoadLearning(true)">
+    </div>
+    <div id="learning-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading resources…</p></div>
+    </div>
+  </section>
+
+  <!-- HELPLINE SECTION -->
+  <section id="helpline-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Official Government Numbers</div>
+        <h2 class="section-heading">Kisan Helplines</h2>
+        <p class="section-subtext">Verified official helpline numbers only. Verify current availability before calling.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="search" id="helpline-search" class="form-input" style="max-width:320px;"
+             placeholder="Search helpline, purpose, or category" autocomplete="off"
+             aria-label="Search helplines">
+    </div>
+    <div id="helpline-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
+  <!-- SEEDS SECTION -->
+  <section id="seeds-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">NSC / ICAR / State Corporations</div>
+        <h2 class="section-heading">Seeds &amp; Seed Resources</h2>
+        <p class="section-subtext">Official seed organizations and quality verification guidance. KisanLink does not sell seeds.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="search" id="seeds-search" class="form-input" style="max-width:320px;"
+             placeholder="Search organisation, crop, or service" autocomplete="off"
+             aria-label="Search seed organisations">
+    </div>
+    <div id="seeds-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
     </main>
   </div>
 
@@ -1232,6 +1390,13 @@
       </p>
 
       <form id="create-lot-form">
+        <!-- Populated when the farmer arrives here via "Proceed to Sell" so the
+             chosen recommendation travels with the lot. Hidden otherwise. -->
+        <div id="lot-reco-summary" class="lot-reco-summary" hidden></div>
+        <input type="hidden" id="lot-net-realisation" name="net_realisation" value="">
+        <input type="hidden" id="lot-transport-cost" name="transport_cost" value="">
+        <input type="hidden" id="lot-distance-km" name="distance_km" value="">
+
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-crop-search">Search crop</label>
@@ -1404,140 +1569,6 @@
        ========================================================================= -->
 
   <!-- MARKET PRICES SECTION -->
-  <section id="market-prices-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">Mandi Prices</div>
-        <h2 class="section-heading">Mandi Prices</h2>
-        <p class="section-subtext">Search crop, state, district, and market. LIVE only after a successful official feed for today; otherwise latest verified records with their real dates.</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
-      <input type="text" id="mp-commodity-search" class="form-input" placeholder="Search crop (Onion, Tomato…)" style="max-width:220px;">
-      <select id="mp-commodity" class="form-select" style="max-width:220px;">
-        <option value="">Select Commodity…</option>
-      </select>
-      <input type="text" id="mp-state" class="form-input" placeholder="State" style="max-width:150px;">
-      <input type="text" id="mp-district" class="form-input" placeholder="District" style="max-width:150px;">
-      <input type="text" id="mp-market" class="form-input" placeholder="Market (optional)" style="max-width:150px;">
-      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadMarketPrices()">Search</button>
-    </div>
-    <div id="mp-label" style="font-size:0.75rem;color:var(--color-slate-500);margin-bottom:8px;"></div>
-    <div id="mp-container">
-      <div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3><p>Choose a commodity above to view latest available mandi prices.</p></div>
-    </div>
-  </section>
-
-  <!-- WEATHER SECTION -->
-  <section id="weather-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">Open-Meteo</div>
-        <h2 class="section-heading">Weather Forecast</h2>
-        <p class="section-subtext">Real weather data for your location. Source: Open-Meteo (open-meteo.com)</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
-      <input type="text" id="wx-district" class="form-input" placeholder="District (e.g. Nashik)" style="max-width:180px;">
-      <input type="text" id="wx-state" class="form-input" placeholder="State (e.g. Maharashtra)" style="max-width:180px;">
-      <button type="button" class="btn btn-sm" id="wx-gps-btn">Use My Current Location</button>
-      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadWeather()">Get Weather</button>
-    </div>
-    <div id="wx-container">
-      <div class="empty-state"><div class="empty-state-icon">🌤️</div><h3>Enter Your Location</h3><p>Enter district and state to get current weather and 5-day forecast.</p></div>
-    </div>
-  </section>
-
-  <!-- GOVT SCHEMES SECTION -->
-  <section id="schemes-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">Government of India</div>
-        <h2 class="section-heading">Government Schemes for Farmers</h2>
-        <p class="section-subtext">Curated information about central government agricultural schemes. Verify eligibility on official portals before applying.</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
-      <input type="text" id="sch-search" class="form-input" placeholder="Search schemes…" style="max-width:240px;" oninput="klLoadSchemes()">
-    </div>
-    <div id="schemes-container">
-      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading schemes…</p></div>
-    </div>
-  </section>
-
-  <!-- KNOWLEDGE SECTION -->
-  <section id="knowledge-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">ICAR / Ministry of Agriculture</div>
-        <h2 class="section-heading">Farming Knowledge</h2>
-        <p class="section-subtext">Practical farming guidance. All content is advisory — consult your local KVK for specific recommendations.</p>
-      </div>
-    </div>
-    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
-      <select id="kn-category" class="form-select" style="max-width:200px;" onchange="klLoadKnowledge()">
-        <option value="">All Categories</option>
-        <option value="Soil">Soil</option>
-        <option value="Irrigation">Irrigation</option>
-        <option value="Pest">Pest Awareness</option>
-        <option value="Crop">Crop Planning</option>
-        <option value="Post-Harvest">Post-Harvest</option>
-        <option value="Market">Market</option>
-        <option value="Storage">Storage</option>
-        <option value="Organic">Organic Farming</option>
-      </select>
-      <input type="text" id="kn-search" class="form-input" placeholder="Search topic…" style="max-width:200px;" oninput="klLoadKnowledge()">
-    </div>
-    <div id="knowledge-container">
-      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading…</p></div>
-    </div>
-  </section>
-
-  <!-- LEARNING SECTION -->
-  <section id="learning-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">ICAR / Doordarshan / Official Sources</div>
-        <h2 class="section-heading">Learn &amp; Video Resources</h2>
-        <p class="section-subtext">Official educational resources from government agricultural institutions. Links open external sites.</p>
-      </div>
-    </div>
-    <div style="margin-bottom:var(--space-4);">
-      <input type="text" id="ln-search" class="form-input" placeholder="Search learning topics…" style="max-width:240px;" oninput="klLoadLearning(true)">
-    </div>
-    <div id="learning-container">
-      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading resources…</p></div>
-    </div>
-  </section>
-
-  <!-- HELPLINE SECTION -->
-  <section id="helpline-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">Official Government Numbers</div>
-        <h2 class="section-heading">Kisan Helplines</h2>
-        <p class="section-subtext">Verified official helpline numbers only. Verify current availability before calling.</p>
-      </div>
-    </div>
-    <div id="helpline-container">
-      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
-    </div>
-  </section>
-
-  <!-- SEEDS SECTION -->
-  <section id="seeds-section" class="dashboard-section" style="display:none;">
-    <div class="section-header-row">
-      <div>
-        <div class="section-tag">NSC / ICAR / State Corporations</div>
-        <h2 class="section-heading">Seeds &amp; Seed Resources</h2>
-        <p class="section-subtext">Official seed organizations and quality verification guidance. KisanLink does not sell seeds.</p>
-      </div>
-    </div>
-    <div id="seeds-container">
-      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
-    </div>
-  </section>
-
   <!-- INLINE JS FOR SUPER-APP SECTIONS -->
   <script>
   // ========================================================================
@@ -1628,6 +1659,10 @@
       var extra = '';
       if (result.is_live) {
         extra = 'LIVE TODAY — official government mandi feed.';
+      } else if (result.dev_fixture) {
+        // Synthetic rows are never described as verified or as mandi data.
+        extra = 'Generated sample rows for development — NOT real mandi prices ' +
+          'and not government data.';
       } else {
         extra = (liveErr ? liveErr + ' ' : 'Live mandi feed unavailable. ') +
           'Showing latest verified mandi data' +
@@ -1648,17 +1683,24 @@
       var rows = result.prices.map(function(p) {
         var freshness = result.is_live
           ? '<span class="badge badge-success">LIVE TODAY</span>'
-          : ('Latest available<br>' + fmtDate(p.date));
+          : (result.dev_fixture
+              ? ('Sample data<br>' + fmtDate(p.date))
+              : ('Latest available<br>' + fmtDate(p.date)));
         return '<tr><td style="padding:8px 12px;">' + commodity + '</td>' +
+          '<td style="padding:8px 12px;color:var(--color-slate-500);">' + (p.variety||'—') + '</td>' +
           '<td style="padding:8px 12px;font-weight:600;">' + (p.market||'—') + '</td>' +
           '<td style="padding:8px 12px;">' + (p.district||'—') + '</td>' +
           '<td style="padding:8px 12px;">' + (p.state||'—') + '</td>' +
           '<td style="padding:8px 12px;font-family:monospace;">' + (p.min_price ? '₹'+Math.round(p.min_price).toLocaleString('en-IN') : '—') + '</td>' +
           '<td style="padding:8px 12px;font-family:monospace;">' + (p.max_price ? '₹'+Math.round(p.max_price).toLocaleString('en-IN') : '—') + '</td>' +
           '<td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--color-accent-green)">' + (p.modal_price ? '₹'+Math.round(p.modal_price).toLocaleString('en-IN') : '—') + '</td>' +
-          '<td style="padding:8px 12px;font-size:0.75rem;color:var(--color-slate-500);">' + freshness + '</td></tr>';
+          '<td style="padding:8px 12px;font-size:0.75rem;color:var(--color-slate-500);">' + freshness + '</td>' +
+          '<td style="padding:8px 12px;font-size:0.7rem;color:var(--color-slate-400);">' + (p.source || result.source || '—') + '</td></tr>';
       }).join('');
-      container.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:var(--color-slate-50,#f8fafc);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-slate-500);"><th style="padding:8px 12px;text-align:left;">Crop</th><th style="padding:8px 12px;text-align:left;">Market</th><th style="padding:8px 12px;text-align:left;">District</th><th style="padding:8px 12px;text-align:left;">State</th><th style="padding:8px 12px;text-align:left;">Min ₹/Q</th><th style="padding:8px 12px;text-align:left;">Max ₹/Q</th><th style="padding:8px 12px;text-align:left;">Modal ₹/Q</th><th style="padding:8px 12px;text-align:left;">Freshness</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      var countLine = '<p style="font-size:0.75rem;color:var(--color-slate-500);margin:0 0 8px;">Showing ' +
+        result.prices.length + ' market' + (result.prices.length === 1 ? '' : 's') +
+        ' for ' + commodity + '. All prices in ₹ per quintal.</p>';
+      container.innerHTML = countLine + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:var(--color-slate-50,#f8fafc);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-slate-500);"><th style="padding:8px 12px;text-align:left;">Crop</th><th style="padding:8px 12px;text-align:left;">Variety</th><th style="padding:8px 12px;text-align:left;">Market</th><th style="padding:8px 12px;text-align:left;">District</th><th style="padding:8px 12px;text-align:left;">State</th><th style="padding:8px 12px;text-align:left;">Min ₹/Q</th><th style="padding:8px 12px;text-align:left;">Max ₹/Q</th><th style="padding:8px 12px;text-align:left;">Modal ₹/Q</th><th style="padding:8px 12px;text-align:left;">Freshness</th><th style="padding:8px 12px;text-align:left;">Source</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
     } catch(err) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Price Data Unavailable</h3><p>' + (err.message||'Backend error') + '</p></div>';
     }
@@ -1866,6 +1908,43 @@
   // Helplines
   // ========================================================================
   var _helplinesLoaded = false;
+
+  // ========================================================================
+  // Generic client-side card search (helplines, seeds)
+  // Filters already-rendered cards; no extra requests.
+  // ========================================================================
+  function klWireCardSearch(inputId, containerId, cardSelector) {
+    var input = document.getElementById(inputId);
+    var container = document.getElementById(containerId);
+    if (!input || !container || input.dataset.wired) return;
+    input.dataset.wired = '1';
+
+    var note = document.createElement('p');
+    note.style.cssText = 'font-size:0.78rem;color:var(--color-slate-500);margin:8px 0 0;';
+    note.hidden = true;
+    container.parentNode.insertBefore(note, container.nextSibling);
+
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      var cards = container.querySelectorAll(cardSelector);
+      var shown = 0;
+      cards.forEach(function (card) {
+        var hit = !q || (card.textContent || '').toLowerCase().indexOf(q) >= 0;
+        card.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      if (!q) {
+        note.hidden = true;
+      } else {
+        note.hidden = false;
+        note.textContent = shown
+          ? 'Showing ' + shown + ' of ' + cards.length + ' results for "' + input.value.trim() + '".'
+          : 'No results for "' + input.value.trim() + '". Clear the search to see all ' + cards.length + '.';
+      }
+    });
+  }
+  window.klWireCardSearch = klWireCardSearch;
+
   window.klLoadHelplines = async function() {
     if (_helplinesLoaded) return;
     var container = document.getElementById('helpline-container');
@@ -1893,6 +1972,7 @@
             '<div style="font-size:0.65rem;color:var(--color-slate-400);margin-top:4px;">Source: ' + h.source + '</div>' +
             '</div>';
         }).join('') + '</div>';
+      klWireCardSearch('helpline-search', 'helpline-container', '.lot-card');
     } catch(err) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
     }
@@ -1924,6 +2004,7 @@
             (o.official_website !== 'https://farmer.gov.in' ? '<a href="' + o.official_website + '" target="_blank" rel="noopener" class="btn btn-outline btn-xs">Official Website ↗</a>' : '') +
             '</div>';
         }).join('') + '</div>';
+      klWireCardSearch('seeds-search', 'seeds-container', '.lot-card');
     } catch(err) {
       container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
     }

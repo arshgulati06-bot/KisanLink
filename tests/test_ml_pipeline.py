@@ -34,7 +34,21 @@ from ml.evaluator import evaluate_model
 
 @pytest.fixture(scope="module")
 def combined_df():
-    """Load the combined dataset ONCE for all tests."""
+    """
+    Load the combined dataset ONCE for all tests.
+
+    The historical CSVs are large and gitignored, so a clean checkout will not
+    have them. Skip rather than error: these are regression tests against the
+    real data, and their absence is an environment fact, not a code failure.
+    """
+    missing = [p for p in (config.CSV_AGRICULTURE, config.CSV_2022, config.CSV_2026)
+               if not os.path.exists(p)]
+    if missing:
+        pytest.skip(
+            "Historical mandi CSVs not present in ml/data/ "
+            f"(missing: {', '.join(os.path.basename(m) for m in missing)}). "
+            "These regression tests require the real dataset."
+        )
     return load_combined_data()
 
 

@@ -121,13 +121,17 @@
   flex: 1;
   margin-left: 260px;
   min-height: 100vh;
+  /* Without this a flex item keeps its content's intrinsic width, so the
+     topbar's buttons were forcing the page wider than the viewport. */
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   flex-direction: column;
 }
 
 /* Dashboard Topbar */
 .dashboard-topbar {
-  height: 68px;
+  min-height: 68px;
   background-color: #FFFFFF;
   border-bottom: 1px solid var(--color-slate-200);
   padding: 0 var(--space-8);
@@ -160,6 +164,13 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.topbar-left {
+  min-width: 0;
 }
 
 .sidebar-toggle-btn {
@@ -174,6 +185,16 @@
 }
 
 /* Dashboard Body Container */
+/* Resource sections sit beside .dashboard-body inside .dashboard-main, so
+   they need the same gutter and max width to line up with the rest of the
+   dashboard instead of running edge to edge. */
+.dashboard-main > .dashboard-section {
+  padding: var(--space-8);
+  max-width: 1320px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 .dashboard-body {
   padding: var(--space-8);
   display: flex;
@@ -2439,4 +2460,48 @@
 [dir="rtl"] .sidebar-link-badge {
   margin-left: 0;
   margin-right: auto;
+}
+
+/* ── Data provenance banner ─────────────────────────────────────────────
+   Shown only when the backend reports it is serving the synthetic
+   development fixture, so sample rows can never be mistaken for real
+   or government mandi data. */
+.kl-data-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 var(--space-4, 16px);
+  padding: 12px 16px;
+  border: 1px solid #f59e0b;
+  border-left-width: 4px;
+  border-radius: 8px;
+  background: #fffbeb;
+  color: #78350f;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.kl-data-banner[hidden] { display: none; }
+.kl-data-banner strong { display: block; margin-bottom: 2px; }
+.kl-data-banner .kl-data-banner-icon { flex-shrink: 0; font-size: 1rem; line-height: 1.4; }
+
+/* ── Recommendation carried into the Create Sale Lot modal ──────────────── */
+.lot-reco-summary {
+  margin-bottom: var(--space-4, 16px);
+  padding: 12px 14px;
+  border: 1px solid var(--color-primary-200, #bbf7d0);
+  border-radius: 8px;
+  background: var(--color-primary-50, #f0fdf4);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--color-slate-700, #334155);
+}
+.lot-reco-summary[hidden] { display: none; }
+.lot-reco-summary strong { color: var(--color-slate-900, #0f172a); }
+.lot-reco-summary .lot-reco-title {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-primary-700, #15803d);
 }

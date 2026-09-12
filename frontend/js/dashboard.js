@@ -704,6 +704,20 @@ function initCreateLotModal() {
       return;
     }
 
+    // Recommendation context carried over from "Proceed to Sell", if any.
+    const recoMarket = formData.get('market') || '';
+    const recoNet    = formData.get('net_realisation') || '';
+    const recoFreight= formData.get('transport_cost') || '';
+    const recoKm     = formData.get('distance_km') || '';
+    const recoNotes  = recoMarket
+      ? [
+          `Recommended market: ${recoMarket}`,
+          recoKm      ? `distance ~${recoKm} km` : '',
+          recoFreight ? `estimated transport ₹${recoFreight}` : '',
+          recoNet     ? `estimated net realisation ₹${recoNet}` : '',
+        ].filter(Boolean).join(' · ') + ' (planning estimate at time of listing)'
+      : '';
+
     const lotPayload = {
       commodity,
       variety:       formData.get('variety') || '',
@@ -713,9 +727,11 @@ function initCreateLotModal() {
       location,
       district:      formData.get('district') || '',
       state:         formData.get('state') || '',
+      market:        recoMarket,
       harvest_date:  formData.get('harvestDate') || '',
       price_per_qtl: Number(formData.get('expectedPrice')) || 0,
     };
+    if (recoNotes) lotPayload.notes = recoNotes;
 
     // Disable submit to prevent double submission
     if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector('span').textContent = 'Creating…'; }
@@ -727,6 +743,8 @@ function initCreateLotModal() {
         const result = await window.createLot(lotPayload);
         modal.classList.remove('modal-open');
         form.reset();
+        const recoBox = document.getElementById('lot-reco-summary');
+        if (recoBox) { recoBox.hidden = true; recoBox.innerHTML = ''; }
         if (typeof showToast === 'function') {
           showToast(`Lot #${result.lot && result.lot.id ? result.lot.id : '—'} for ${commodity} created!`, 'success');
         }

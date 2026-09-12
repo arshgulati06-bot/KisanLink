@@ -12,8 +12,22 @@ import math
 import os
 from typing import Optional
 
-# Default ₹ per quintal per km — configurable; not an official universal tariff.
-TRANSPORT_RATE_PER_QTL_KM = float(os.environ.get("TRANSPORT_RATE_PER_QTL_KM", "8") or 8)
+# Freight is modelled as a two-part tariff, because a single flat ₹/QTL/km
+# figure is wrong at both ends of the range: it under-charges a 5 km cart trip
+# (where loading, unloading and waiting dominate) and wildly over-charges a
+# 300 km haul (where a full truck spreads its cost over the whole load). A
+# flat ₹8/QTL/km, for example, put ₹60,000 of "freight" on ₹48,000 of onions.
+#
+#   cost per quintal = TRANSPORT_LOADING_PER_QTL + TRANSPORT_RATE_PER_QTL_KM × km
+#
+# Defaults sit inside the range implied by hired-truck rates for agricultural
+# produce in India (roughly ₹150–₹450 per quintal for 100–350 km, inclusive of
+# loading). Both parts are planning estimates, not a quoted or official tariff,
+# and both are overridable from the environment.
+TRANSPORT_RATE_PER_QTL_KM = float(os.environ.get("TRANSPORT_RATE_PER_QTL_KM", "1.2") or 1.2)
+# Fixed per-quintal cost of a trip regardless of distance (loading, unloading,
+# waiting, and the minimum a transporter will accept for turning up).
+TRANSPORT_LOADING_PER_QTL = float(os.environ.get("TRANSPORT_LOADING_PER_QTL", "25") or 25)
 # Local cartage inside the same market / district.
 MIN_TRIP_KM = 12.0
 SAME_DISTRICT_KM = 28.0
@@ -89,10 +103,32 @@ def _norm(text: str) -> str:
 
 
 def transport_rate() -> float:
+    """Per-quintal, per-kilometre haul component of the two-part tariff."""
     try:
-        return float(os.environ.get("TRANSPORT_RATE_PER_QTL_KM", str(TRANSPORT_RATE_PER_QTL_KM)) or TRANSPORT_RATE_PER_QTL_KM)
+        return float(
+            os.environ.get("TRANSPORT_RATE_PER_QTL_KM", str(TRANSPORT_RATE_PER_QTL_KM))
+            or TRANSPORT_RATE_PER_QTL_KM
+        )
     except (TypeError, ValueError):
-        return 8.0
+        return 1.2
+
+
+def transport_loading_rate() -> float:
+    """Fixed per-quintal component charged once per trip, whatever the distance."""
+    try:
+        return float(
+            os.environ.get("TRANSPORT_LOADING_PER_QTL", str(TRANSPORT_LOADING_PER_QTL))
+            or TRANSPORT_LOADING_PER_QTL
+        )
+    except (TypeError, ValueError):
+        return 25.0
+
+
+def transport_cost_per_qtl(distance_km: float, rate_per_qtl_km: Optional[float] = None) -> float:
+    """Estimated freight for one quintal over `distance_km`, as a two-part tariff."""
+    km = max(0.0, float(distance_km or 0))
+    rate = float(rate_per_qtl_km if rate_per_qtl_km is not None else transport_rate())
+    return transport_loading_rate() + rate * km
 
 
 def verified_district_coords(state: str, district: str):
@@ -158,7 +194,8 @@ def net_realisation(price_per_qtl: float, quantity_qtl: float, distance_km: floa
     rate = float(rate_per_qtl_km if rate_per_qtl_km is not None else transport_rate())
     km = max(0.0, float(distance_km or 0))
     gross = price * qty
-    transport = rate * km * qty
+    per_qtl_freight = transport_cost_per_qtl(km, rate)
+    transport = per_qtl_freight * qty
     handling = HANDLING_PER_QTL * qty
     mandi_fee = gross * MANDI_FEE_FRACTION
     net = gross - transport - handling - mandi_fee
@@ -168,12 +205,15 @@ def net_realisation(price_per_qtl: float, quantity_qtl: float, distance_km: floa
         "gross_sale_value": round(gross, 2),
         "distance_km": round(km, 1),
         "transport_rate_per_qtl_km": rate,
+        "transport_loading_per_qtl": round(transport_loading_rate(), 2),
+        "transport_cost_per_qtl": round(per_qtl_freight, 2),
         "transport_cost": round(transport, 2),
         "handling_cost": round(handling, 2),
         "mandi_fee_estimate": round(mandi_fee, 2),
         "net_realisation": round(net, 2),
         "cost_note": (
-            f"Transport ≈ ₹{rate:.0f}/QTL/km × {km:.0f} km (estimate). "
+            f"Transport ≈ ₹{transport_loading_rate():.0f}/QTL loading + "
+            f"₹{rate:.2f}/QTL/km × {km:.0f} km = ₹{per_qtl_freight:.0f}/QTL (estimate). "
             f"Handling ₹{HANDLING_PER_QTL:.0f}/QTL. Mandi fee ~{MANDI_FEE_FRACTION*100:.0f}% of gross. "
             "Not an invoice."
         ),

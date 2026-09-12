@@ -78,13 +78,34 @@ var KL_Step4 = (function () {
 
   function _loadIngestBanner() {
     var el = document.getElementById('ingest-status-banner');
-    if (!el || !window.getIngestStatus) return;
+    var warn = document.getElementById('kl-data-banner');
+    if (!window.getIngestStatus) return;
     window.getIngestStatus().then(function (d) {
       var latest = d.latest_date_in_dataset || 'unknown';
       var live = d.live_api_connected ? 'Official API configured.' : 'Official live API is not configured.';
-      el.textContent = 'Dataset latest date: ' + latest + ' · ' + (d.total_records || 0).toLocaleString('en-IN') + ' records · ' + live;
+      if (el) {
+        el.textContent = 'Dataset latest date: ' + latest + ' · ' +
+          (d.total_records || 0).toLocaleString('en-IN') + ' records · ' + live;
+      }
+      // Only the backend can declare the data synthetic; the UI never guesses.
+      if (warn) {
+        if (d.dev_fixture) {
+          warn.innerHTML =
+            '<span class="kl-data-banner-icon" aria-hidden="true">⚠️</span>' +
+            '<span><strong>Sample data — not real mandi prices.</strong>' +
+            'This server is running on the synthetic development fixture because no ' +
+            'historical mandi CSVs were found in <code>ml/data/</code> and no ' +
+            '<code>DATA_GOV_API_KEY</code> is configured. Every price, market, and ' +
+            'net-realisation figure below is generated for demonstration only.</span>';
+          warn.hidden = false;
+        } else {
+          warn.hidden = true;
+        }
+      }
     }).catch(function () {
-      el.textContent = 'Backend unavailable — start python backend/app.py to load the historical mandi dataset.';
+      if (el) {
+        el.textContent = 'Backend unavailable — start python backend/app.py to load the historical mandi dataset.';
+      }
     });
   }
 
@@ -168,29 +189,56 @@ var KL_Step4 = (function () {
     if (gpsBtn) gpsBtn.addEventListener('click', _useGps);
   }
 
-  function _gpsStatus(text) {
+  // Location states: idle → locating → found | denied | unavailable | timeout | unsupported
+  function _gpsStatus(text, state) {
     var el = document.getElementById('sn-gps-status');
-    if (el) el.textContent = text || '';
+    if (!el) return;
+    el.textContent = text || '';
+    el.setAttribute('data-gps-state', state || 'idle');
+    el.className = 'sn-gps-status sn-gps-status--' + (state || 'idle');
+  }
+
+  function _gpsBusy(busy) {
+    var btn = document.getElementById('sn-gps-btn');
+    if (!btn) return;
+    btn.disabled = !!busy;
+    btn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
+      if (!btn.dataset.idleLabel) btn.dataset.idleLabel = btn.textContent;
+      btn.textContent = 'Locating…';
+    } else if (btn.dataset.idleLabel) {
+      btn.textContent = btn.dataset.idleLabel;
+    }
   }
 
   function _useGps() {
-    _gpsStatus('Requesting location permission…');
     if (!navigator.geolocation) {
-      _gpsStatus('This browser cannot provide GPS. Select state and district in Price Outlook.');
+      _gpsStatus(
+        'This browser cannot provide GPS. Select state and district in Price Outlook instead.',
+        'unsupported'
+      );
       return;
     }
+    // Permission is only requested here — on an explicit click, never on load.
+    _gpsBusy(true);
+    _gpsStatus('Requesting location permission…', 'locating');
     navigator.geolocation.getCurrentPosition(function (pos) {
       var lat = pos.coords.latitude;
       var lon = pos.coords.longitude;
       window.__klGps = { lat: lat, lon: lon };
-      _gpsStatus('Got GPS (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '). Looking up district…');
+      _gpsStatus('Location found (' + lat.toFixed(4) + ', ' + lon.toFixed(4) + '). Looking up district…', 'locating');
       var runner = window.reverseGeocode || function (a, b) {
         return window.apiClient.get('/location/reverse?lat=' + encodeURIComponent(a) + '&lon=' + encodeURIComponent(b))
           .then(function (r) { return r.data; });
       };
       runner(lat, lon).then(function (data) {
         if (!data || !data.success) {
-          _gpsStatus('GPS received. Reverse lookup unavailable — keep using selected district.');
+          _gpsBusy(false);
+          _gpsStatus(
+            'Location found, but the district lookup is unavailable. Your coordinates ' +
+            'will still be used for distance; keep the selected district for prices.',
+            'found'
+          );
           return;
         }
         window.__klGps.state = data.state || '';
@@ -207,22 +255,48 @@ var KL_Step4 = (function () {
             dt.dispatchEvent(new Event('change'));
           }, 400);
         }
-        _gpsStatus('Using current location: ' + (data.district || '') + (data.state ? ', ' + data.state : '') + '. Coordinates are not stored.');
+        _gpsBusy(false);
+        _gpsStatus(
+          'Using current location: ' + (data.district || '') +
+          (data.state ? ', ' + data.state : '') + '. Coordinates are not stored.',
+          'found'
+        );
       }).catch(function () {
-        _gpsStatus('GPS received. Reverse lookup unavailable — keep using selected district.');
+        _gpsBusy(false);
+        _gpsStatus(
+          'Location found, but the district lookup is unavailable. Your coordinates ' +
+          'will still be used for distance; keep the selected district for prices.',
+          'found'
+        );
       });
     }, function (err) {
       window.__klGps = null;
-      var denied = err && (err.code === 1 || err.code === err.PERMISSION_DENIED);
-      if (denied) {
-        _gpsStatus('Location permission denied — using selected district.');
+      _gpsBusy(false);
+      var code = err && err.code;
+      if (code === 1) {
+        _gpsStatus(
+          'Location permission denied. Select your state and district manually in ' +
+          'Price Outlook — everything else still works.',
+          'denied'
+        );
+      } else if (code === 3) {
+        _gpsStatus(
+          'Timed out waiting for a GPS fix. Try again outdoors, or select your ' +
+          'district manually.',
+          'timeout'
+        );
       } else {
-        _gpsStatus('GPS permission was denied. Select your district manually.');
+        _gpsStatus(
+          'Location is unavailable on this device right now. Select your district ' +
+          'manually to continue.',
+          'unavailable'
+        );
       }
     }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
 
-  function _badge(rec) {
+  function _badge(rec, synthetic) {
+    if (synthetic) return '<span class="badge badge-amber">SAMPLE DATA</span>';
     if (rec.is_live_price) return '<span class="badge badge-success">LIVE</span>';
     return '<span class="badge">LATEST AVAILABLE</span>';
   }
@@ -236,6 +310,19 @@ var KL_Step4 = (function () {
     return rec.distance_km + ' km road' + t;
   }
 
+  function _sellNowBusy(busy) {
+    var btn = document.getElementById('sn-run-btn');
+    if (!btn) return;
+    btn.disabled = !!busy;
+    btn.setAttribute('aria-busy', busy ? 'true' : 'false');
+    if (busy) {
+      if (!btn.dataset.idleLabel) btn.dataset.idleLabel = btn.textContent;
+      btn.textContent = 'Comparing markets…';
+    } else if (btn.dataset.idleLabel) {
+      btn.textContent = btn.dataset.idleLabel;
+    }
+  }
+
   window.klRunSellNow = function () {
     var sel = _selectedOutlook();
     var qtyEl = document.getElementById('sn-qty');
@@ -246,8 +333,18 @@ var KL_Step4 = (function () {
       if (status) status.textContent = 'Select commodity, state and district in Price Outlook first, then run this comparison.';
       return;
     }
+    if (!isFinite(qty) || qty <= 0) {
+      if (status) status.textContent = 'Enter a quantity greater than zero (in quintals).';
+      return;
+    }
+    _sellNowBusy(true);
     if (status) status.textContent = 'Comparing markets, routes, and net realisation…';
-    if (box) box.innerHTML = '';
+    if (box) {
+      box.innerHTML = '<div style="padding:20px;text-align:center;">' +
+        '<div class="cqa-spinner-ring" style="width:26px;height:26px;border-width:3px;margin:0 auto;"></div>' +
+        '<p style="font-size:0.78rem;color:var(--color-slate-500);margin-top:8px;">' +
+        'Ranking markets by net realisation…</p></div>';
+    }
     var runner = window.getSellNowPlan || function (opts) {
       return window.apiClient.post('/sell-now', opts).then(function (r) { return r.data; });
     };
@@ -263,6 +360,7 @@ var KL_Step4 = (function () {
       payload.lon = window.__klGps.lon;
     }
     runner(payload).then(function (data) {
+      _sellNowBusy(false);
       if (!data || !data.success) {
         if (status) status.textContent = (data && data.error) || 'Could not rank markets.';
         if (box) box.innerHTML = '<p style="font-size:0.8rem;color:var(--color-slate-500);">No nearby market recommendation could be built for this selection.</p>';
@@ -273,10 +371,13 @@ var KL_Step4 = (function () {
       var parts = lastDate.split('-');
       var lastLabel = parts.length === 3 ? (parts[2] + '-' + parts[1] + '-' + parts[0]) : lastDate;
       if (status) {
-        status.textContent = (data.live_note || rec.freshness_label || 'Latest available mandi data') +
+        status.textContent = (data.dev_fixture
+            ? 'Sample data — generated rows, not real mandi prices.'
+            : (data.live_note || rec.freshness_label || 'Latest available mandi data')) +
           (lastLabel ? ' · Last available: ' + lastLabel : '') +
           ' · ' + (data.data_source || '');
       }
+      var synthetic = !!data.dev_fixture;
       function _card(m, featured) {
         var distHint = m.distance_estimated
           ? 'Road routing unavailable. Showing estimated straight-line distance.'
@@ -284,7 +385,7 @@ var KL_Step4 = (function () {
         return '<div style="border:1px solid var(--color-slate-200);border-radius:10px;padding:12px;margin-bottom:10px;' +
           (featured ? 'background:var(--color-slate-50,#f8fafc);' : '') + '">' +
           '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px;">' +
-          '<strong>' + (m.market || '—') + '</strong>' + _badge(m) + '</div>' +
+          '<strong>' + (m.market || '—') + '</strong>' + _badge(m, synthetic) + '</div>' +
           '<div style="font-size:0.9rem;font-weight:600;">Modal ' + _fmtInr(m.modal_price || m.latest_price) + '/QTL</div>' +
           '<div style="font-size:0.75rem;color:var(--color-slate-500);margin:4px 0;">Arrival: ' + (m.latest_date || '—') +
           ' · ' + (m.freshness_label || '') + '</div>' +
@@ -324,30 +425,66 @@ var KL_Step4 = (function () {
       var proceed = document.getElementById('sn-proceed-btn');
       if (proceed) {
         proceed.addEventListener('click', function () {
-          var crop = document.getElementById('lot-crop');
-          var q = document.getElementById('lot-quantity');
-          var loc = document.getElementById('lot-location');
-          var price = document.getElementById('lot-price');
-          var harvest = document.getElementById('lot-harvest');
-          var mkt = document.getElementById('lot-market');
-          var dist = document.getElementById('lot-district');
-          var st = document.getElementById('lot-state');
-          if (crop) crop.value = data.commodity || sel.commodity;
-          if (q) q.value = qty;
-          if (loc) loc.value = (rec.district || sel.district) + ', ' + (rec.state || sel.state);
-          if (price) price.value = rec.latest_price || rec.modal_price || '';
-          if (mkt) mkt.value = rec.market || '';
-          if (dist) dist.value = rec.district || sel.district || '';
-          if (st) st.value = rec.state || sel.state || '';
-          if (harvest && !harvest.value) {
-            var t = new Date();
-            harvest.value = t.toISOString().slice(0, 10);
+          function _set(id, value) {
+            var el = document.getElementById(id);
+            if (el && value != null && value !== '') el.value = value;
+            return el;
           }
+          // Crop select is populated asynchronously; only set it if the option exists.
+          var crop = document.getElementById('lot-crop');
+          var cropName = data.commodity || sel.commodity;
+          if (crop && cropName) {
+            var has = Array.prototype.some.call(crop.options, function (o) { return o.value === cropName; });
+            if (!has) {
+              var opt = document.createElement('option');
+              opt.value = cropName;
+              opt.textContent = cropName;
+              crop.appendChild(opt);
+            }
+            crop.value = cropName;
+          }
+          _set('lot-quantity', qty);
+          _set('lot-unit', 'QTL');
+          _set('lot-location', (rec.district || sel.district) + ', ' + (rec.state || sel.state));
+          _set('lot-price', rec.latest_price || rec.modal_price || '');
+          _set('lot-market', rec.market || '');
+          _set('lot-district', rec.district || sel.district || '');
+          _set('lot-state', rec.state || sel.state || '');
+          _set('lot-net-realisation', rec.net_realisation != null ? rec.net_realisation : '');
+          _set('lot-transport-cost', rec.transport_cost != null ? rec.transport_cost : '');
+          _set('lot-distance-km', rec.distance_km != null ? rec.distance_km : '');
+
+          var harvest = document.getElementById('lot-harvest');
+          if (harvest && !harvest.value) {
+            harvest.value = new Date().toISOString().slice(0, 10);
+          }
+
+          // Carry the reasoning into the modal so the farmer sees why this
+          // market was chosen while filling the lot in.
+          var summary = document.getElementById('lot-reco-summary');
+          if (summary) {
+            summary.innerHTML =
+              '<span class="lot-reco-title">Prefilled from your best-market comparison</span>' +
+              '<strong>' + (rec.market || '—') + '</strong>' +
+              (rec.district ? ', ' + rec.district : '') +
+              ' · Modal ' + _fmtInr(rec.modal_price || rec.latest_price) + '/QTL' +
+              ' · ' + _distLine(rec) +
+              '<br>Estimated transport ' + _fmtInr(rec.transport_cost) +
+              ' · Estimated net realisation <strong>' + _fmtInr(rec.net_realisation) + '</strong>' +
+              ' for ' + qty + ' QTL. Planning estimate — edit any field before publishing.';
+            summary.hidden = false;
+          }
+
           var modal = document.getElementById('create-lot-modal');
-          if (modal) modal.classList.add('modal-open');
+          if (modal) {
+            modal.classList.add('modal-open');
+            var firstField = document.getElementById('lot-quantity');
+            if (firstField) setTimeout(function () { firstField.focus(); }, 60);
+          }
         });
       }
     }).catch(function (err) {
+      _sellNowBusy(false);
       if (status) status.textContent = (err && err.message) || 'Market comparison is temporarily unavailable.';
       if (box) box.innerHTML = '<p style="font-size:0.8rem;color:var(--color-slate-500);">Could not complete the comparison. Try again or select a different district.</p>';
     });

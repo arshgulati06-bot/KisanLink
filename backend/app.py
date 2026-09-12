@@ -35,6 +35,7 @@ from ml.price_sanity import sanitize_forecast
 from ml.transport import (
     estimate_distance_km,
     net_realisation,
+    transport_loading_rate,
     transport_rate,
     verified_district_coords,
 )
@@ -45,6 +46,7 @@ from ml.ingest import (
     load_buyer_demands,
 )
 from ml import config as ml_config
+from ml import dev_fixture
 
 # ---------------------------------------------------------------------------
 # Application DB + Auth (SQLite-backed, no external DB server required)
@@ -100,7 +102,16 @@ def _mask_commodity_state_district(df, commodity, state, district=None):
     return mask
 
 
+def _dev_fixture_active():
+    try:
+        return bool(_store().get("dev_fixture"))
+    except Exception:
+        return False
+
+
 def _source_label():
+    if _dev_fixture_active():
+        return dev_fixture.SOURCE_LABEL
     if official_api_configured():
         return "Combined historical CSVs plus configured official API ingest"
     return "Combined historical mandi CSVs (local files). Live official API is not configured."
@@ -199,13 +210,28 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     app.config["MAX_CONTENT_LENGTH"] = ml_config.INGEST_MAX_BYTES
     app.config["JSON_SORT_KEYS"] = False
 
+    using_dev_fixture = False
     if dataframe is None and load_real_data:
         print("[KisanLink API] Loading combined mandi datasets (cache used when valid)...")
-        dataframe = load_combined_data()
-        print(
-            f"[KisanLink API] Combined dataset ready: {len(dataframe):,} records, "
-            f"{dataframe[ml_config.COL_COMMODITY].nunique()} commodities."
-        )
+        try:
+            dataframe = load_combined_data()
+            print(
+                f"[KisanLink API] Combined dataset ready: {len(dataframe):,} records, "
+                f"{dataframe[ml_config.COL_COMMODITY].nunique()} commodities."
+            )
+        except FileNotFoundError:
+            if not dev_fixture.enabled():
+                raise
+            # Explicit opt-in only. Never silently substitutes synthetic rows.
+            dataframe = dev_fixture.build_frame()
+            using_dev_fixture = True
+            print("[KisanLink API] " + "=" * 62)
+            print("[KisanLink API] HISTORICAL CSVs NOT FOUND — running on the")
+            print("[KisanLink API] SYNTHETIC DEVELOPMENT FIXTURE.")
+            print("[KisanLink API] These are generated sample rows, NOT real or")
+            print("[KisanLink API] government mandi data. Responses are labelled")
+            print("[KisanLink API] dev_fixture=true so the UI shows a warning.")
+            print("[KisanLink API] " + "=" * 62)
     elif dataframe is None:
         dataframe = pd.DataFrame()
 
@@ -225,6 +251,7 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
 
     app.extensions["kisanlink"] = {
         "df": dataframe,
+        "dev_fixture": using_dev_fixture,
         "pipeline": pipeline,
         "buyers": buyers,
         "buyer_note": buyer_note,
@@ -234,6 +261,8 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
             "latest_date_in_dataset": latest,
             "live_api_connected": official_api_configured(),
             "sources": [
+                {"name": "SYNTHETIC DEVELOPMENT FIXTURE", "type": "synthetic"},
+            ] if using_dev_fixture else [
                 {"name": "Agriculture_price_dataset.csv", "type": "historical"},
                 {"name": "2022.csv", "type": "historical"},
                 {"name": "2026.csv", "type": "historical"},
@@ -574,10 +603,17 @@ def register_routes(app):
         state = (data.get("state") or "").strip()
         district = (data.get("district") or "").strip()
         origin_market = (data.get("market") or "").strip()
+        # `x or 10` would silently turn an explicit 0 into 10, so only a
+        # genuinely absent value falls back to the default.
+        raw_qty = data.get("quantity_qtl")
+        if raw_qty in (None, ""):
+            raw_qty = 10
         try:
-            quantity_qtl = float(data.get("quantity_qtl", 10) or 10)
+            quantity_qtl = float(raw_qty)
         except (TypeError, ValueError):
             return _public_error("quantity_qtl must be numeric.")
+        if quantity_qtl != quantity_qtl or quantity_qtl in (float("inf"), float("-inf")):
+            return _public_error("quantity_qtl must be a finite number.")
         if quantity_qtl <= 0:
             return _public_error("quantity_qtl must be greater than zero.")
         if not commodity or not state or not district:
@@ -752,6 +788,7 @@ def register_routes(app):
         top = refine[:12]
         best = top[0]
         rate = transport_rate()
+        loading_rate = transport_loading_rate()
         any_road = any(not m.get("distance_estimated", True) for m in top)
         live_note = None
         if not live_feed.get("configured"):
@@ -783,6 +820,7 @@ def register_routes(app):
             "markets": top,
             "explanation": explanation,
             "data_source": _source_label(),
+            "dev_fixture": _dev_fixture_active(),
             "live_feed": {
                 "configured": bool(live_feed.get("configured")),
                 "success": bool(live_feed.get("success")),
@@ -792,10 +830,11 @@ def register_routes(app):
             "live_note": live_note,
             "distance_disclaimer": distance_disclaimer,
             "cost_disclaimer": (
-                f"ESTIMATED TRANSPORT COST uses a configurable planning rate of "
-                f"₹{rate:g}/QTL/km (TRANSPORT_RATE_PER_QTL_KM). This is not an official "
-                f"universal tariff, invoice, or quoted freight. Handling and ~1% mandi fee "
-                f"are also labelled estimates."
+                f"ESTIMATED TRANSPORT COST uses a configurable two-part planning tariff: "
+                f"₹{loading_rate:g}/QTL loading plus ₹{rate:g}/QTL/km of distance "
+                f"(TRANSPORT_LOADING_PER_QTL, TRANSPORT_RATE_PER_QTL_KM). This is not an "
+                f"official universal tariff, invoice, or quoted freight. Handling and the "
+                f"~1% mandi fee are also labelled estimates."
             ),
         }), 200
 
@@ -954,6 +993,7 @@ def register_routes(app):
         df = _df()
         latest = None if df.empty else str(pd.to_datetime(df[ml_config.COL_DATE]).max().date())
         live = official_api_configured()
+        synthetic = _dev_fixture_active()
         return jsonify({
             "success": True,
             "total_records": len(df),
@@ -962,8 +1002,12 @@ def register_routes(app):
             "sources": meta.get("sources"),
             "live_api_connected": live,
             "official_api_configured": live,
+            "dev_fixture": synthetic,
+            "data_source_label": _source_label(),
             "ingest_token_required": bool(ml_config.INGEST_TOKEN),
             "note": (
+                dev_fixture.SOURCE_LABEL
+                if synthetic else
                 "Official data.gov.in fetch is configured."
                 if live else
                 "No DATA_GOV_API_KEY / DATA_GOV_RESOURCE_ID in the environment. "
@@ -1728,6 +1772,13 @@ def register_routes(app):
             else:
                 latest_date = None
 
+            synthetic = _dev_fixture_active()
+            row_source = (
+                "Synthetic development fixture"
+                if synthetic else
+                "Historical mandi CSVs (government open data)"
+            )
+
             # Build output rows
             records = []
             seen = set()
@@ -1749,8 +1800,18 @@ def register_routes(app):
                                 return round(val, 2)
                     return None
 
+                def _text(*names):
+                    for n in names:
+                        if n in row.index and pd.notna(row[n]):
+                            val = str(row[n]).strip()
+                            if val and val.lower() not in {"nan", "none", "null"}:
+                                return val
+                    return ""
+
                 records.append({
                     "commodity": str(row.get(ml_config.COL_COMMODITY, commodity)).strip(),
+                    "variety": _text(ml_config.COL_VARIETY, "variety", "Variety"),
+                    "grade": _text(ml_config.COL_GRADE, "grade", "Grade"),
                     "market": mkt_key,
                     "district": dist_key,
                     "state": str(row.get(ml_config.COL_STATE, state)).strip(),
@@ -1759,6 +1820,8 @@ def register_routes(app):
                     "modal_price": _price(ml_config.COL_MODAL_PRICE, "modal_price", "Modal_Price"),
                     "date": str(row[date_col])[:10] if date_col else None,
                     "unit": "₹/Quintal",
+                    "source": row_source,
+                    "is_live": False,
                 })
                 if len(records) >= limit:
                     break
@@ -1766,7 +1829,20 @@ def register_routes(app):
             import datetime
             today_str = datetime.date.today().isoformat()
             data_is_current = (latest_date == today_str) if latest_date else False
-            label = "Today's mandi data" if data_is_current else "Latest available mandi data"
+            if synthetic:
+                # Synthetic rows are never described as today's real mandi data.
+                label = "Sample data (synthetic development fixture)"
+                data_is_current = False
+                note = (
+                    "These are generated sample rows for development and demo "
+                    "only. They are not real mandi prices."
+                )
+            elif data_is_current:
+                label = "Today's mandi data"
+                note = f"Showing most recent available records. Dataset latest date: {latest_date or 'unknown'}."
+            else:
+                label = "Latest available mandi data"
+                note = f"Showing most recent available records. Dataset latest date: {latest_date or 'unknown'}."
 
             return jsonify({
                 "success": True,
@@ -1776,8 +1852,13 @@ def register_routes(app):
                 "label": label,
                 "is_live_today": data_is_current,
                 "is_live": False,
-                "source": "Combined historical mandi CSVs (government open data). Not a live API feed.",
-                "note": f"Showing most recent available records. Dataset latest date: {latest_date or 'unknown'}.",
+                "dev_fixture": synthetic,
+                "source": (
+                    dev_fixture.SOURCE_LABEL
+                    if synthetic else
+                    "Combined historical mandi CSVs (government open data). Not a live API feed."
+                ),
+                "note": note,
             }), 200
 
         except Exception as exc:
