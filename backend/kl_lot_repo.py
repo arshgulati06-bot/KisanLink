@@ -163,30 +163,61 @@ def get_offers_for_lot(lot_id: int) -> list[dict]:
     )
 
 
+#: Offers alone carry only ids, so a farmer's screen showed "Buyer #297"
+#: against "Lot #159". Join the counterparty's name and the lot's crop so the
+#: offer card can say what is actually being offered, and by whom.
+_OFFER_SELECT = """
+    SELECT o.*,
+           bu.name  AS buyer_name,
+           su.name  AS seller_name,
+           l.commodity,
+           l.variety,
+           l.grade,
+           l.district AS lot_district,
+           l.state    AS lot_state
+      FROM offers o
+      LEFT JOIN users bu ON bu.id = o.buyer_user_id
+      LEFT JOIN users su ON su.id = o.seller_user_id
+      LEFT JOIN lots  l  ON l.id  = o.lot_id
+"""
+
+
 def get_offers_for_seller(seller_user_id: int) -> list[dict]:
     return db.query_all(
-        "SELECT * FROM offers WHERE seller_user_id = ? ORDER BY created_at DESC LIMIT 50",
+        _OFFER_SELECT + " WHERE o.seller_user_id = ? ORDER BY o.created_at DESC LIMIT 50",
         (seller_user_id,),
     )
 
 
 def get_offers_by_buyer(buyer_user_id: int) -> list[dict]:
     return db.query_all(
-        "SELECT * FROM offers WHERE buyer_user_id = ? ORDER BY created_at DESC LIMIT 50",
+        _OFFER_SELECT + " WHERE o.buyer_user_id = ? ORDER BY o.created_at DESC LIMIT 50",
         (buyer_user_id,),
     )
 
 
 def respond_to_offer(offer_id: int, status: str) -> bool:
-    """Accept, reject, or counter an offer."""
+    """
+    Accept, reject, or counter an offer.
+
+    @returns False when no such offer exists — the UPDATE used to report
+    success for any id, so responding to offer 999999 answered 200 OK.
+    """
     valid = {"ACCEPTED", "REJECTED", "COUNTERED", "WITHDRAWN"}
     if status.upper() not in valid:
+        return False
+    if not db.query_one("SELECT id FROM offers WHERE id = ?", (offer_id,)):
         return False
     db.execute(
         "UPDATE offers SET status = ?, responded_at = ?, updated_at = ? WHERE id = ?",
         (status.upper(), _utcnow(), _utcnow(), offer_id),
     )
     return True
+
+
+def get_transaction_for_offer(offer_id: int) -> dict | None:
+    """The transaction already created from this offer, if any."""
+    return db.query_one("SELECT * FROM transactions WHERE offer_id = ?", (offer_id,))
 
 
 # ------------------------------------------------------------------
@@ -235,9 +266,16 @@ def create_transaction_from_offer(offer_id: int) -> dict | None:
 
 
 def get_transactions_for_user(user_id: int) -> list[dict]:
+    # Join both party names so the tracker can say "Buyer: Sunrise Traders"
+    # rather than "Buyer #309".
     return db.query_all(
-        """SELECT * FROM transactions
-           WHERE seller_user_id = ? OR buyer_user_id = ?
-           ORDER BY created_at DESC LIMIT 50""",
+        """SELECT t.*,
+                  bu.name AS buyer_name,
+                  su.name AS seller_name
+             FROM transactions t
+             LEFT JOIN users bu ON bu.id = t.buyer_user_id
+             LEFT JOIN users su ON su.id = t.seller_user_id
+            WHERE t.seller_user_id = ? OR t.buyer_user_id = ?
+            ORDER BY t.created_at DESC LIMIT 50""",
         (user_id, user_id),
     )

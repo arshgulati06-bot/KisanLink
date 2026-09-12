@@ -1249,3 +1249,310 @@ class TestSaleLotImage:
         })
         name = res.get_json()["lot"]["image_file"]
         assert "/" not in name and "\\" not in name and ".." not in name
+
+
+# ---------------------------------------------------------------------------
+# 16. upload size limits — regression for the 2 MB global cap
+# ---------------------------------------------------------------------------
+
+class TestUploadSizeLimits:
+    """
+    Flask's MAX_CONTENT_LENGTH was set to INGEST_MAX_BYTES (2 MB), which is a
+    whole-app cap. Every real phone photo is larger than that, so the quality
+    endpoint returned 413 before it ever ran and the farmer was told photo
+    grading was "not connected" while the models were loaded and working.
+    Earlier tests missed it because their fixture images were a few hundred
+    bytes.
+    """
+
+    @staticmethod
+    def _jpeg(mb):
+        """A real, decodable JPEG of roughly `mb` megabytes."""
+        pytest.importorskip("PIL")
+        from PIL import Image
+        import io as _io
+        import random
+        side = 1500
+        buf = _io.BytesIO()
+        rnd = random.Random(7)
+        img = Image.new("RGB", (side, side))
+        img.putdata([(rnd.randrange(256), rnd.randrange(256), rnd.randrange(256))
+                     for _ in range(side * side)])
+        img.save(buf, format="JPEG", quality=97)
+        data = buf.getvalue()
+        assert len(data) > mb * 1024 * 1024, f"fixture only {len(data)} bytes"
+        return data
+
+    def test_global_cap_clears_the_photo_cap(self):
+        from ml import config as mlc
+        from ml import quality_inference as qi
+        assert mlc.UPLOAD_MAX_BYTES > qi.MAX_IMAGE_BYTES, (
+            "the whole-app cap must clear the largest legitimate photo")
+        assert mlc.UPLOAD_MAX_BYTES > mlc.INGEST_MAX_BYTES
+
+    def test_a_three_megabyte_photo_is_analysed_not_rejected(self, client):
+        import io as _io
+        from ml import quality_inference as qi
+        if "Tomato" not in qi.supported_crops():
+            pytest.skip("no tomato checkpoint installed")
+        data = self._jpeg(2)
+        res = client.post("/api/ml/quality-assessment",
+                          data={"crop": "Tomato",
+                                "image": (_io.BytesIO(data), "photo.jpg")},
+                          content_type="multipart/form-data")
+        assert res.status_code != 413, "the global cap rejected a normal photo again"
+        assert res.status_code == 200, res.get_json()
+        body = res.get_json()
+        assert body["success"] is True
+        assert body["label"] in [d["label"] for d in body["distribution"]]
+
+    def test_ingest_keeps_its_own_two_megabyte_limit(self, client):
+        import json as _json
+        payload = _json.dumps({"records": [{"pad": "x" * 100} for _ in range(30000)]})
+        assert len(payload) > 2 * 1024 * 1024
+        res = client.post("/api/ingest/update", data=payload,
+                          content_type="application/json")
+        assert res.status_code == 413
+        assert "2 MB" in res.get_json()["error"]
+
+    def test_413_names_the_limit_and_carries_a_reason(self, client):
+        """
+        The old handler returned {"error": "Payload too large."} with no
+        reason, and the frontend turned any such failure into
+        "photo grading is not connected" — which was untrue.
+        """
+        import io as _io
+        from ml import config as mlc
+        oversized = b"\xff\xd8\xff" + b"0" * (mlc.UPLOAD_MAX_BYTES + 1024)
+        res = client.post("/api/ml/quality-assessment",
+                          data={"crop": "Tomato",
+                                "image": (_io.BytesIO(oversized), "huge.jpg")},
+                          content_type="multipart/form-data")
+        assert res.status_code == 413
+        body = res.get_json()
+        assert body["reason"] == "payload_too_large"
+        assert "MB" in body["error"]
+        assert body["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# 17. sale-lot photo hardening
+# ---------------------------------------------------------------------------
+
+class TestLotImageHardening:
+    def test_a_real_photo_over_two_megabytes_round_trips(self, client, auth_headers):
+        import base64
+        raw = TestUploadSizeLimits._jpeg(2)
+        url = "data:image/jpeg;base64," + base64.b64encode(raw).decode()
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 14,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 1980,
+            "image_data_url": url,
+        })
+        assert res.status_code == 201, res.get_json()
+        lot_id = res.get_json()["lot"]["id"]
+        got = client.get(f"/api/lots/{lot_id}/image")
+        assert got.status_code == 200
+        assert got.data == raw
+
+    def test_non_image_bytes_labelled_as_jpeg_are_rejected(self, client, auth_headers):
+        """The data URL's MIME is client-supplied, so the bytes must be decoded."""
+        pytest.importorskip("PIL")
+        import base64
+        fake = base64.b64encode(b"<html>not an image at all</html>").decode()
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 5,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 1900,
+            "image_data_url": "data:image/jpeg;base64," + fake,
+        })
+        assert res.status_code == 400
+        assert "not a readable image" in res.get_json()["error"].lower()
+
+    def test_image_response_forbids_content_sniffing(self, client, auth_headers):
+        import base64
+        png = TestSaleLotImage._PNG
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 6,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 1910,
+            "image_data_url": "data:image/png;base64," + base64.b64encode(png).decode(),
+        })
+        assert res.status_code == 201
+        lot_id = res.get_json()["lot"]["id"]
+        got = client.get(f"/api/lots/{lot_id}/image")
+        assert got.headers.get("X-Content-Type-Options") == "nosniff"
+
+    @pytest.mark.parametrize("lot_id", [0, 999999])
+    def test_unknown_lot_ids_are_a_clean_404(self, client, lot_id):
+        res = client.get(f"/api/lots/{lot_id}/image")
+        assert res.status_code == 404
+        assert "error" in res.get_json()
+
+
+# ---------------------------------------------------------------------------
+# 18. static frontend contract
+# ---------------------------------------------------------------------------
+
+class TestFrontendContract:
+    PAGES = ["farmer.html", "buyer.html", "auth.html"]
+
+    def _page(self, name):
+        import os
+        root = os.path.join(os.path.dirname(__file__), "..", "frontend")
+        path = os.path.join(root, "pages", name)
+        if not os.path.exists(path):
+            pytest.skip(f"{name} not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    @pytest.mark.parametrize("page", PAGES)
+    def test_no_duplicate_dom_ids(self, page):
+        """
+        farmer.html had two buttons sharing id 'cqa-analyze-again-btn', so
+        getElementById only ever bound the first and 'Try Again' on the
+        "Analysis Failed" card did nothing — the farmer was stuck on the error.
+        """
+        import re
+        from collections import Counter
+        ids = re.findall(r'\sid="([^"]+)"', self._page(page))
+        dupes = [i for i, n in Counter(ids).items() if n > 1]
+        assert not dupes, f"{page} has duplicate ids: {dupes}"
+
+    def test_error_card_has_its_own_retry_button(self):
+        html = self._page("farmer.html")
+        assert 'id="cqa-error-retry-btn"' in html
+        assert 'id="cqa-analyze-again-btn"' in html
+
+    def test_no_misleading_not_connected_copy_in_frontend_js(self):
+        import glob, os
+        root = os.path.join(os.path.dirname(__file__), "..", "frontend", "js")
+        if not os.path.isdir(root):
+            pytest.skip("frontend/js not present")
+        offenders = []
+        for path in glob.glob(os.path.join(root, "*.js")):
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+            if "not connected on this server" in text:
+                offenders.append(os.path.basename(path))
+        assert not offenders, (
+            "these files still claim photo grading is not connected: "
+            + ", ".join(offenders))
+
+
+# ---------------------------------------------------------------------------
+# 19. offer -> acceptance -> transaction
+# ---------------------------------------------------------------------------
+
+class TestOfferFlow:
+    """
+    The farmer's "Received Offers" panel read from localStorage, which was
+    never populated, so a buyer's offer could not reach the farmer's screen at
+    all; and Accept mutated localStorage and minted a client-side transaction
+    id instead of calling the server. These cover the server side of the fix.
+    """
+
+    def _pair(self, client):
+        import uuid
+        out = []
+        for role, name in (("FARMER", "Ravi Patil"), ("BUYER", "Sunrise Traders")):
+            sfx = uuid.uuid4().hex[:10]
+            res = client.post("/api/auth/register", json={
+                "name": name, "username": f"{role.lower()}_{sfx}",
+                "phone": "9" + sfx[:9].translate(str.maketrans("abcdef", "123456")),
+                "password": "StrongPass!234", "role": role,
+                "district": "Nashik", "state": "Maharashtra",
+            })
+            assert res.status_code == 201, res.get_json()
+            out.append({"Authorization": "Bearer " + res.get_json()["token"]})
+        return out[0], out[1]
+
+    def _lot_and_offer(self, client, farmer, buyer, price=2550):
+        res = client.post("/api/lots", headers=farmer, json={
+            "commodity": "Tomato", "quantity_qtl": 18,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 2400, "grade": "Ripe",
+        })
+        assert res.status_code == 201, res.get_json()
+        lot_id = res.get_json()["lot"]["id"]
+        res = client.post("/api/offers", headers=buyer, json={
+            "lot_id": lot_id, "price_per_qtl": price, "quantity_qtl": 18,
+            "message": "Pickup Friday",
+        })
+        assert res.status_code == 201, res.get_json()
+        return lot_id, res.get_json()["offer_id"]
+
+    def test_offer_carries_the_counterparty_name_and_crop(self, client):
+        """A card reading "Buyer #297 / Lot #159" tells the farmer nothing."""
+        farmer, buyer = self._pair(client)
+        self._lot_and_offer(client, farmer, buyer)
+        rows = client.get("/api/offers/my", headers=farmer).get_json()["offers"]
+        assert rows, "the farmer must see the offer on their own lot"
+        row = rows[0]
+        assert row["buyer_name"] == "Sunrise Traders"
+        assert row["commodity"] == "Tomato"
+        assert row["grade"] == "Ripe"
+        assert row["price_per_qtl"] == 2550
+        assert row["status"] == "PENDING"
+
+    def test_accepting_creates_a_real_transaction_both_sides_can_see(self, client):
+        farmer, buyer = self._pair(client)
+        _, offer_id = self._lot_and_offer(client, farmer, buyer)
+        res = client.post(f"/api/offers/{offer_id}/respond", headers=farmer,
+                          json={"status": "ACCEPTED"})
+        assert res.status_code == 200, res.get_json()
+        assert res.get_json()["transaction"]["id"]
+
+        for who, label in ((farmer, "farmer"), (buyer, "buyer")):
+            txs = client.get("/api/transactions/my", headers=who).get_json()["transactions"]
+            assert len(txs) == 1, f"{label} cannot see the transaction"
+            assert txs[0]["commodity"] == "Tomato"
+            assert txs[0]["gross_amount"] == 2550 * 18
+            assert txs[0]["buyer_name"] == "Sunrise Traders"
+            assert txs[0]["seller_name"] == "Ravi Patil"
+
+    def test_accepting_twice_is_not_a_500(self, client):
+        """The second accept used to blow up on the transaction insert."""
+        farmer, buyer = self._pair(client)
+        _, offer_id = self._lot_and_offer(client, farmer, buyer)
+        first = client.post(f"/api/offers/{offer_id}/respond", headers=farmer,
+                            json={"status": "ACCEPTED"})
+        second = client.post(f"/api/offers/{offer_id}/respond", headers=farmer,
+                             json={"status": "ACCEPTED"})
+        assert second.status_code == 200, second.get_json()
+        # ...and it must not create a duplicate transaction
+        assert second.get_json()["transaction"]["id"] == first.get_json()["transaction"]["id"]
+        txs = client.get("/api/transactions/my", headers=farmer).get_json()["transactions"]
+        assert len(txs) == 1
+
+    def test_responding_to_an_unknown_offer_is_a_404(self, client):
+        """The bare UPDATE reported success for any id, so this answered 200."""
+        farmer, _ = self._pair(client)
+        res = client.post("/api/offers/999999/respond", headers=farmer,
+                          json={"status": "ACCEPTED"})
+        assert res.status_code == 404
+        assert res.get_json()["success"] is False
+
+    def test_rejecting_records_the_rejection(self, client):
+        farmer, buyer = self._pair(client)
+        _, offer_id = self._lot_and_offer(client, farmer, buyer)
+        res = client.post(f"/api/offers/{offer_id}/respond", headers=farmer,
+                          json={"status": "REJECTED"})
+        assert res.status_code == 200
+        rows = client.get("/api/offers/my", headers=buyer).get_json()["offers"]
+        assert rows[0]["status"] == "REJECTED"
+        assert not client.get("/api/transactions/my",
+                              headers=farmer).get_json()["transactions"]
+
+    def test_dashboard_js_does_not_mint_its_own_transaction_ids(self):
+        """
+        Accept used to build `TX-2026-050` in the browser and push it into
+        localStorage — a transaction that existed nowhere else.
+        """
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "dashboard.js")
+        if not os.path.exists(path):
+            pytest.skip("dashboard.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "`TX-${" not in src, "dashboard.js is fabricating transaction ids again"
+        assert "/offers/" in src and "respond" in src, (
+            "accept/reject must call /api/offers/<id>/respond")

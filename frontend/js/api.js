@@ -239,13 +239,19 @@ async function assessCropQuality(image, crop = '') {
   }
 
   if (!res.ok || !data || !data.success) {
+    // The server's own message is the accurate one — it knows whether the
+    // crop is unsupported, the file unreadable, or the upload too big. Only
+    // fall back to generic copy when the server said nothing at all, and
+    // never claim the models are "not connected" when they may well be.
     return {
       _placeholder: true, _unavailable: true, crop,
       grade: null, confidence: null, indicators: [],
       reason: (data && data.reason) || 'unavailable',
+      httpStatus: res.status,
       supported_crops: (data && data.supported_crops) || [],
       message: (data && data.error) ||
-        'Photo grading is unavailable. Choose the quality grade yourself when listing.',
+        'The photo could not be analysed (server said ' + res.status + '). ' +
+        'Try a smaller photo, or set the quality yourself when listing.',
     };
   }
 

@@ -95,46 +95,47 @@ class DashboardStateManager {
     return this.state.offers;
   }
 
-  acceptOffer(offerId) {
-    const offer = this.state.offers.find(o => o.id === offerId);
-    if (!offer) return null;
-
-    offer.status = 'ACCEPTED';
-
-    // Create corresponding transaction
-    const newTx = {
-      id: `TX-${new Date().getFullYear()}-${String(this.state.transactions.length + 50).padStart(3, '0')}`,
-      lotId: offer.lotId,
-      crop: offer.crop,
-      quantity: offer.quantity,
-      unit: offer.unit,
-      buyerName: offer.buyerName,
-      agreedRate: offer.offeredRate,
-      grossTotal: offer.quantity * offer.offeredRate,
-      status: 'TRANSACTION_CREATED',
-      currentStep: 2, // 1: Offered, 2: Accepted, 3: Logistics, 4: Delivered, 5: Paid
-      date: new Date().toISOString().split('T')[0]
-    };
-
-    this.state.transactions.unshift(newTx);
-
-    // Update lot status
-    const lot = this.state.lots.find(l => l.id === offer.lotId);
-    if (lot) {
-      lot.status = 'OFFER_ACCEPTED';
+  /**
+   * Respond to a real offer on the server.
+   *
+   * This used to mutate localStorage only and mint a client-side transaction
+   * id, so the buyer never learned the offer was accepted and the
+   * "transaction" existed nowhere but this browser. It now posts to
+   * /api/offers/<id>/respond, which is what creates the real transaction row.
+   *
+   * @returns {Promise<Object>} resolves with the server's response
+   */
+  respondToOffer(offerId, status) {
+    if (!window.apiClient) {
+      return Promise.reject(new Error('API client is not loaded on this page.'));
     }
-
-    this.saveState();
-    return { offer, transaction: newTx };
+    return window.apiClient
+      .post('/offers/' + encodeURIComponent(offerId) + '/respond', { status: status })
+      .then((res) => {
+        const data = res.data || {};
+        if (!data.success) throw new Error(data.error || 'The server rejected that response.');
+        return data;
+      });
   }
 
-  rejectOffer(offerId) {
-    const offer = this.state.offers.find(o => o.id === offerId);
-    if (offer) {
-      offer.status = 'REJECTED';
-      this.saveState();
+  acceptOffer(offerId) { return this.respondToOffer(offerId, 'ACCEPTED'); }
+
+  rejectOffer(offerId) { return this.respondToOffer(offerId, 'REJECTED'); }
+
+  /** Load the signed-in user's real offers and transactions from the API. */
+  refreshOffersAndTransactions() {
+    if (!window.apiClient || !window.apiClient.getAuthToken()) {
+      return Promise.resolve({ offers: [], transactions: [] });
     }
-    return offer;
+    return Promise.all([
+      window.apiClient.get('/offers/my').catch(() => ({ data: {} })),
+      window.apiClient.get('/transactions/my').catch(() => ({ data: {} })),
+    ]).then(([o, t]) => {
+      this.state.offers = ((o.data || {}).offers || []).map(_normaliseOffer);
+      this.state.transactions = ((t.data || {}).transactions || []).map(_normaliseTx);
+      this.saveState();
+      return { offers: this.state.offers, transactions: this.state.transactions };
+    });
   }
 
   getTransactions() {
@@ -185,8 +186,18 @@ function initFarmerDashboard() {
   if (!lotsContainer) return; // Not on farmer page
 
   loadLotsFromBackend();
+  // Render immediately from whatever is cached, then replace with the real
+  // server state. Without this fetch the Received Offers panel showed the
+  // empty state forever, because offers only ever lived in localStorage —
+  // a buyer's offer could never reach the farmer's screen.
   renderFarmerOffers();
   renderFarmerTransactions();
+  window.dashboardState.refreshOffersAndTransactions().then(function () {
+    renderFarmerOffers();
+    renderFarmerTransactions();
+  }).catch(function (e) {
+    console.warn('[offers] could not load offers from the server:', e);
+  });
 }
 
 /**
@@ -317,6 +328,46 @@ function renderFarmerLots(lots) {
 }
 
 
+/** Map an /api/offers/my row onto the shape the offer card renders. */
+function _normaliseOffer(row) {
+  const qty = Number(row.quantity_qtl) || 0;
+  const rate = Number(row.price_per_qtl) || 0;
+  return {
+    id: row.id,
+    status: row.status || 'PENDING',
+    buyerName: row.buyer_name || ('Buyer #' + (row.buyer_user_id || '?')),
+    buyerLocation: row.buyer_location || row.buyer_district || 'Not stated',
+    crop: row.commodity || row.crop || 'Lot #' + (row.lot_id || '?'),
+    lotId: row.lot_id,
+    quantity: qty,
+    unit: 'QTL',
+    offeredRate: rate,
+    // Net take-home is only shown when the server actually computed it —
+    // no client-side guess at freight or mandi fees.
+    netTakeHome: row.net_per_qtl != null ? Number(row.net_per_qtl) : null,
+    terms: row.message || 'No additional terms stated.',
+  };
+}
+
+/** Map an /api/transactions/my row onto the transaction tracker's shape. */
+function _normaliseTx(row) {
+  const qty = Number(row.quantity_qtl) || 0;
+  const rate = Number(row.price_per_qtl) || 0;
+  return {
+    id: row.id,
+    lotId: row.lot_id,
+    crop: row.commodity || row.crop || 'Lot #' + (row.lot_id || '?'),
+    quantity: qty,
+    unit: 'QTL',
+    buyerName: row.buyer_name || ('Buyer #' + (row.buyer_user_id || '?')),
+    agreedRate: rate,
+    grossTotal: row.total_value != null ? Number(row.total_value) : qty * rate,
+    status: row.status || 'ACCEPTED',
+    currentStep: 2,
+    date: (row.created_at || '').slice(0, 10),
+  };
+}
+
 function renderFarmerOffers() {
   const container = document.getElementById('farmer-offers-container');
   const statOffers = document.getElementById('stat-pending-offers-count');
@@ -359,7 +410,7 @@ function renderFarmerOffers() {
         <div class="text-right">
           <div class="text-xs text-slate">Offered Gross Rate:</div>
           <div class="offer-price-highlight">₹${offer.offeredRate.toLocaleString('en-IN')}<span style="font-size: 0.8rem; font-weight: normal; color: var(--color-slate-500);"> /${offer.unit}</span></div>
-          <div class="text-xs text-emerald font-semibold">Est. Net Take-Home: ₹${offer.netTakeHome.toLocaleString('en-IN')}/${offer.unit}</div>
+          ${offer.netTakeHome != null ? `<div class="text-xs text-emerald font-semibold">Est. Net Take-Home: ₹${offer.netTakeHome.toLocaleString('en-IN')}/${offer.unit}</div>` : `<div class="text-xs text-slate">Use <strong>Sell Now</strong> for net realisation after freight and mandi fees.</div>`}
         </div>
 
         ${offer.status === 'PENDING' ? `
@@ -439,24 +490,34 @@ function renderFarmerTransactions() {
   `).join('');
 }
 
-window.handleAcceptOffer = function(offerId) {
-  const res = window.dashboardState.acceptOffer(offerId);
-  if (res) {
+function _afterOfferResponse(message, kind) {
+  return window.dashboardState.refreshOffersAndTransactions().then(function () {
     renderFarmerOffers();
     renderFarmerLots();
     renderFarmerTransactions();
-    if (typeof showToast === 'function') {
-      showToast(`Offer ${offerId} accepted! Transaction ${res.transaction.id} created with verified milestones.`, 'success');
-    }
-  }
+    if (typeof showToast === 'function') showToast(message, kind);
+  });
+}
+
+function _offerError(err) {
+  var msg = (err && err.message) || 'That could not be saved. Please try again.';
+  if (typeof showToast === 'function') showToast(msg, 'error');
+  console.error('[offers]', err);
+}
+
+window.handleAcceptOffer = function(offerId) {
+  window.dashboardState.acceptOffer(offerId).then(function (data) {
+    var tx = data.transaction || {};
+    _afterOfferResponse(
+      tx.id ? ('Offer accepted. Transaction #' + tx.id + ' created.')
+            : 'Offer accepted.', 'success');
+  }).catch(_offerError);
 };
 
 window.handleRejectOffer = function(offerId) {
-  window.dashboardState.rejectOffer(offerId);
-  renderFarmerOffers();
-  if (typeof showToast === 'function') {
-    showToast(`Offer ${offerId} declined.`, 'info');
-  }
+  window.dashboardState.rejectOffer(offerId).then(function () {
+    _afterOfferResponse('Offer declined.', 'info');
+  }).catch(_offerError);
 };
 
 /**

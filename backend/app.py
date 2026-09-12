@@ -12,6 +12,7 @@ Historical mandi CSV data is NOT in the application DB.
 No hardcoded market prices or forecast values.
 """
 
+import io
 import os
 import sys
 import threading
@@ -215,7 +216,9 @@ def _init_database():
 def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=True):
     app = Flask(__name__, static_folder=None)
     CORS(app)
-    app.config["MAX_CONTENT_LENGTH"] = ml_config.INGEST_MAX_BYTES
+    # Whole-app cap: must clear the largest legitimate request (a crop photo),
+    # not the smallest. Ingest enforces its own tighter limit below.
+    app.config["MAX_CONTENT_LENGTH"] = ml_config.UPLOAD_MAX_BYTES
     app.config["JSON_SORT_KEYS"] = False
 
     using_dev_fixture = False
@@ -329,6 +332,18 @@ def _save_lot_image(data_url):
     if len(raw) > _MAX_LOT_IMAGE_BYTES:
         return None, (f"That photo is larger than {_MAX_LOT_IMAGE_BYTES // (1024 * 1024)} MB. "
                       "Please choose a smaller image.")
+
+    # The data URL's declared MIME is client-supplied, so trust the bytes, not
+    # the label: decode the image before storing it. Without this a caller
+    # could label arbitrary content "image/jpeg" and have it stored and served
+    # back from our own origin.
+    try:
+        from PIL import Image as _Image
+        _Image.open(io.BytesIO(raw)).verify()
+    except ImportError:
+        pass          # Pillow absent: fall back to the MIME allowlist above
+    except Exception:
+        return None, "That file is not a readable image. Please choose a JPG or PNG photo."
 
     try:
         os.makedirs(_LOT_IMAGE_DIR, exist_ok=True)
@@ -1154,6 +1169,16 @@ def register_routes(app):
         if not _ingest_authorized():
             return _public_error("Unauthorized ingest request.", 401)
 
+        # Ingest keeps the tight 2 MB limit it always had. It is enforced here
+        # rather than as Flask's global cap, which also applied to photo
+        # uploads and broke them.
+        declared = request.content_length or 0
+        if declared > ml_config.INGEST_MAX_BYTES:
+            return _public_error(
+                "Ingest payload is larger than "
+                f"{ml_config.INGEST_MAX_BYTES // (1024 * 1024)} MB.", 413,
+            )
+
         data = request.get_json(silent=True) or {}
         source = str(data.get("source") or "json_post")[:80]
         records = data.get("records", [])
@@ -1203,7 +1228,16 @@ def register_routes(app):
 
     @app.errorhandler(413)
     def too_large(_e):
-        return _public_error("Payload too large.", 413)
+        # Say what the limit is and carry a machine-readable reason, so the
+        # frontend can show the real cause instead of a generic
+        # "service unavailable" message.
+        limit_mb = ml_config.UPLOAD_MAX_BYTES // (1024 * 1024)
+        return jsonify({
+            "success": False,
+            "reason": "payload_too_large",
+            "error": f"That upload is larger than {limit_mb} MB. "
+                     "Please use a smaller photo.",
+        }), 413
 
 
     # =========================================================================
@@ -1594,10 +1628,15 @@ def register_routes(app):
         if status not in ("ACCEPTED", "REJECTED", "COUNTERED"):
             return _public_error("'status' must be ACCEPTED, REJECTED, or COUNTERED.")
         try:
-            _lot_repo.respond_to_offer(offer_id, status)
+            if not _lot_repo.respond_to_offer(offer_id, status):
+                return _public_error("No such offer.", 404)
             result = {"success": True, "offer_id": offer_id, "status": status}
             if status == "ACCEPTED":
-                tx = _lot_repo.create_transaction_from_offer(offer_id)
+                # Accepting twice used to raise on the transaction insert and
+                # surface as a 500. One offer has one transaction; return the
+                # existing one instead of failing.
+                tx = (_lot_repo.get_transaction_for_offer(offer_id)
+                      or _lot_repo.create_transaction_from_offer(offer_id))
                 if tx:
                     result["transaction"] = tx
                     result["message"] = "Offer accepted. Transaction created."
@@ -2164,7 +2203,11 @@ def register_routes(app):
         path = os.path.join(_LOT_IMAGE_DIR, name)
         if not os.path.isfile(path):
             return _public_error("Image file is missing on the server.", 404)
-        return send_from_directory(_LOT_IMAGE_DIR, name, max_age=3600)
+        resp = send_from_directory(_LOT_IMAGE_DIR, name, max_age=3600)
+        # These bytes came from a user upload; never let a browser re-sniff
+        # them into something executable.
+        resp.headers["X-Content-Type-Options"] = "nosniff"
+        return resp
 
     @app.route("/api/location/reverse", methods=["GET"])
     def location_reverse():

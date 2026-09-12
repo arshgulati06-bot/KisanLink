@@ -54,6 +54,7 @@ var CQA = {
     resultIndicators:  'cqa-result-indicators',
     resultModelStatus: 'cqa-result-model-status',
     analyzeAgainBtn:   'cqa-analyze-again-btn',
+    errorRetryBtn:     'cqa-error-retry-btn',
     applyPipelineBtn:  'cqa-apply-pipeline-btn'
   },
 
@@ -63,13 +64,16 @@ var CQA = {
     cameraStream:  null,
     cameraActive:  false,
     imageCaptured: false,
-    selectedCrop:  'Onion',
+    selectedCrop:  '',
     assessedGrade: null
   },
 
   ACCEPTED_TYPES: ['image/jpeg', 'image/png'],
   ACCEPTED_EXT:   '.jpg,.jpeg,.png',
-  MAX_FILE_BYTES: 10 * 1024 * 1024
+  // Must not exceed the server's own photo cap
+  // (ml/quality_inference.MAX_IMAGE_BYTES, 8 MB) — a larger client
+  // limit just uploads a photo that is then rejected.
+  MAX_FILE_BYTES: 8 * 1024 * 1024
 };
 
 // api.js defines the real network-backed assessor. Capture it before this
@@ -90,11 +94,12 @@ function initCropQualityAssessment() {
   _bindAnalyzeAgainButton();
   _bindPipelineConnector();
   _bindCropSelector();
+  _fillSupportedCrops();
 
   // Set initial default mode to upload without triggering camera prompt automatically
   _switchMode('upload');
 
-  console.info('[CQA] Crop Quality Assessment module initialised (ML placeholder active).');
+  console.info('[CQA] Crop Quality Assessment module initialised.');
 }
 
 /* ============================================================
@@ -360,6 +365,53 @@ function _resetUploadUI() { _removeUploadedImage(); }
 /* ============================================================
    CROP SELECTOR
    ============================================================ */
+/**
+ * Fill the crop dropdown from the server's real model inventory.
+ *
+ * This list used to be every commodity in the mandi dataset (325 of them),
+ * so almost any choice produced "no trained model for this crop". Asking
+ * /api/ml/quality-status means the dropdown can only ever offer crops the
+ * server can actually analyse, and says so honestly when none are installed.
+ */
+function _fillSupportedCrops() {
+  var sel = document.getElementById(CQA.ids.cropSelect);
+  if (!sel) return;
+
+  function paint(crops, note) {
+    sel.innerHTML = '';
+    var first = document.createElement('option');
+    first.value = '';
+    first.textContent = crops.length ? 'Choose a crop…' : (note || 'No models installed');
+    sel.appendChild(first);
+    crops.forEach(function (c) {
+      var o = document.createElement('option');
+      o.value = c;
+      o.textContent = c;
+      sel.appendChild(o);
+    });
+    sel.disabled = !crops.length;
+    // The searchable combobox mirrors the select; nudge it to re-read.
+    if (sel.__klCombobox) sel.__klCombobox.syncFromSelect();
+  }
+
+  paint([], 'Loading crops…');
+
+  if (typeof window.getCropQualityStatus !== 'function') {
+    paint([], 'Photo check unavailable');
+    return;
+  }
+  window.getCropQualityStatus().then(function (st) {
+    var crops = (st && st.supported_crops) || [];
+    paint(crops, 'No quality models installed on this server');
+    var help = document.getElementById('cqa-analyze-help');
+    if (help && crops.length) {
+      help.textContent = 'Photo condition check is trained for: ' + crops.join(', ') + '.';
+    }
+  }).catch(function () {
+    paint([], 'Could not reach the photo-check service');
+  });
+}
+
 function _bindCropSelector() {
   var sel = document.getElementById(CQA.ids.cropSelect);
   if (sel) {
@@ -389,7 +441,14 @@ function _onAnalyzeClick() {
   if (!CQA.state.imageFile) return;
   _showLoadingState();
 
-  var crop = CQA.state.selectedCrop || 'Onion';
+  // No silent default: 'Onion' used to be substituted here, which sent every
+  // farmer who had not touched the dropdown to a crop that has no model.
+  var crop = CQA.state.selectedCrop || '';
+  if (!crop) {
+    _showErrorState('Choose the crop in "Selected Crop for Quality Check" first — ' +
+                    'the photo check needs to know which crop it is looking at.');
+    return;
+  }
 
   analyzeCropQuality(CQA.state.imageFile, crop).then(function(result) {
     _showResultState(result);
@@ -496,14 +555,24 @@ function _showResultState(result) {
     }
     if (confEl) confEl.innerHTML = '<span class="cqa-placeholder-dash">&mdash;</span>';
     if (indEl) {
+      // Show the reason the server actually gave. Claiming photo grading is
+      // "not connected" was wrong and confusing whenever the models were in
+      // fact loaded and the upload was merely too large, the crop
+      // unsupported, or the file unreadable.
+      var why = result.message ||
+        'No analysis was performed on this photo.';
+      var extra = '';
+      if (result.supported_crops && result.supported_crops.length) {
+        extra = '<li class="cqa-placeholder-item">Photo checks are available for: ' +
+          _escapeHtml(result.supported_crops.join(', ')) + '.</li>';
+      }
       indEl.innerHTML =
-        '<li class="cqa-placeholder-item">Automatic photo grading is not connected ' +
-        'on this server, so no grade has been assigned to your photo.</li>' +
+        '<li class="cqa-placeholder-item">' + _escapeHtml(why) + '</li>' + extra +
         '<li class="cqa-placeholder-item">You can still sell: pick the quality grade ' +
         'yourself in <strong>Create Sale Lot</strong>. Buyers see the grade you set.</li>';
     }
     if (statusEl) {
-      statusEl.textContent = 'Photo grading unavailable — no analysis was performed.';
+      statusEl.textContent = 'No condition was assigned to this photo.';
     }
     // Never carry a fabricated grade into the sale pipeline; the farmer sets it.
     CQA.state.assessedGrade = null;
@@ -587,8 +656,14 @@ function _setResultState(state) {
 }
 
 function _bindAnalyzeAgainButton() {
-  var btn = document.getElementById(CQA.ids.analyzeAgainBtn);
-  if (btn) btn.addEventListener('click', _resetResultArea);
+  // Two separate buttons: one on the result card, one on the error card.
+  // They shared an id, so getElementById only ever found the first and the
+  // "Try Again" button on "Analysis Failed" did nothing — leaving the farmer
+  // stuck on the error with no way back.
+  [CQA.ids.analyzeAgainBtn, CQA.ids.errorRetryBtn].forEach(function (id) {
+    var btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', _resetResultArea);
+  });
 }
 
 /* ============================================================

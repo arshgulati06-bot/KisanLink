@@ -108,6 +108,24 @@ INGEST_MAX_BYTES = int(
     )
 )
 
+#: Flask's global MAX_CONTENT_LENGTH. This is a whole-app cap, so it has to
+#: clear the largest legitimate request, not the smallest.
+#:
+#: It used to be set to INGEST_MAX_BYTES (2 MB), which silently made photo
+#: upload unusable: any real phone photo is well over 2 MB, so Flask returned
+#: 413 before the quality endpoint ever ran and the farmer was told photo
+#: grading was "not connected" while the models were loaded and working.
+#: Ingest keeps its own 2 MB limit, enforced at the ingest endpoint itself.
+#:
+#: 12 MB clears the 8 MB photo cap plus multipart overhead, and the base64
+#: data URL used for sale-lot photos (~33% larger than the raw bytes).
+UPLOAD_MAX_BYTES = int(
+    os.environ.get(
+        "KISANLINK_UPLOAD_MAX_BYTES",
+        str(12 * 1024 * 1024)
+    )
+)
+
 INGEST_TOKEN = os.environ.get(
     "KISANLINK_INGEST_TOKEN",
     ""

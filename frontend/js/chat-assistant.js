@@ -286,26 +286,27 @@ var KL_Chat = (function () {
      INTEGRATION BOUNDARY — sendAssistantMessage(message)
      ════════════════════════════════════════════════════════════════════════ */
   function sendAssistantMessage(message) {
-    /* ── INTEGRATION POINT ────────────────────────────────────────────────
-       When backend is ready, replace with:
-       return window.apiClient.post('/assistant/message', { message: message })
-         .then(function (res) { return res.data.reply; });
-    ──────────────────────────────────────────────────────────────────────── */
+    /* No AI model is wired to this widget, and there is no /api/assistant/message
+       endpoint. Rather than simulate one, say so immediately and point at the
+       parts of the dashboard that DO answer the question with real data.
+       The 900 ms "thinking" pause that used to sit here only made an
+       unanswered question look like it was being worked on. */
     var locale = (window.KL_I18n && window.KL_I18n.getLocale) ? window.KL_I18n.getLocale() : 'en';
 
     var responses = {
-      en: 'KisanLink Assistant is not yet connected to a live AI model. Your query "' + message + '" has been noted. When the backend service is integrated, real-time advice will appear here.',
-      hi: 'KisanLink सहायक अभी लाइव AI मॉडल से कनेक्ट नहीं है। आपका प्रश्न "' + message + '" नोट कर लिया गया है। बैकएंड सेवा जुड़ने पर यहाँ रीयल-टाइम सलाह मिलेगी।',
-      mr: 'KisanLink सहाय्यक सध्या लाइव्ह AI मॉडेलशी जोडलेला नाही. आपला प्रश्न "' + message + '" नोंदवला गेला आहे. सेवा सुरू झाल्यावर येथे थेट सल्ला मिळेल।'
+      en: 'This assistant has no AI model connected, so it cannot answer "' + message +
+          '". For real answers use the dashboard itself: Price Outlook for the ' +
+          'Chronos forecast, Market Prices for mandi rates, Sell Now for net ' +
+          'realisation, and Crop Quality for a photo condition check.',
+      hi: 'इस सहायक से कोई AI मॉडल जुड़ा नहीं है, इसलिए यह "' + message +
+          '" का उत्तर नहीं दे सकता। असली जानकारी के लिए डैशबोर्ड देखें: ' +
+          'पूर्वानुमान, मंडी भाव, अभी बेचें, और फसल गुणवत्ता।',
+      mr: 'या सहाय्यकाला कोणतेही AI मॉडेल जोडलेले नाही, त्यामुळे तो "' + message +
+          '" चे उत्तर देऊ शकत नाही. खरी माहिती डॅशबोर्डवर पहा: ' +
+          'दर अंदाज, मंडी भाव, आत्ता विका, आणि पीक गुणवत्ता.'
     };
 
-    var reply = responses[locale] || responses.en;
-
-    return new Promise(function (resolve) {
-      setTimeout(function () {
-        resolve(reply);
-      }, 900);
-    });
+    return Promise.resolve(responses[locale] || responses.en);
   }
 
   /* ── Submit Handler ──────────────────────────────────────────────────── */

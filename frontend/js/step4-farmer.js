@@ -141,7 +141,11 @@ var KL_Step4 = (function () {
     fetch(API_BASE + '/api/commodities').then(function (r) { return r.json(); }).then(function (crops) {
       if (!Array.isArray(crops)) return;
       window.__klCommodities = crops;
-      ['lot-crop', 'mp-commodity', 'cqa-crop-select'].forEach(function (id) {
+      // 'cqa-crop-select' is deliberately NOT filled from the full commodity
+      // list: only four crops have a trained model, and offering all 325
+      // guaranteed that most choices came back "unsupported crop".
+      // crop-quality.js fills it from /api/ml/quality-status instead.
+      ['lot-crop', 'mp-commodity'].forEach(function (id) {
         var el = document.getElementById(id);
         if (!el) return;
         var current = el.value;
@@ -173,7 +177,6 @@ var KL_Step4 = (function () {
         });
       }
       wireFilter('lot-crop-search', 'lot-crop');
-      wireFilter('cqa-crop-search', 'cqa-crop-select');
     }).catch(function () {});
   }
 
