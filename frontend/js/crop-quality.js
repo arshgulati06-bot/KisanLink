@@ -410,6 +410,9 @@ function analyzeCropQuality(imageFile, crop) {
   if (typeof KL_REAL_ASSESS === 'function') {
     return KL_REAL_ASSESS(imageFile, crop);
   }
+  // Only reachable if api.js itself failed to load (network error, blocked
+  // script). The models ARE integrated — see /api/ml/quality-status — so this
+  // says the page script is missing, not that the feature is unbuilt.
   return Promise.resolve({
     _placeholder: true,
     _unavailable: true,
@@ -417,10 +420,11 @@ function analyzeCropQuality(imageFile, crop) {
     grade: null,
     confidence: null,
     indicators: [],
-    reason: 'client_missing',
-    model: { name: 'crop-quality', status: 'not_connected' },
-    message: 'Photo grading could not start on this page. Choose the quality ' +
-             'grade yourself when you list the crop.'
+    reason: 'api_script_not_loaded',
+    model: { name: 'crop-quality', status: 'api_script_not_loaded' },
+    message: 'The page could not load its analysis script, so no photo check ' +
+             'ran. Reload the page, or choose the quality grade yourself when ' +
+             'you list the crop.'
   });
 }
 
