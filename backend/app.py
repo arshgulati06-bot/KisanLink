@@ -772,6 +772,17 @@ def register_routes(app):
             },
             "latest_price": latest_price,
             "latest_actual_date": str(latest_date.date()),
+            # The whole archive's newest date, so the UI can distinguish
+            # "this market stops here" from "the dataset stops here". Without
+            # it a market whose history ends in 2023 looked like the entire
+            # dataset ended in 2023, contradicting the dashboard's own figure.
+            "dataset_latest_date": (_store().get("ingestion_meta") or {})
+                                    .get("latest_date_in_dataset"),
+            "series_is_behind_dataset": bool(
+                (_store().get("ingestion_meta") or {}).get("latest_date_in_dataset")
+                and str(latest_date.date())
+                    < str((_store().get("ingestion_meta") or {}).get("latest_date_in_dataset"))
+            ),
             "context_length": ctx["context_length"],
             "gap_info": ctx.get("gap_info"),
             "n_winsorized": ctx.get("n_winsorized", 0),

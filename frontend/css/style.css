@@ -5,6 +5,22 @@
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
+   0. The hidden attribute must always win
+   --------------------------------------------------------------------------
+   The UA stylesheet's `[hidden] { display: none }` has specificity 0,0,1, so
+   ANY class rule that sets `display` silently defeats `element.hidden = true`.
+   That is how the crop-quality spinner stayed on screen next to a finished
+   result: `.cqa-loading-state { display: flex }` outranked the attribute.
+   An audit found 34 such classes, including the forecast's own idle/loading/
+   error boxes, so this is fixed once here rather than patched per class.
+   Anything carrying `hidden` is meant to be invisible; `!important` is the
+   correct tool for that invariant.
+   -------------------------------------------------------------------------- */
+[hidden] {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
    1. CSS Custom Properties / Design Tokens
    -------------------------------------------------------------------------- */
 :root {

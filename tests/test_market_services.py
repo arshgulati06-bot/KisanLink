@@ -1747,3 +1747,138 @@ class TestQualityRequestRobustness:
         i = src.index("function _onAnalyzeClick")
         body = src[i: i + 2200]
         assert "renderErr" in body
+
+
+# ---------------------------------------------------------------------------
+# 23. the hidden attribute must actually hide
+# ---------------------------------------------------------------------------
+
+class TestHiddenAttributeWins:
+    """
+    `[hidden] { display: none }` in the UA stylesheet has specificity 0,0,1, so
+    any class rule setting `display` defeats `element.hidden = true`. That is
+    how the crop-quality spinner stayed on screen beside a finished result:
+    `.cqa-loading-state { display: flex }` outranked the attribute.
+    """
+
+    def _css(self):
+        import glob, os
+        root = os.path.join(os.path.dirname(__file__), "..", "frontend", "css")
+        if not os.path.isdir(root):
+            pytest.skip("frontend/css not present")
+        out = {}
+        for path in glob.glob(os.path.join(root, "*.css")):
+            with open(path, encoding="utf-8") as fh:
+                out[os.path.basename(path)] = fh.read()
+        return out
+
+    def test_a_global_hidden_rule_exists(self):
+        import re
+        joined = "\n".join(self._css().values())
+        assert re.search(r"\[hidden\]\s*\{[^}]*display\s*:\s*none\s*!important",
+                         joined), (
+            "no global [hidden] rule: element.hidden can be defeated by any "
+            "class that sets display")
+
+    def test_the_rule_is_in_the_first_stylesheet(self):
+        """It must load before the sheets whose classes it has to outrank."""
+        import os, re
+        page = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "pages", "farmer.html")
+        if not os.path.exists(page):
+            pytest.skip("farmer.html not present")
+        with open(page, encoding="utf-8") as fh:
+            order = re.findall(r'href="\.\./css/([a-z-]+\.css)"', fh.read())
+        css = self._css()
+        first_with_rule = next(
+            (name for name in order
+             if re.search(r"\[hidden\]\s*\{[^}]*display\s*:\s*none\s*!important",
+                          css.get(name, ""))),
+            None)
+        assert first_with_rule == order[0], (
+            f"the [hidden] rule should be in {order[0]}, found in {first_with_rule}")
+
+    @pytest.mark.parametrize("cls", [
+        "cqa-loading-state", "cqa-idle-state", "cqa-error-state", "pf-state-box",
+    ])
+    def test_state_boxes_are_covered(self, cls):
+        """These are the state machines that toggle purely via .hidden."""
+        import re
+        joined = "\n".join(self._css().values())
+        assert re.search(r"\." + re.escape(cls) + r"\s*\{[^}]*display", joined), (
+            f".{cls} no longer sets display — update this test")
+        # covered either by its own [hidden] rule or the global one
+        assert (re.search(r"\." + re.escape(cls) + r"\[hidden\]", joined)
+                or re.search(r"\[hidden\]\s*\{[^}]*display\s*:\s*none\s*!important",
+                             joined))
+
+
+# ---------------------------------------------------------------------------
+# 24. Chronos picks the newest usable series, and the UI says whose it is
+# ---------------------------------------------------------------------------
+
+class TestForecastSeriesHonesty:
+    def test_newer_observations_are_never_dropped_for_older_ones(self):
+        """
+        Rule 3: never silently fall back to older data when newer valid data
+        exists for the same series.
+        """
+        import numpy as np
+        from ml.data_loader import _truncate_at_gap
+
+        old_dates = pd.date_range("2022-02-05", "2023-02-25", freq="3D")
+        for newer_n in (40, 200):
+            new_dates = pd.date_range("2026-01-01", periods=newer_n, freq="D")
+            dates = old_dates.append(new_dates)
+            prices = np.concatenate([np.full(len(old_dates), 2000.0),
+                                     np.full(newer_n, 3000.0)])
+            _p, d, info = _truncate_at_gap(prices, dates, config.MAX_GAP_DAYS, 30)
+            assert d[-1].year == 2026, (
+                f"a {newer_n}-observation 2026 segment was discarded for older data")
+            assert info and "2026-01-01" in info
+
+    def test_a_short_newer_segment_is_kept_not_discarded(self):
+        """
+        With too few post-gap points to stand alone, the full series is kept —
+        the newer observations are still present, never thrown away.
+        """
+        import numpy as np
+        from ml.data_loader import _truncate_at_gap
+
+        old_dates = pd.date_range("2022-02-05", "2023-02-25", freq="3D")
+        new_dates = pd.date_range("2026-01-01", periods=5, freq="D")
+        dates = old_dates.append(new_dates)
+        prices = np.concatenate([np.full(len(old_dates), 2000.0), np.full(5, 3000.0)])
+        _p, d, info = _truncate_at_gap(prices, dates, config.MAX_GAP_DAYS, 30)
+        assert d[-1].year == 2026, "newer observations were dropped"
+        assert info and "fewer than" in info, "the fallback must explain itself"
+
+    def test_forecast_reports_both_the_series_and_dataset_end_dates(self, client):
+        """
+        A market whose history stops in 2023 read as though the whole archive
+        stopped in 2023, contradicting the dataset figure on the dashboard.
+        """
+        res = client.post("/api/forecast", json={
+            "commodity": "Onion", "state": "Maharashtra",
+            "district": "Nashik", "market": "Pimpalgaon", "days": 7,
+        })
+        if res.status_code != 200 or not res.get_json().get("success"):
+            pytest.skip("fixture frame has no forecastable Pimpalgaon series")
+        body = res.get_json()
+        assert "dataset_latest_date" in body
+        assert "series_is_behind_dataset" in body
+        assert isinstance(body["series_is_behind_dataset"], bool)
+        assert body["date_range"]["end"] == body["latest_actual_date"]
+
+    def test_forecast_ui_attributes_the_range_to_the_market(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "price-forecast.js")
+        if not os.path.exists(path):
+            pytest.skip("price-forecast.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "Data available for" in src, "the range is still labelled generically"
+        assert "series_is_behind_dataset" in src, (
+            "the UI does not explain a market whose history ends early")
+        assert "Date range: '" not in src, "the ambiguous label is still present"

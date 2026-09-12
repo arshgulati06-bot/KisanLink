@@ -376,12 +376,31 @@ var KL_PriceForecast = (function () {
         ? '<br><strong>Latest actual in dataset: ₹' + _fmt(data.latest_price) + '/QTL</strong> on ' + _esc(data.date_range.end) +
           (data.confidence && data.confidence.stale_data ? ' <span style="color:#D97706;">(not today&rsquo;s live quote — data is ' + data.confidence.days_since_last_record + ' days old)</span>' : '')
         : '';
+      // Say WHOSE date range this is. Labelled just "Date range", a market
+      // whose history stops in 2023 read as though the entire mandi archive
+      // stopped in 2023 — flatly contradicting the dataset figure shown
+      // elsewhere on the dashboard.
+      var where = _esc(data.market || 'this market');
       var lines = '<span style="color:var(--color-slate-400);font-size:0.68rem;">Source: ' + _esc(data.data_source || 'Historical mandi CSVs') + '</span>' +
         latestPrice +
-        '<br>Historical records: <strong>' + _esc(data.historical_records) + '</strong>' +
-        (data.date_range ? '<br>Date range: ' + _esc(data.date_range.start) + ' – ' + _esc(data.date_range.end) : '') +
+        '<br>Records for ' + where + ': <strong>' + _esc(data.historical_records) + '</strong>' +
+        (data.date_range
+          ? '<br>Data available for ' + where + ': ' +
+            _esc(data.date_range.start) + ' – <strong>' + _esc(data.date_range.end) + '</strong>'
+          : '') +
         (data.context_length ? '<br>Forecast context: ' + data.context_length + ' observations' : '') +
         (data.confidence ? '<br>Confidence: <strong>' + _esc(data.confidence.label) + '</strong>' : '');
+
+      // When this market's history ends earlier than the archive as a whole,
+      // state both dates rather than letting one contradict the other.
+      if (data.series_is_behind_dataset && data.dataset_latest_date) {
+        lines += '<br><span style="color:#D97706;font-size:0.68rem;">' +
+          'Latest available data for this selected market is <strong>' +
+          _esc(data.date_range.end) + '</strong>. Other markets in the archive ' +
+          'have data up to ' + _esc(data.dataset_latest_date) + ' — this market ' +
+          'simply has no newer records, so the forecast starts from its own ' +
+          'last observation.</span>';
+      }
 
       if (data.gap_info) {
         lines += '<br><span style="color:#D97706;font-size:0.68rem;">⚠ ' + data.gap_info + '</span>';
