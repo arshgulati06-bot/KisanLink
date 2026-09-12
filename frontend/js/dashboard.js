@@ -731,15 +731,25 @@ function initCreateLotModal() {
     const formData = new FormData(form);
 
     const commodity = formData.get('crop');
-    const quantity  = formData.get('quantity');
     const location  = formData.get('location');
 
-    if (!commodity || !quantity || !location) {
+    if (!commodity || !location) {
       if (typeof showToast === 'function') {
-        showToast('Please fill in Crop, Quantity, and Location.', 'warning');
+        showToast('Please choose a crop and enter your farm / pickup location.', 'warning');
       }
       return;
     }
+    // Quantity and price are typed text fields; validate with plain messages.
+    const quantity = window.KLNumeric ? window.KLNumeric.read('lot-quantity')
+                                      : Number(formData.get('quantity'));
+    if (quantity == null || !isFinite(quantity) || quantity <= 0) {
+      if (typeof showToast === 'function') {
+        showToast('Please enter how many quintals you have, for example 25.', 'warning');
+      }
+      return;
+    }
+    const expectedPrice = window.KLNumeric ? window.KLNumeric.read('lot-price')
+                                           : Number(formData.get('expectedPrice'));
 
     // Recommendation context carried over from "Proceed to Sell", if any.
     const recoMarket = formData.get('market') || '';
@@ -766,7 +776,7 @@ function initCreateLotModal() {
       state:         formData.get('state') || '',
       market:        recoMarket,
       harvest_date:  formData.get('harvestDate') || '',
-      price_per_qtl: Number(formData.get('expectedPrice')) || 0,
+      price_per_qtl: Number(expectedPrice) || 0,
     };
     if (recoNotes) lotPayload.notes = recoNotes;
 

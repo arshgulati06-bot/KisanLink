@@ -411,18 +411,20 @@ function analyzeCropQuality(imageFile, crop) {
      }).then(res => res.json());
   ────────────────────────────────────────────────────────────────────── */
 
-  return new Promise(function(resolve) {
-    setTimeout(function() {
-      resolve({
-        _placeholder: true,
-        crop:         crop || 'Onion',
-        grade:        null,
-        confidence:   null,
-        indicators:   [],
-        model:        { name: 'CropQualityNet-v1', status: 'not_connected' },
-        message:      'Quality assessment will appear when the ML service is connected.'
-      });
-    }, 1500);
+  // No model or scoring service is wired up, so there is nothing to wait for.
+  // Returning immediately (rather than after a staged pause) keeps the UI from
+  // implying that an analysis ran.
+  return Promise.resolve({
+    _placeholder: true,
+    _unavailable: true,
+    crop:         crop || '',
+    grade:        null,
+    confidence:   null,
+    indicators:   [],
+    model:        { name: 'crop-quality', status: 'not_connected' },
+    message:      'Automatic photo grading is not available yet. Choose the ' +
+                  'quality grade yourself when you list the crop — buyers see ' +
+                  'the grade you set.'
   });
 }
 
@@ -433,7 +435,15 @@ function _bindPipelineConnector() {
   var btn = document.getElementById(CQA.ids.applyPipelineBtn);
   if (btn) {
     btn.addEventListener('click', function () {
-      applyQualityToDecisionPipeline(CQA.state.selectedCrop, CQA.state.assessedGrade || 'Grade A (Demo)');
+      // Only a grade that actually came from an assessment may enter the
+      // decision pipeline. No default is substituted.
+      if (!CQA.state.assessedGrade) {
+        if (typeof showToast === 'function') {
+          showToast('No grade was assigned. Choose the quality grade yourself in Create Sale Lot.', 'warning');
+        }
+        return;
+      }
+      applyQualityToDecisionPipeline(CQA.state.selectedCrop, CQA.state.assessedGrade);
     });
   }
 }
@@ -479,12 +489,23 @@ function _showResultState(result) {
   var pipelineBtn= document.getElementById(CQA.ids.applyPipelineBtn);
 
   if (result._placeholder) {
-    if (gradeEl)  gradeEl.innerHTML  = '<span class="cqa-placeholder-chip">Awaiting ML Connection</span>';
-    if (confEl)   confEl.innerHTML   = '<span class="cqa-placeholder-dash">&mdash;</span>';
-    if (indEl)    indEl.innerHTML    = '<li class="cqa-placeholder-item">Quality assessment will appear when the ML service is connected.</li>';
-    if (statusEl) statusEl.textContent = 'ML service not yet connected — UI is integration-ready.';
-    if (pipelineBtn) pipelineBtn.hidden = false;
-    CQA.state.assessedGrade = 'Grade A (Demo)';
+    if (gradeEl) {
+      gradeEl.innerHTML = '<span class="cqa-placeholder-chip">Not available</span>';
+    }
+    if (confEl) confEl.innerHTML = '<span class="cqa-placeholder-dash">&mdash;</span>';
+    if (indEl) {
+      indEl.innerHTML =
+        '<li class="cqa-placeholder-item">Automatic photo grading is not connected ' +
+        'on this server, so no grade has been assigned to your photo.</li>' +
+        '<li class="cqa-placeholder-item">You can still sell: pick the quality grade ' +
+        'yourself in <strong>Create Sale Lot</strong>. Buyers see the grade you set.</li>';
+    }
+    if (statusEl) {
+      statusEl.textContent = 'Photo grading unavailable — no analysis was performed.';
+    }
+    // Never carry a fabricated grade into the sale pipeline; the farmer sets it.
+    CQA.state.assessedGrade = null;
+    if (pipelineBtn) pipelineBtn.hidden = true;
     _setResultState('result');
     return;
   }

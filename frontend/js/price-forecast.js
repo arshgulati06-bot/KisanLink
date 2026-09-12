@@ -176,7 +176,7 @@ var KL_PriceForecast = (function () {
   }
 
   function _wireCropSearch() {
-    var search = document.getElementById('pf-crop-search');
+    var search = document.getElementById('pf-crop-search');  // removed: combobox now provides search
     var select = document.getElementById(IDS.cropSelect);
     if (!search || !select || search.dataset.wired) return;
     search.dataset.wired = '1';

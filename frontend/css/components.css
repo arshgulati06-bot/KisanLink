@@ -1323,3 +1323,100 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ── Searchable combobox (KLCombobox) ───────────────────────────────────── */
+.kl-cb { position: relative; }
+
+/* The original <select> stays in the DOM as the value source for existing
+   code, but is removed from the visual and tab order. */
+.kl-cb .kl-cb-source {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.kl-cb-input { width: 100%; padding-right: 30px; }
+.kl-cb-input:disabled { background: var(--color-slate-50, #f8fafc); cursor: not-allowed; }
+
+.kl-cb-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-slate-400, #94a3b8);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.kl-cb-clear:hover { background: var(--color-slate-100, #f1f5f9); color: var(--color-slate-700, #334155); }
+.kl-cb-clear[hidden] { display: none; }
+
+.kl-cb-list {
+  position: absolute;
+  z-index: 1200;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+.kl-cb-list[hidden] { display: none; }
+
+.kl-cb-opt {
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--color-slate-800, #1e293b);
+  cursor: pointer;
+}
+.kl-cb-opt:hover,
+.kl-cb-opt.is-active { background: var(--color-primary-50, #f0fdf4); }
+.kl-cb-opt mark {
+  background: transparent;
+  color: var(--color-primary-700, #15803d);
+  font-weight: 700;
+}
+
+.kl-cb-empty {
+  padding: 10px;
+  font-size: 0.82rem;
+  color: var(--color-slate-500, #64748b);
+}
+
+/* Comfortable touch targets on phones. */
+@media (max-width: 640px) {
+  .kl-cb-opt { padding: 12px 10px; font-size: 0.95rem; }
+  .kl-cb-list { max-height: 50vh; }
+}
+
+/* ── Typeable numeric fields (KLNumeric) ────────────────────────────────── */
+.kl-qty { font-variant-numeric: tabular-nums; }
+.kl-qty.is-invalid {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+.kl-qty-error {
+  margin: 4px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: #b91c1c;
+}
+.kl-qty-error[hidden] { display: none; }

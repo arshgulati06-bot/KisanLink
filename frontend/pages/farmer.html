@@ -300,9 +300,89 @@
              running on the synthetic development fixture. -->
         <div id="kl-data-banner" class="kl-data-banner" role="status" hidden></div>
 
+        <!-- =====================================================================
+             WEATHER STRIP — first thing a farmer sees. Loads from the account's
+             district; browser GPS is only requested if "Use my location" is
+             clicked. Never blocks the rest of the dashboard.
+             ===================================================================== -->
+        <section id="wx-strip" class="wx-strip" aria-label="Weather where you are">
+          <div class="wx-strip-main">
+            <div class="wx-strip-now">
+              <span id="wx-strip-icon" class="wx-strip-icon" aria-hidden="true">⏳</span>
+              <div>
+                <div id="wx-strip-temp" class="wx-strip-temp">—</div>
+                <div id="wx-strip-cond" class="wx-strip-cond">Loading weather…</div>
+              </div>
+            </div>
+            <dl class="wx-strip-stats">
+              <div><dt>Today</dt><dd id="wx-strip-range">—</dd></div>
+              <div><dt>💧 Humidity</dt><dd id="wx-strip-hum">—</dd></div>
+              <div><dt>🌧 Rain chance</dt><dd id="wx-strip-rain">—</dd></div>
+              <div><dt>💨 Wind</dt><dd id="wx-strip-wind">—</dd></div>
+            </dl>
+          </div>
+
+          <div id="wx-strip-days" class="wx-strip-days" hidden></div>
+
+          <p id="wx-strip-tip" class="wx-strip-tip" hidden></p>
+
+          <div class="wx-strip-foot">
+            <span id="wx-strip-place" class="wx-strip-place">—</span>
+            <span class="wx-strip-actions">
+              <button type="button" id="wx-strip-gps" class="btn btn-ghost btn-sm">Use my location</button>
+              <a href="#weather-section" class="btn btn-ghost btn-sm sidebar-link" data-wx-more>Full forecast</a>
+            </span>
+          </div>
+          <p id="wx-strip-status" class="wx-strip-status" hidden></p>
+        </section>
+
         <!-- ===================================================================
              0. FARMER QUICK ACTIONS BANNER (Step 5)
              =================================================================== -->
+        <!-- =====================================================================
+             WHAT THIS PRODUCT IS FOR. Stated plainly, above the analytics, so a
+             farmer sees the point of the page before any chart or table.
+             ===================================================================== -->
+        <section class="kl-hero" aria-labelledby="kl-hero-title">
+          <div class="kl-hero-copy">
+            <h2 id="kl-hero-title">Sell your crop directly. No broker in between.</h2>
+            <p>
+              See what each nearby mandi and buyer will actually pay you after
+              transport and charges — then deal with the buyer yourself.
+            </p>
+          </div>
+          <div class="kl-hero-actions">
+            <button type="button" class="kl-hero-btn kl-hero-btn--primary" data-qa-action="sellNow">
+              <span class="kl-hero-ico" aria-hidden="true">🌾</span>
+              <span class="kl-hero-txt">
+                <strong>Sell my crop</strong>
+                <small>Compare mandis by what you keep</small>
+              </span>
+            </button>
+            <button type="button" class="kl-hero-btn" data-qa-action="findBuyers">
+              <span class="kl-hero-ico" aria-hidden="true">🤝</span>
+              <span class="kl-hero-txt">
+                <strong>Find buyers</strong>
+                <small>Offer straight to a buyer</small>
+              </span>
+            </button>
+            <a href="#market-prices-section" class="kl-hero-btn sidebar-link">
+              <span class="kl-hero-ico" aria-hidden="true">💰</span>
+              <span class="kl-hero-txt">
+                <strong>Today&rsquo;s prices</strong>
+                <small>Mandi rates near you</small>
+              </span>
+            </a>
+            <a href="#lots-section" class="kl-hero-btn sidebar-link">
+              <span class="kl-hero-ico" aria-hidden="true">📋</span>
+              <span class="kl-hero-txt">
+                <strong>My lots &amp; offers</strong>
+                <small>What you have listed</small>
+              </span>
+            </a>
+          </div>
+        </section>
+
         <div class="farmer-qa-banner" role="region" aria-label="Quick Farmer Actions">
           <div class="farmer-qa-header">
             <span class="farmer-qa-title" data-i18n="qa.title">
@@ -664,7 +744,7 @@
             <div class="pf-controls" style="flex-wrap:wrap;margin-bottom:var(--space-3);">
               <div class="form-group" style="flex:1;min-width:140px;">
                 <label class="form-label" for="sn-qty">Quantity (QTL)</label>
-                <input class="form-input" id="sn-qty" type="number" min="0.01" step="0.01" value="10" inputmode="decimal">
+                <input class="form-input kl-qty" id="sn-qty" type="text" inputmode="decimal" autocomplete="off" value="10" required data-label="Quantity" aria-label="Quantity in quintals" placeholder="e.g. 25">
               </div>
               <div style="align-self:flex-end;display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" id="sn-gps-btn" class="btn btn-sm">Use My Current Location</button>
@@ -694,9 +774,7 @@
           <!-- Cascading Selectors: Crop → State → District → Market -->
           <div class="pf-controls" style="flex-wrap:wrap;">
             <div class="form-group" style="flex:1;min-width:140px;">
-              <label class="form-label" for="pf-crop-search">Search crop</label>
-              <input class="form-input" id="pf-crop-search" type="search" placeholder="Type onion, tomato…" autocomplete="off">
-            </div>
+              </div>
             <div class="form-group" style="flex:1;min-width:140px;">
               <label class="form-label" for="pf-crop-select">Commodity / Crop</label>
               <select class="form-input" id="pf-crop-select">
@@ -982,8 +1060,6 @@
 
               <!-- Crop Selector -->
               <div class="form-group" style="margin-bottom: var(--space-3);">
-                <label class="form-label" for="cqa-crop-search" style="font-size: var(--text-xs); font-weight: var(--weight-bold);">Search crop</label>
-                <input class="form-input" id="cqa-crop-search" type="search" placeholder="Type onion, tomato…" style="margin-bottom:6px;font-size:var(--text-xs);">
                 <label class="form-label" for="cqa-crop-select" style="font-size: var(--text-xs); font-weight: var(--weight-bold);">Selected Crop for Quality Check</label>
                 <select class="form-input" id="cqa-crop-select" style="font-size: var(--text-xs);">
                   <option value="">Loading commodities…</option>
@@ -1323,13 +1399,18 @@
       </div>
     </div>
     <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
-      <input type="text" id="mp-commodity-search" class="form-input" placeholder="Search crop (Onion, Tomato…)" style="max-width:220px;">
-      <select id="mp-commodity" class="form-select" style="max-width:220px;">
-        <option value="">Select Commodity…</option>
-      </select>
-      <input type="text" id="mp-state" class="form-input" placeholder="State" style="max-width:150px;">
-      <input type="text" id="mp-district" class="form-input" placeholder="District" style="max-width:150px;">
-      <input type="text" id="mp-market" class="form-input" placeholder="Market (optional)" style="max-width:150px;">
+      <div style="min-width:200px;">
+        <select id="mp-commodity" class="form-select"><option value="">Select Commodity…</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-state" class="form-select"><option value="">All states</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-district" class="form-select"><option value="">All districts</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-market" class="form-select"><option value="">All markets</option></select>
+      </div>
       <button type="button" class="btn btn-primary btn-sm" onclick="klLoadMarketPrices()">Search</button>
     </div>
     <div id="mp-label" style="font-size:0.75rem;color:var(--color-slate-500);margin-bottom:8px;"></div>
@@ -1498,13 +1579,13 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="offer-quantity">Quantity (QTL) *</label>
-            <input type="number" class="form-input" id="offer-quantity" name="quantity_qtl"
-                   min="0.01" step="0.01" required inputmode="decimal">
+            <input type="text" class="form-input kl-qty" id="offer-quantity" name="quantity_qtl"
+                   inputmode="decimal" autocomplete="off" required placeholder="e.g. 25">
           </div>
           <div class="form-group">
             <label class="form-label" for="offer-price">Your asking price (₹/QTL) *</label>
-            <input type="number" class="form-input" id="offer-price" name="price_per_qtl"
-                   min="0.01" step="0.01" required inputmode="decimal">
+            <input type="text" class="form-input kl-qty" id="offer-price" name="price_per_qtl"
+                   inputmode="decimal" autocomplete="off" required placeholder="e.g. 2000">
           </div>
         </div>
 
@@ -1549,8 +1630,6 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label" for="lot-crop-search">Search crop</label>
-            <input class="form-input" id="lot-crop-search" type="search" placeholder="Type to filter commodities" autocomplete="off" style="margin-bottom:6px;">
             <label class="form-label" for="lot-crop">Crop Commodity *</label>
             <select class="form-select" id="lot-crop" name="crop" required>
               <option value="">Loading commodities…</option>
@@ -1566,7 +1645,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-quantity">Available Quantity *</label>
-            <input type="number" class="form-input" id="lot-quantity" name="quantity" min="0.01" step="0.01" placeholder="e.g. 10" required value="10" inputmode="decimal">
+            <input type="text" class="form-input kl-qty" id="lot-quantity" name="quantity" inputmode="decimal" autocomplete="off" placeholder="e.g. 25" required value="10" aria-label="Available quantity">
           </div>
 
           <div class="form-group">
@@ -1608,7 +1687,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-price">Expected Base Price (₹/QTL)</label>
-            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000" min="0" step="0.01" inputmode="decimal">
+            <input type="text" class="form-input kl-qty" id="lot-price" name="expectedPrice" placeholder="e.g. 2000" inputmode="decimal" autocomplete="off" aria-label="Expected base price per quintal">
           </div>
           <div class="form-group">
             <label class="form-label" for="lot-district">District</label>
@@ -1856,21 +1935,113 @@
     }
   };
 
-  (function() {
-    var search = document.getElementById('mp-commodity-search');
-    var select = document.getElementById('mp-commodity');
-    if (!search || !select) return;
-    search.addEventListener('input', function() {
-      var q = search.value.toLowerCase();
-      var crops = window.__klCommodities || [];
-      var current = select.value;
-      select.innerHTML = '<option value="">Select commodity…</option>';
-      crops.filter(function(c) { return !q || String(c).toLowerCase().indexOf(q) >= 0; }).forEach(function(c) {
-        var opt = document.createElement('option');
-        opt.value = c; opt.textContent = c;
-        select.appendChild(opt);
+  // ========================================================================
+  // Mandi Prices filters: searchable crop -> state -> district -> market.
+  // Every list comes from the dataset via the API; nothing is hardcoded.
+  // ========================================================================
+  (function () {
+    var cropSel = document.getElementById('mp-commodity');
+    var stateSel = document.getElementById('mp-district') && document.getElementById('mp-state');
+    var distSel = document.getElementById('mp-district');
+    var mktSel = document.getElementById('mp-market');
+    if (!cropSel || !stateSel || !distSel || !mktSel) return;
+
+    function fill(sel, values, allLabel) {
+      var current = sel.value;
+      sel.innerHTML = '<option value="">' + allLabel + '</option>';
+      (values || []).forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v; o.textContent = v;
+        sel.appendChild(o);
       });
-      if (current) select.value = current;
+      if (current && values && values.indexOf(current) >= 0) sel.value = current;
+      else sel.value = '';
+    }
+
+    function api(path) {
+      return window.apiClient.get(path).then(function (r) {
+        return Array.isArray(r.data) ? r.data : [];
+      }).catch(function () { return []; });
+    }
+
+    function loadStates() {
+      var c = cropSel.value;
+      if (!c) { fill(stateSel, [], 'Select a crop first'); fill(distSel, [], 'Select a state first');
+                fill(mktSel, [], 'Select a district first'); return; }
+      fill(stateSel, [], 'Loading states…');
+      api('/states?commodity=' + encodeURIComponent(c)).then(function (v) {
+        fill(stateSel, v, 'All states');
+        loadDistricts();
+      });
+    }
+
+    function loadDistricts() {
+      var c = cropSel.value, st = stateSel.value;
+      if (!c || !st) { fill(distSel, [], 'Select a state first');
+                       fill(mktSel, [], 'Select a district first'); return; }
+      fill(distSel, [], 'Loading districts…');
+      api('/districts?commodity=' + encodeURIComponent(c) + '&state=' + encodeURIComponent(st))
+        .then(function (v) { fill(distSel, v, 'All districts'); loadMarkets(); });
+    }
+
+    function loadMarkets() {
+      var c = cropSel.value, st = stateSel.value, d = distSel.value;
+      if (!c || !st || !d) { fill(mktSel, [], 'Select a district first'); return; }
+      fill(mktSel, [], 'Loading markets…');
+      api('/markets?commodity=' + encodeURIComponent(c) + '&state=' + encodeURIComponent(st) +
+          '&district=' + encodeURIComponent(d))
+        .then(function (v) { fill(mktSel, v, 'All markets'); });
+    }
+
+    cropSel.addEventListener('change', loadStates);
+    stateSel.addEventListener('change', loadDistricts);
+    distSel.addEventListener('change', loadMarkets);
+
+    function attachAll() {
+      if (!window.KLCombobox) return;
+      KLCombobox.attach('mp-commodity', { label: 'Crop', placeholder: 'Type a crop, e.g. Onion',
+                                          emptyHint: 'Loading crops…' });
+      KLCombobox.attach('mp-state', { label: 'State', placeholder: 'Type a state, e.g. Maharashtra',
+                                      emptyHint: 'Choose a crop first' });
+      KLCombobox.attach('mp-district', { label: 'District', placeholder: 'Type a district',
+                                         emptyHint: 'Choose a state first' });
+      KLCombobox.attach('mp-market', { label: 'Market', placeholder: 'Type a mandi name',
+                                       emptyHint: 'Choose a district first' });
+      // Price Outlook uses the same treatment.
+      KLCombobox.attach('pf-crop-select', { label: 'Crop', placeholder: 'Type a crop, e.g. Onion',
+                                            emptyHint: 'Loading crops…' });
+      KLCombobox.attach('pf-state-select', { label: 'State', placeholder: 'Type a state',
+                                             emptyHint: 'Choose a crop first' });
+      KLCombobox.attach('pf-district-select', { label: 'District', placeholder: 'Type a district',
+                                                emptyHint: 'Choose a state first' });
+      KLCombobox.attach('pf-market-select', { label: 'Market', placeholder: 'Type a mandi name',
+                                              emptyHint: 'Choose a district first' });
+      KLCombobox.attach('lot-crop', { label: 'Crop', placeholder: 'Type a crop',
+                                      emptyHint: 'Loading crops…' });
+      KLCombobox.attach('cqa-crop-select', { label: 'Crop', placeholder: 'Type a crop',
+                                             emptyHint: 'Loading crops…' });
+    }
+
+    // The selects are filled asynchronously; attach once they exist and retry
+    // briefly for the ones populated after first paint.
+    var tries = 0;
+    (function poll() {
+      attachAll();
+      if (++tries < 12) setTimeout(poll, 700);
+    })();
+
+    // Enter anywhere in the filter row runs the search.
+    ['mp-commodity', 'mp-state', 'mp-district', 'mp-market'].forEach(function (id) {
+      var host = document.getElementById(id);
+      if (!host || !host.parentNode) return;
+      host.parentNode.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.classList.contains('kl-cb-input')) {
+          var list = e.target.parentNode.querySelector('.kl-cb-list');
+          if (list && !list.hidden) return;   // let the combobox take Enter first
+          e.preventDefault();
+          window.klLoadMarketPrices();
+        }
+      });
     });
   })();
 
@@ -2164,6 +2335,12 @@
   <!-- Scripts (load order matters) -->
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
+  <!-- Searchable combobox: upgrades the selects below in place -->
+  <script src="../js/combobox.js"></script>
+  <!-- Typeable numeric fields with plain-language validation -->
+  <script src="../js/numeric-input.js"></script>
+  <!-- Compact weather summary at the top of the dashboard -->
+  <script src="../js/weather-strip.js" defer></script>
   <script src="../js/dashboard.js"></script>
   <!-- Step 3: Crop Quality Assessment -->
   <script src="../js/crop-quality.js"></script>
@@ -2221,7 +2398,16 @@
           if (!data || !data.success) return;
           var u = data.user || {};
           var profile = data.profile || {};
-          try { localStorage.setItem('kisanlink_user', JSON.stringify(u)); } catch(e) {}
+          // Cache the profile district alongside the user so features that
+          // need a location (weather) do not have to re-fetch or ask for GPS.
+          try {
+            var cacheable = Object.assign({}, u, {
+              district: profile.district || u.district || '',
+              state: profile.state || u.state || '',
+            });
+            localStorage.setItem('kisanlink_user', JSON.stringify(cacheable));
+            document.dispatchEvent(new CustomEvent('kl:profileReady', { detail: cacheable }));
+          } catch(e) {}
           setProfileUI(u.name, u.role, profile.district);
           // Update profile contact if element present
           var contactEl = document.getElementById('profile-contact');

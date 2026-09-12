@@ -15,6 +15,7 @@ No hardcoded market prices or forecast values.
 import os
 import sys
 import threading
+import time
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if _PROJECT_ROOT not in sys.path:
@@ -274,6 +275,22 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     _init_database()
     register_routes(app)
     return app
+
+
+class _WxBytes:
+    """Adapts already-read bytes to the `with ... as resp: resp.read()` shape."""
+
+    def __init__(self, raw):
+        self._raw = raw
+
+    def read(self):
+        return self._raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
 
 
 def _create_farmer_offer(user_id, data):
@@ -1578,28 +1595,40 @@ def register_routes(app):
             precision = "browser_gps"
         elif district or state:
             precision = "district_geocode"
-            try:
-                query = f"{district}, {state}, India".strip(", ")
-                geo_url = (
-                    "https://geocoding-api.open-meteo.com/v1/search?"
-                    + urllib.parse.urlencode({"name": query, "count": 1, "language": "en", "format": "json"})
-                )
-                with urllib.request.urlopen(geo_url, timeout=5) as resp:
-                    geo = _json.loads(resp.read())
-                results = geo.get("results", [])
-                if results:
-                    lat = results[0]["latitude"]
-                    lon = results[0]["longitude"]
-                else:
-                    return _public_error(
-                        "Could not geocode that district/state. Check the spelling or provide GPS coordinates.",
-                        422,
+            # Prefer the published district centroids shipped with the project.
+            # They need no network call, so weather keeps working when the
+            # external geocoder is slow, rate-limited, or unreachable.
+            verified = verified_district_coords(state, district)
+            if verified:
+                lat, lon, _src = verified
+                precision = "published_district_centroid"
+            else:
+                try:
+                    query = f"{district}, {state}, India".strip(", ")
+                    geo_url = (
+                        "https://geocoding-api.open-meteo.com/v1/search?"
+                        + urllib.parse.urlencode({"name": query, "count": 1, "language": "en", "format": "json"})
                     )
-            except Exception:
-                return jsonify({
-                    "success": False,
-                    "error": "Weather geocoding unavailable. Enter district and state, or use GPS.",
-                }), 503
+                    with urllib.request.urlopen(geo_url, timeout=8) as resp:
+                        geo = _json.loads(resp.read())
+                    results = geo.get("results", [])
+                    if results:
+                        lat = results[0]["latitude"]
+                        lon = results[0]["longitude"]
+                    else:
+                        return _public_error(
+                            "Could not find that district. Check the spelling, or use your location.",
+                            422,
+                        )
+                except Exception as exc:
+                    print(f"[weather] geocode failed for {district!r},{state!r}: {exc}")
+                    return jsonify({
+                        "success": False,
+                        "error": (
+                            "Could not look up that district right now. "
+                            "Try again, or tap \"Use my location\"."
+                        ),
+                    }), 503
         else:
             return _public_error(
                 "Provide lat and lon, or district and state. Weather is not guessed from a default city.",
@@ -1618,7 +1647,21 @@ def register_routes(app):
                     "forecast_days": 5,
                 })
             )
-            with urllib.request.urlopen(wx_url, timeout=8) as resp:
+            # One short retry: the upstream occasionally drops a connection
+            # under concurrent dashboard loads, and a blank weather card is a
+            # worse answer than waiting another second.
+            _wx_raw = None
+            for _attempt in range(2):
+                try:
+                    with urllib.request.urlopen(wx_url, timeout=12) as _r:
+                        _wx_raw = _r.read()
+                    break
+                except Exception as _exc:
+                    if _attempt == 1:
+                        raise
+                    print(f"[weather] upstream attempt 1 failed ({_exc}); retrying")
+                    time.sleep(0.8)
+            with _WxBytes(_wx_raw) as resp:
                 wx = _json.loads(resp.read())
 
             current = wx.get("current", {})

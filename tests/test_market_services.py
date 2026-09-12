@@ -838,3 +838,55 @@ class TestFarmerOffers:
 
     def test_anonymous_cannot_offer(self, client):
         assert client.post("/api/offers", json={"requirement_id": 1, "lot_id": 1}).status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# 12. weather: local centroids, honest failures, no invented readings
+# ---------------------------------------------------------------------------
+
+class TestWeatherLocation:
+    def test_known_district_needs_no_external_geocoder(self, client, monkeypatch):
+        """
+        Nashik is in the published centroid table, so the district lookup must
+        not depend on the external geocoder being reachable.
+        """
+        import urllib.request
+
+        def _no_network(*a, **k):
+            raise OSError("network blocked")
+
+        # app.py imports urllib inside the handler, so patch it at the source.
+        monkeypatch.setattr(urllib.request, "urlopen", _no_network)
+        res = client.get("/api/weather?district=Nashik&state=Maharashtra")
+        body = res.get_json()
+        # The forecast fetch still fails (no network), but it must fail *after*
+        # resolving the district locally — never with a geocoding error.
+        assert body["success"] is False
+        assert "district" not in body.get("error", "").lower()
+        assert "geocod" not in body.get("error", "").lower()
+
+    def test_weather_requires_an_explicit_location(self, client):
+        res = client.get("/api/weather")
+        assert res.status_code == 400
+        assert "not guessed" in res.get_json()["error"].lower()
+
+    def test_bad_coordinates_rejected(self, client):
+        assert client.get("/api/weather?lat=999&lon=73").status_code == 400
+
+    def test_failure_never_invents_a_reading(self, client):
+        # TESTING=True blocks outbound HTTP, so this always takes the fail path.
+        body = client.get("/api/weather?lat=19.99&lon=73.79").get_json()
+        if not body.get("success"):
+            assert "current" not in body
+            assert "forecast" not in body
+            assert "temperature_c" not in json.dumps(body)
+
+
+class TestCropQualityHonesty:
+    """The photo grader is not connected; nothing may imply that it ran."""
+
+    def test_no_backend_endpoint_claims_to_grade_photos(self, client):
+        # There is no quality-assessment route, so the UI must not be told one
+        # exists. A 404/405 here is the correct, honest answer.
+        res = client.post("/api/ml/quality-assessment", data={})
+        assert res.status_code in (404, 405)

@@ -2639,3 +2639,186 @@
   .ba-breakdown { padding: var(--space-4, 16px); }
   .ba-breakdown-table { font-size: 0.8rem; }
 }
+
+/* ── Weather strip (top of farmer dashboard) ────────────────────────────── */
+.wx-strip {
+  margin: 0 0 var(--space-5, 20px);
+  padding: 16px 18px;
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f0f9ff 0%, #f8fafc 65%);
+}
+
+.wx-strip-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.wx-strip-now { display: flex; align-items: center; gap: 14px; }
+.wx-strip-icon { font-size: 2.6rem; line-height: 1; }
+.wx-strip-temp {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-slate-900, #0f172a);
+  font-variant-numeric: tabular-nums;
+}
+.wx-strip-cond { font-size: 0.9rem; color: var(--color-slate-600, #475569); }
+
+.wx-strip-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin: 0;
+}
+.wx-strip-stats div { min-width: 84px; }
+.wx-strip-stats dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-slate-500, #64748b);
+}
+.wx-strip-stats dd {
+  margin: 2px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-slate-800, #1e293b);
+  font-variant-numeric: tabular-nums;
+}
+
+.wx-strip-days {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid #bae6fd;
+}
+.wx-strip-days[hidden] { display: none; }
+.wx-strip-day {
+  flex: 1 1 110px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  text-align: center;
+}
+.wx-strip-day .d-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-slate-500, #64748b);
+}
+.wx-strip-day .d-icon { font-size: 1.3rem; line-height: 1.3; }
+.wx-strip-day .d-temp {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-slate-800, #1e293b);
+  font-variant-numeric: tabular-nums;
+}
+.wx-strip-day .d-rain { font-size: 0.7rem; color: #0369a1; }
+
+.wx-strip-tip {
+  margin: 12px 0 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: #fff;
+  border-left: 3px solid #0ea5e9;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--color-slate-700, #334155);
+}
+.wx-strip-tip[hidden] { display: none; }
+
+.wx-strip-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.wx-strip-place { font-size: 0.8rem; color: var(--color-slate-600, #475569); }
+.wx-strip-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.wx-strip-status {
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--color-slate-500, #64748b);
+}
+.wx-strip-status[hidden] { display: none; }
+.wx-strip-status.is-error { color: #b45309; }
+
+@media (max-width: 640px) {
+  .wx-strip-main { gap: 12px; }
+  .wx-strip-stats { gap: 14px; }
+  .wx-strip-temp { font-size: 1.7rem; }
+  .wx-strip-icon { font-size: 2.1rem; }
+  .wx-strip-day { flex: 1 1 calc(33% - 10px); }
+}
+
+/* ── Hero: what the product is for, stated before any analytics ─────────── */
+.kl-hero {
+  margin: 0 0 var(--space-5, 20px);
+  padding: 20px 22px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #052e16 0%, #14532d 55%, #166534 100%);
+  color: #ecfdf5;
+}
+.kl-hero-copy h2 {
+  margin: 0 0 6px;
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fff;
+}
+.kl-hero-copy p {
+  margin: 0 0 16px;
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: #bbf7d0;
+}
+
+.kl-hero-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.kl-hero-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--transition-base, .18s ease), transform .12s ease;
+}
+.kl-hero-btn:hover { background: rgba(255, 255, 255, 0.16); transform: translateY(-1px); }
+.kl-hero-btn:focus-visible { outline: 3px solid #86efac; outline-offset: 2px; }
+
+.kl-hero-btn--primary {
+  background: #fff;
+  color: #14532d;
+  border-color: #fff;
+}
+.kl-hero-btn--primary:hover { background: #f0fdf4; }
+
+.kl-hero-ico { font-size: 1.6rem; line-height: 1; flex-shrink: 0; }
+.kl-hero-txt { display: flex; flex-direction: column; min-width: 0; }
+.kl-hero-txt strong { font-size: 1rem; font-weight: 700; }
+.kl-hero-txt small { font-size: 0.74rem; opacity: 0.85; line-height: 1.35; }
+
+@media (max-width: 640px) {
+  .kl-hero { padding: 16px; }
+  .kl-hero-copy h2 { font-size: 1.15rem; }
+  .kl-hero-actions { grid-template-columns: 1fr; }
+}

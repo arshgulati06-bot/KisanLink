@@ -7,7 +7,9 @@
 var KL_Step4 = (function () {
 
   function _initQuickActions() {
-    var chips = document.querySelectorAll('.qa-chip');
+    // Includes the hero buttons at the top of the dashboard, not just the
+    // chip row, so both drive the same actions.
+    var chips = document.querySelectorAll('[data-qa-action]');
     chips.forEach(function (chip) {
       chip.addEventListener('click', function () {
         var action = chip.getAttribute('data-qa-action');
@@ -614,8 +616,10 @@ var KL_Step4 = (function () {
       var btn = document.getElementById('submit-make-offer');
       var reqId = (document.getElementById('offer-requirement') || {}).value;
       var lotId = (document.getElementById('offer-lot') || {}).value;
-      var qty = Number((document.getElementById('offer-quantity') || {}).value);
-      var price = Number((document.getElementById('offer-price') || {}).value);
+      var qty = window.KLNumeric ? window.KLNumeric.read('offer-quantity')
+                                 : Number((document.getElementById('offer-quantity') || {}).value);
+      var price = window.KLNumeric ? window.KLNumeric.read('offer-price')
+                                   : Number((document.getElementById('offer-price') || {}).value);
       var message = (document.getElementById('offer-message') || {}).value || '';
 
       if (!reqId) { _offerFeedback('Choose a buyer requirement to offer against.', 'error'); return; }
@@ -690,13 +694,15 @@ var KL_Step4 = (function () {
     var qtyEl = document.getElementById('sn-qty');
     var status = document.getElementById('sn-status');
     var box = document.getElementById('sn-result');
-    var qty = qtyEl ? Number(qtyEl.value) : 10;
     if (!sel.commodity || !sel.state || !sel.district) {
-      if (status) status.textContent = 'Select commodity, state and district in Price Outlook first, then run this comparison.';
+      if (status) status.textContent = 'Choose your crop, state and district above, then run this comparison.';
       return;
     }
-    if (!isFinite(qty) || qty <= 0) {
-      if (status) status.textContent = 'Enter a quantity greater than zero (in quintals).';
+    // KLNumeric shows the reason next to the field and focuses it.
+    var qty = window.KLNumeric ? window.KLNumeric.read('sn-qty')
+                               : (qtyEl ? Number(qtyEl.value) : null);
+    if (qty == null || !isFinite(qty) || qty <= 0) {
+      if (status) status.textContent = 'Enter how many quintals you want to sell, for example 25.';
       return;
     }
     _sellNowBusy(true);

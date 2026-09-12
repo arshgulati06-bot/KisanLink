@@ -368,7 +368,8 @@ async function getWeather(opts = {}) {
   if (opts.lon)      params.set('lon',      opts.lon);
   if (opts.district) params.set('district', opts.district);
   if (opts.state)    params.set('state',    opts.state);
-  const res = await window.apiClient.get('/weather?' + params.toString(), { timeout: 12000 });
+  // The server retries the upstream once, so allow for that before aborting.
+  const res = await window.apiClient.get('/weather?' + params.toString(), { timeout: 30000 });
   return res.data;
 }
 
