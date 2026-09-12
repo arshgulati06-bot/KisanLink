@@ -1696,6 +1696,21 @@
         </div>
         <input type="hidden" id="lot-state" name="state" value="">
 
+        <div class="form-group">
+          <label class="form-label" for="lot-image">Crop photo (optional)</label>
+          <input type="file" class="form-input" id="lot-image" name="image"
+                 accept="image/jpeg,image/png,image/webp">
+          <p style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;">
+            Buyers see this photo with your lot. JPG, PNG or WebP, up to 5&nbsp;MB.
+            You can publish without one.
+          </p>
+          <div id="lot-image-preview" class="lot-image-preview" hidden>
+            <img id="lot-image-preview-img" alt="Preview of your crop photo">
+            <button type="button" id="lot-image-remove" class="btn btn-ghost btn-sm">Remove photo</button>
+          </div>
+          <p id="lot-image-error" class="kl-qty-error" hidden></p>
+        </div>
+
         <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-lot-modal').classList.remove('modal-open')">
             <span>Cancel</span>

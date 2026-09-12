@@ -210,6 +210,7 @@ def init_schema():
                 if "already exists" not in str(exc).lower():
                     print(f"[DB] Schema warning on: {prepared[:80]!r} → {exc}")
         conn.commit()
+        _apply_additive_migrations(conn, cur)
         print(f"[DB] Schema initialised. Database: {SQLITE_PATH}")
         return True
     except Exception as exc:
@@ -218,6 +219,30 @@ def init_schema():
         return False
     finally:
         cur.close()
+
+
+def _apply_additive_migrations(conn, cur):
+    """
+    Add columns introduced after a database was first created.
+
+    CREATE TABLE IF NOT EXISTS will not alter an existing table, so a database
+    made before a column existed would otherwise never gain it. Only additive,
+    nullable columns belong here — nothing is dropped or rewritten.
+    """
+    wanted = [
+        ("lots", "image_file", "VARCHAR(120)"),
+    ]
+    for table, column, coltype in wanted:
+        try:
+            cur.execute(f"PRAGMA table_info({table})")
+            existing = {row[1] for row in cur.fetchall()}
+            if not existing or column in existing:
+                continue
+            cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {coltype}")
+            conn.commit()
+            print(f"[DB] Added column {table}.{column}")
+        except Exception as exc:
+            print(f"[DB] Migration warning for {table}.{column}: {exc}")
 
 
 def table_exists(table_name):

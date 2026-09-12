@@ -89,12 +89,25 @@ def normalize_place_name(value: Any, strip_apmc: bool = False) -> str:
     return text.title()
 
 
+# Slash/dash dates from AGMARKNET and the mandi CSVs are day-first
+# (DD/MM/YYYY), which is the Indian convention. Detect that shape explicitly:
+# pandas' default is month-first, so "12/09/2026" (12 September) was silently
+# read as 9 December — putting today's record three months in the future and
+# making it impossible for the live feed to ever match "today".
+_AMBIGUOUS_DMY_RE = re.compile(r"^\s*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}")
+
+
 def parse_date(value: Any) -> Optional[pd.Timestamp]:
     if value is None or value == "":
         return None
-    ts = pd.to_datetime(value, errors="coerce")
+
+    text = str(value).strip()
+    dayfirst = bool(_AMBIGUOUS_DMY_RE.match(text))
+
+    # ISO (YYYY-MM-DD) is unambiguous and unaffected by the dayfirst flag.
+    ts = pd.to_datetime(value, errors="coerce", dayfirst=dayfirst)
     if pd.isna(ts):
-        ts = pd.to_datetime(value, errors="coerce", dayfirst=True)
+        ts = pd.to_datetime(value, errors="coerce", dayfirst=not dayfirst)
     if pd.isna(ts):
         return None
     return pd.Timestamp(ts).normalize()

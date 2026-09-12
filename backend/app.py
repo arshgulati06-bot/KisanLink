@@ -68,6 +68,13 @@ from services.geocode import reverse_geocode, geocode_market, validate_coords, e
 from services.routing import compute_route
 
 FRONTEND_DIR = os.path.join(_PROJECT_ROOT, "frontend")
+# Sale-lot photos. Stored outside the served frontend tree and only ever
+# reached through /api/lots/<id>/image, which resolves the name from the DB.
+_LOT_IMAGE_DIR = os.environ.get(
+    "KISANLINK_LOT_IMAGE_DIR", os.path.join(_BACKEND_DIR_FALLBACK, "uploads", "lots")
+) if (_BACKEND_DIR_FALLBACK := os.path.dirname(os.path.abspath(__file__))) else ""
+_ALLOWED_IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+_MAX_LOT_IMAGE_BYTES = int(os.environ.get("KISANLINK_LOT_IMAGE_MAX_BYTES", str(5 * 1024 * 1024)))
 _STORE_LOCK = threading.Lock()
 _INIT_LOCK = threading.Lock()
 _REAL_APP = None
@@ -291,6 +298,48 @@ class _WxBytes:
 
     def __exit__(self, *exc):
         return False
+
+
+def _save_lot_image(data_url):
+    """
+    Persist a base64 data URL as a sale-lot photo.
+
+    A missing or empty image is not an error — lots stay creatable without one.
+    @returns (stored_filename | None, error_message | None)
+    """
+    import base64
+    import re as _re
+    import uuid as _uuid
+
+    if not data_url:
+        return None, None
+    m = _re.match(r"^data:([\w./+-]+);base64,(.+)$", str(data_url), _re.S)
+    if not m:
+        return None, "The crop photo could not be read. Please choose the image again."
+    mime, b64 = m.group(1).lower(), m.group(2)
+    ext = _ALLOWED_IMAGE_TYPES.get(mime)
+    if not ext:
+        return None, "Only JPG, PNG or WebP photos can be attached to a lot."
+    try:
+        raw = base64.b64decode(b64, validate=True)
+    except Exception:
+        return None, "The crop photo could not be decoded. Please choose it again."
+    if not raw:
+        return None, "The crop photo was empty."
+    if len(raw) > _MAX_LOT_IMAGE_BYTES:
+        return None, (f"That photo is larger than {_MAX_LOT_IMAGE_BYTES // (1024 * 1024)} MB. "
+                      "Please choose a smaller image.")
+
+    try:
+        os.makedirs(_LOT_IMAGE_DIR, exist_ok=True)
+        # Name is generated here, never taken from the client.
+        name = f"lot_{_uuid.uuid4().hex}{ext}"
+        with open(os.path.join(_LOT_IMAGE_DIR, name), "wb") as fh:
+            fh.write(raw)
+        return name, None
+    except Exception as exc:
+        print(f"[lots] could not store image: {exc}")
+        return None, "The photo could not be saved on the server."
 
 
 def _create_farmer_offer(user_id, data):
@@ -1358,6 +1407,13 @@ def register_routes(app):
         if qty <= 0:
             return _public_error("'quantity_qtl' must be greater than zero.")
         payload = dict(data)
+        if payload.get("image_data_url"):
+            saved, img_err = _save_lot_image(payload.pop("image_data_url"))
+            if img_err:
+                return _public_error(img_err)
+            if saved:
+                payload["image_file"] = saved
+        payload.pop("image_data_url", None)
         if payload.get("expected_price") in (None, "", 0):
             for alt in ("price_per_qtl", "expectedPrice", "price"):
                 if payload.get(alt) not in (None, ""):
@@ -2013,6 +2069,102 @@ def register_routes(app):
         if not payload.get("success"):
             payload["label"] = "Live mandi feed unavailable"
         return jsonify(payload), 200
+
+    # =====================================================================
+    # CROP QUALITY — real inference against ml/quality_models/*.pth
+    # =====================================================================
+    @app.route("/api/ml/quality-assessment", methods=["POST"])
+    def quality_assessment():
+        """
+        Grade a crop photo with the project's trained MobileNetV3-Large model.
+
+        Multipart form: image=<file>, crop=<name>. Returns the model's real
+        prediction, or a controlled error explaining why it could not run.
+        Never returns a guessed grade.
+        """
+        from ml import quality_inference as qi
+
+        crop = (request.form.get("crop") or request.args.get("crop") or "").strip()
+        upload = request.files.get("image") or request.files.get("file")
+        if upload is None:
+            return jsonify({
+                "success": False,
+                "reason": "no_image",
+                "error": "Attach a crop photo to analyse.",
+                "supported_crops": qi.supported_crops(),
+            }), 400
+
+        content_type = (upload.mimetype or "").lower()
+        if content_type and not content_type.startswith("image/"):
+            return jsonify({
+                "success": False,
+                "reason": "invalid_image",
+                "error": "Only image files (JPG or PNG) can be analysed.",
+            }), 415
+
+        try:
+            data = upload.read()
+        except Exception:
+            return jsonify({"success": False, "reason": "invalid_image",
+                            "error": "The uploaded file could not be read."}), 400
+
+        try:
+            result = qi.assess(data, crop)
+        except qi.QualityUnavailable as exc:
+            status = 422 if exc.reason in ("unsupported_crop", "invalid_image",
+                                           "no_image", "image_too_large") else 503
+            return jsonify({
+                "success": False,
+                "reason": exc.reason,
+                "error": exc.message,
+                "supported_crops": qi.supported_crops(),
+            }), status
+        except Exception as exc:
+            print(f"[quality] unexpected failure: {exc}")
+            return jsonify({"success": False, "reason": "inference_failed",
+                            "error": "Image analysis failed. Please try again."}), 500
+
+        return jsonify(result), 200
+
+    @app.route("/api/ml/quality-status", methods=["GET"])
+    def quality_status():
+        """Which crops can actually be graded on this server right now."""
+        from ml import quality_inference as qi
+        crops = qi.supported_crops()
+        return jsonify({
+            "success": True,
+            "available": bool(crops),
+            "supported_crops": crops,
+            "models_dir": "ml/quality_models",
+            "note": (
+                "Photo grading is ready for: " + ", ".join(c.title() for c in crops)
+                if crops else
+                "No trained quality models are installed in ml/quality_models, "
+                "so photo grading is unavailable. Set the crop grade manually."
+            ),
+        }), 200
+
+    @app.route("/api/lots/<int:lot_id>/image", methods=["GET"])
+    def lot_image(lot_id):
+        """
+        Serve a sale lot's photo by lot id.
+
+        The filename is looked up from the database row and resolved inside the
+        upload directory, so no caller-supplied path ever reaches the
+        filesystem.
+        """
+        try:
+            lot = _lot_repo.get_lot_by_id(lot_id)
+        except Exception:
+            return _public_error("Database unavailable.", 503)
+        if not lot or not lot.get("image_file"):
+            return _public_error("No image for this lot.", 404)
+
+        name = os.path.basename(str(lot["image_file"]))
+        path = os.path.join(_LOT_IMAGE_DIR, name)
+        if not os.path.isfile(path):
+            return _public_error("Image file is missing on the server.", 404)
+        return send_from_directory(_LOT_IMAGE_DIR, name, max_age=3600)
 
     @app.route("/api/location/reverse", methods=["GET"])
     def location_reverse():
