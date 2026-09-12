@@ -688,6 +688,20 @@ function initCreateLotModal() {
     if (e.target === modal) modal.classList.remove('modal-open');
   });
 
+  // A browser-blocked submit is invisible if the offending field is scrolled
+  // out of the modal, which reads to the user as a dead button. Surface it.
+  form.addEventListener('invalid', (e) => {
+    const field = e.target;
+    if (typeof showToast === 'function') {
+      const label = form.querySelector(`label[for="${field.id}"]`);
+      const name = (label ? label.textContent : field.name || 'A field')
+        .replace('*', '').trim();
+      showToast(`${name}: ${field.validationMessage}`, 'warning');
+    }
+    field.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    field.focus({ preventScroll: true });
+  }, true);
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = form.querySelector('[type="submit"]');
@@ -751,18 +765,15 @@ function initCreateLotModal() {
         // Reload from backend to show real ID
         loadLotsFromBackend();
       } else {
-        // Not authenticated: create locally (for demo/dev only)
-        const created = window.dashboardState.createLot({
-          crop: commodity, variety: lotPayload.variety, quantity: lotPayload.quantity_qtl,
-          unit: lotPayload.unit, grade: lotPayload.grade, location,
-          harvestDate: lotPayload.harvest_date, expectedPrice: lotPayload.price_per_qtl
-        });
-        modal.classList.remove('modal-open');
-        form.reset();
-        renderLotsUI(window.dashboardState.getLots());
+        // A sale lot is real business data: it is only ever created against an
+        // authenticated account. No browser-only copy is kept, so nothing can
+        // look saved while the server knows nothing about it.
         if (typeof showToast === 'function') {
-          showToast(`Lot ${created.id} for ${commodity} created (local only — please log in to persist).`, 'warning');
+          showToast('Your session has ended. Please sign in again to publish this lot.', 'error');
         }
+        setTimeout(function () {
+          window.location.href = 'auth.html?expired=1&next=farmer.html';
+        }, 1500);
       }
     } catch (err) {
       if (typeof showToast === 'function') {
@@ -847,12 +858,13 @@ function initCreateDemandModal() {
       return;
     }
 
-    const created = window.dashboardState.createDemand(demandData);
-    modal.classList.remove('modal-open');
-    form.reset();
-    renderBuyerDemands();
+    // Same rule as sale lots: a sourcing requirement is real business data and
+    // is only ever created against an authenticated buyer account.
     if (typeof showToast === 'function') {
-      showToast('Requirement saved locally. Log in as a buyer to persist it.', 'warning');
+      showToast('Your session has ended. Please sign in again to post this requirement.', 'error');
     }
+    setTimeout(function () {
+      window.location.href = 'auth.html?expired=1&next=buyer.html';
+    }, 1500);
   });
 }

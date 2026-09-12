@@ -3,6 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E">
+  <!-- Auth guard: a dashboard is a protected view. Runs before anything else
+       renders so an unauthenticated visitor never sees a half-populated
+       dashboard. Session validity is confirmed against /auth/me below. -->
+  <script>
+    (function () {
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch (e) {}
+      if (!token) {
+        var here = location.pathname.split('/').pop() || 'farmer.html';
+        location.replace('auth.html?next=' + encodeURIComponent(here));
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="KisanLink Farmer Dashboard — SIH 2026: Crop lot management, live mandi intelligence, explainable recommendations, and verified buyer linkage.">
   <title>Farmer Dashboard — KisanLink | SIH 2026</title>
@@ -579,7 +592,7 @@
             <div class="pf-controls" style="flex-wrap:wrap;margin-bottom:var(--space-3);">
               <div class="form-group" style="flex:1;min-width:140px;">
                 <label class="form-label" for="sn-qty">Quantity (QTL)</label>
-                <input class="form-input" id="sn-qty" type="number" min="0.5" step="0.5" value="10">
+                <input class="form-input" id="sn-qty" type="number" min="0.01" step="0.01" value="10" inputmode="decimal">
               </div>
               <div style="align-self:flex-end;display:flex;gap:8px;flex-wrap:wrap;">
                 <button type="button" id="sn-gps-btn" class="btn btn-sm">Use My Current Location</button>
@@ -736,7 +749,7 @@
               </tbody>
             </table>
           </div>
-          <p style="font-size:0.68rem;color:var(--color-slate-400);margin-top:var(--space-2);">Source: combined historical mandi CSVs in this project. Prices are the latest modal prices in that dataset, not a live official API quote. Distance data is not available.</p>
+          <p id="mc-source-note" style="font-size:0.68rem;color:var(--color-slate-400);margin-top:var(--space-2);">Prices are the latest modal prices available to this server, not a live official API quote.</p>
         </section>
 
         <!-- ===================================================================
@@ -1416,7 +1429,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-quantity">Available Quantity *</label>
-            <input type="number" class="form-input" id="lot-quantity" name="quantity" min="1" step="0.5" placeholder="e.g. 10" required value="10">
+            <input type="number" class="form-input" id="lot-quantity" name="quantity" min="0.01" step="0.01" placeholder="e.g. 10" required value="10" inputmode="decimal">
           </div>
 
           <div class="form-group">
@@ -1458,7 +1471,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="lot-price">Expected Base Price (₹/QTL)</label>
-            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000">
+            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000" min="0" step="0.01" inputmode="decimal">
           </div>
           <div class="form-group">
             <label class="form-label" for="lot-district">District</label>
@@ -2055,7 +2068,18 @@
         fetch(API + '/auth/me', {
           headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
         })
-        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(r) {
+          if (r.status === 401 || r.status === 403) {
+            // Token expired or revoked — clear it and send them back to sign in.
+            try {
+              localStorage.removeItem('kisanlink_auth_token');
+              localStorage.removeItem('kisanlink_user');
+            } catch (e) {}
+            location.replace('auth.html?expired=1&next=farmer.html');
+            return null;
+          }
+          return r.ok ? r.json() : null;
+        })
         .then(function(data) {
           if (!data || !data.success) return;
           var u = data.user || {};
@@ -2067,10 +2091,9 @@
           if (contactEl) contactEl.textContent = u.phone || u.email || u.username || '\u2014';
         })
         .catch(function() {}); // Non-blocking
-      } else {
-        // No token: show guest state (evaluator quick-access flow)
-        setProfileUI('Guest', 'Farmer', null);
       }
+      // No token is handled by the auth guard at the top of this page, which
+      // redirects to sign-in before any of this runs.
     })();
   </script>
 </body>

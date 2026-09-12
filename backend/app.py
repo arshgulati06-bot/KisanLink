@@ -1630,10 +1630,17 @@ def register_routes(app):
             }), 200
 
         except Exception as exc:
+            # Log the cause server-side; never hand raw exception text (which can
+            # carry internal paths or library details) to the browser.
+            print(f"[weather] upstream failed: {exc}")
             return jsonify({
                 "success": False,
-                "error": "Weather data temporarily unavailable. Please try again.",
-                "detail": str(exc)[:200],
+                "error": (
+                    "Weather is unavailable because this server has outbound "
+                    "internet disabled."
+                    if not _allow_external_http() else
+                    "Weather data temporarily unavailable. Please try again."
+                ),
                 "location": {"lat": lat, "lon": lon, "district": district, "state": state},
             }), 503
 
@@ -1655,7 +1662,8 @@ def register_routes(app):
                             "source": "Ministry of Agriculture & Farmers Welfare, Government of India",
                             "note": "Information is curated for awareness. Verify eligibility and amounts on official portals before applying."}), 200
         except Exception as exc:
-            return jsonify({"success": False, "error": "Schemes data unavailable.", "detail": str(exc)[:200]}), 500
+            print(f"[schemes] {exc}")
+            return jsonify({"success": False, "error": "Schemes data unavailable."}), 500
 
     @app.route("/api/knowledge", methods=["GET"])
     def get_knowledge():
@@ -1673,7 +1681,8 @@ def register_routes(app):
                 items = [k for k in items if q in k.get("title", "").lower() or q in k.get("summary", "").lower()]
             return jsonify({"success": True, "knowledge": items, "count": len(items)}), 200
         except Exception as exc:
-            return jsonify({"success": False, "error": "Knowledge data unavailable.", "detail": str(exc)[:200]}), 500
+            print(f"[knowledge] {exc}")
+            return jsonify({"success": False, "error": "Knowledge data unavailable."}), 500
 
     @app.route("/api/learning", methods=["GET"])
     def get_learning():
@@ -1688,7 +1697,8 @@ def register_routes(app):
                 items = [r for r in items if topic in r.get("topic", "").lower() or topic in r.get("title", "").lower()]
             return jsonify({"success": True, "resources": items, "count": len(items)}), 200
         except Exception as exc:
-            return jsonify({"success": False, "error": "Learning resources unavailable.", "detail": str(exc)[:200]}), 500
+            print(f"[learning] {exc}")
+            return jsonify({"success": False, "error": "Learning resources unavailable."}), 500
 
     @app.route("/api/helplines", methods=["GET"])
     def get_helplines():
@@ -1704,7 +1714,8 @@ def register_routes(app):
             return jsonify({"success": True, "helplines": items, "count": len(items),
                             "note": "All numbers are official government/PSU helplines. Verify availability before calling."}), 200
         except Exception as exc:
-            return jsonify({"success": False, "error": "Helpline data unavailable.", "detail": str(exc)[:200]}), 500
+            print(f"[helpline] {exc}")
+            return jsonify({"success": False, "error": "Helpline data unavailable."}), 500
 
     @app.route("/api/seeds", methods=["GET"])
     def get_seeds():
@@ -1717,7 +1728,8 @@ def register_routes(app):
             return jsonify({"success": True, "organizations": items, "count": len(items),
                             "note": "This section provides information about official seed sources. KisanLink does not sell seeds."}), 200
         except Exception as exc:
-            return jsonify({"success": False, "error": "Seeds data unavailable.", "detail": str(exc)[:200]}), 500
+            print(f"[seeds] {exc}")
+            return jsonify({"success": False, "error": "Seeds data unavailable."}), 500
 
     @app.route("/api/market-prices/latest", methods=["GET"])
     def get_latest_market_prices():

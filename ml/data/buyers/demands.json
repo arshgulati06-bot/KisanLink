@@ -1,9 +1,9 @@
 {
-  "note": "Platform seed buyer requirements stored with the project. These are not a live procurement API and offered rates are the declared requirement prices in this file, not mandi forecasts. Match scores are computed at request time from lot vs demand fields.",
+  "note": "SAMPLE buyer requirements bundled with the project so the matching engine can be demonstrated. These are illustrative rows, not real companies and not a live procurement feed; the buyer names are generic placeholders. Offered rates are the declared requirement prices in this file, not mandi forecasts. Match scores are computed at request time from lot vs demand fields.",
   "demands": [
     {
       "id": "DEMAND-SEED-101",
-      "buyerName": "Sahyadri Agro Processors",
+      "buyerName": "Sample Buyer A — Food Processor",
       "buyerType": "Food Processor",
       "trustStatus": "Platform-Reviewed Processor",
       "crop": "Onion",
@@ -17,7 +17,7 @@
     },
     {
       "id": "DEMAND-SEED-102",
-      "buyerName": "MahaFresh Institutional",
+      "buyerName": "Sample Buyer B — Institutional Procurement",
       "buyerType": "Institutional Procurement",
       "trustStatus": "Registered Buyer",
       "crop": "Tomato",
@@ -31,7 +31,7 @@
     },
     {
       "id": "DEMAND-SEED-103",
-      "buyerName": "Karnataka Food Corp",
+      "buyerName": "Sample Buyer C — State Food Corporation",
       "buyerType": "State Procurement",
       "trustStatus": "Platform-Reviewed Processor",
       "crop": "Potato",
@@ -45,7 +45,7 @@
     },
     {
       "id": "DEMAND-SEED-104",
-      "buyerName": "Delhi Agri Traders Association",
+      "buyerName": "Sample Buyer D — Wholesale Trader Association",
       "buyerType": "Wholesale Trader",
       "trustStatus": "Registered Buyer",
       "crop": "Onion",
@@ -59,7 +59,7 @@
     },
     {
       "id": "DEMAND-SEED-105",
-      "buyerName": "BigBasket Sourcing",
+      "buyerName": "Sample Buyer E — Retail Sourcing",
       "buyerType": "Retail Chain",
       "trustStatus": "Platform-Reviewed Processor",
       "crop": "Banana",
@@ -73,7 +73,7 @@
     },
     {
       "id": "DEMAND-SEED-106",
-      "buyerName": "Kolkata Grain & Produce",
+      "buyerName": "Sample Buyer F — Grain & Produce Wholesaler",
       "buyerType": "Wholesale Trader",
       "trustStatus": "Registered Buyer",
       "crop": "Potato",
@@ -87,7 +87,7 @@
     },
     {
       "id": "DEMAND-SEED-107",
-      "buyerName": "Spice Garden Processors",
+      "buyerName": "Sample Buyer G — Spice Processor",
       "buyerType": "Food Processor",
       "trustStatus": "Registered Buyer",
       "crop": "Onion",
@@ -101,7 +101,7 @@
     },
     {
       "id": "DEMAND-SEED-108",
-      "buyerName": "Ahmedabad Commodity Exchange",
+      "buyerName": "Sample Buyer H — Commodity Aggregator",
       "buyerType": "Commodity Exchange",
       "trustStatus": "Platform-Reviewed Processor",
       "crop": "Wheat",

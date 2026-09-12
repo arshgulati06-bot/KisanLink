@@ -638,3 +638,83 @@ class TestDevFixtureHonesty:
         status = c.get("/api/ingest/status").get_json()
         assert status["dev_fixture"] is True
         assert "synthetic" in status["data_source_label"].lower()
+
+
+# ---------------------------------------------------------------------------
+# 10. auth, privacy and error hygiene
+# ---------------------------------------------------------------------------
+
+class TestAuthAndPrivacy:
+    def test_password_hash_never_leaves_the_api(self, client):
+        import uuid
+        suffix = uuid.uuid4().hex[:10]
+        reg = client.post("/api/auth/register", json={
+            "name": "Privacy Probe", "username": f"priv_{suffix}",
+            "phone": "9" + suffix[:9].translate(str.maketrans("abcdef", "123456")),
+            "password": "StrongPass!234", "role": "FARMER",
+            "district": "Nashik", "state": "Maharashtra",
+        })
+        assert reg.status_code in (200, 201)
+        body = reg.get_data(as_text=True)
+        assert "password_hash" not in body
+        assert "StrongPass!234" not in body
+
+        token = reg.get_json()["token"]
+        me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+        assert "password_hash" not in me.get_data(as_text=True)
+
+    @pytest.mark.parametrize("method,path", [
+        ("get", "/api/auth/me"),
+        ("get", "/api/lots/my"),
+        ("post", "/api/lots"),
+        ("get", "/api/transactions/my"),
+        ("get", "/api/buyer-requirements/my"),
+        ("post", "/api/buyer-requirements"),
+        ("get", "/api/offers/my"),
+    ])
+    def test_protected_endpoints_reject_anonymous_callers(self, client, method, path):
+        res = getattr(client, method)(path, json={} if method == "post" else None)
+        assert res.status_code == 401, f"{path} returned {res.status_code}"
+
+    def test_bad_token_is_rejected(self, client):
+        res = client.get("/api/auth/me", headers={"Authorization": "Bearer not-a-real-token"})
+        assert res.status_code == 401
+
+    def test_farmer_cannot_post_a_buyer_requirement(self, client, auth_headers):
+        res = client.post("/api/buyer-requirements", headers=auth_headers,
+                          json={"commodity": "Onion", "quantity_qtl_min": 10})
+        assert res.status_code == 403
+
+
+class TestErrorHygiene:
+    """Failures must not hand internal exception text to the browser."""
+
+    def test_static_data_endpoints_do_not_return_raw_exception_detail(self, client):
+        for path in ("/api/schemes", "/api/knowledge", "/api/learning",
+                     "/api/helplines", "/api/seeds"):
+            body = client.get(path).get_json()
+            assert "detail" not in body, path
+
+    def test_weather_failure_is_a_clean_message(self, client):
+        # TESTING=True disables outbound HTTP, so this always takes the fail path.
+        res = client.get("/api/weather?district=Nashik&state=Maharashtra")
+        body = res.get_json()
+        if not body.get("success"):
+            assert "detail" not in body
+            text = body.get("error", "")
+            for leak in ("Traceback", "urlopen", "_ssl.c", "/home/", "site-packages"):
+                assert leak not in text, text
+
+
+class TestSeedBuyerProvenance:
+    def test_seed_buyers_are_generic_placeholders_not_real_firms(self):
+        from ml.ingest import load_buyer_demands
+        demands, note = load_buyer_demands()
+        assert demands
+        assert "SAMPLE" in note.upper()
+        for d in demands:
+            name = d.get("buyerName", "")
+            assert name.startswith("Sample Buyer"), name
+        blob = json.dumps(demands)
+        for real_or_invented in ("BigBasket", "Sahyadri", "MahaFresh", "Deccan Agri"):
+            assert real_or_invented not in blob

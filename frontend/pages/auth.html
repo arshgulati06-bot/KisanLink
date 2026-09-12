@@ -4,6 +4,36 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E">
+  <script>
+    // Where to land after signing in: honour ?next= when it names one of our
+    // own dashboards, otherwise fall back to the account's role home. Only a
+    // known filename is accepted so ?next= cannot be used as an open redirect.
+    function klPostAuthDestination(role) {
+      var home = String(role || '').toUpperCase() === 'BUYER' ? 'buyer.html' : 'farmer.html';
+      try {
+        var next = new URLSearchParams(location.search).get('next');
+        if (next === 'farmer.html' || next === 'buyer.html') return next;
+      } catch (e) {}
+      return home;
+    }
+
+    // Tell the user why they were bounced back here.
+    document.addEventListener('DOMContentLoaded', function () {
+      try {
+        if (new URLSearchParams(location.search).get('expired') !== '1') return;
+      } catch (e) { return; }
+      var host = document.querySelector('.auth-card, form, main, body');
+      if (!host) return;
+      var note = document.createElement('div');
+      note.setAttribute('role', 'status');
+      note.style.cssText =
+        'margin:0 0 16px;padding:10px 14px;border:1px solid #f59e0b;' +
+        'border-left-width:4px;border-radius:8px;background:#fffbeb;' +
+        'color:#78350f;font-size:0.82rem;line-height:1.5;';
+      note.textContent = 'Your session has ended. Please sign in again to continue.';
+      host.insertBefore(note, host.firstChild);
+    });
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description"
     content="KisanLink Portal Access — Role Entry and Authentication for Farmers, Buyers, and FPOs.">
@@ -471,7 +501,7 @@
         showMsg('loginSuccess', 'Signed in! Redirecting…');
         var role = (res.data.user && res.data.user.role) || 'FARMER';
         setTimeout(function() {
-          window.location.href = role === 'BUYER' ? 'buyer.html' : 'farmer.html';
+          window.location.href = klPostAuthDestination(role);
         }, 800);
       })
       .catch(function(err) {
@@ -535,7 +565,7 @@
         showMsg('registerSuccess', 'Account created! Redirecting to dashboard…');
         var userRole = (res.data.user && res.data.user.role) || role;
         setTimeout(function() {
-          window.location.href = userRole === 'BUYER' ? 'buyer.html' : 'farmer.html';
+          window.location.href = klPostAuthDestination(userRole);
         }, 900);
       })
       .catch(function() {

@@ -37,12 +37,14 @@ const CONFIG = {
 
   // Prototype Initial Seed Data (Demo Datasets)
   INITIAL_DATA: {
+    // Empty shell only. Every field is filled from /auth/me for the signed-in
+    // account; no placeholder name, district or APMC zone is ever displayed.
     FARMER_PROFILE: {
-      id: 'FARMER_001',
+      id: '',
       name: '',
-      type: 'Individual Farmer / Producer',
-      location: 'Nashik District, Maharashtra',
-      apmcZone: 'Nashik APMC',
+      type: '',
+      location: '',
+      apmcZone: '',
       landHolding: '',
       phone: '',
       verified: false

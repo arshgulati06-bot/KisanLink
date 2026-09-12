@@ -3,6 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E">
+  <script>
+    function klLotPrice(lot) {
+      var v = lot.expected_price != null && lot.expected_price !== ''
+        ? lot.expected_price
+        : lot.price_per_qtl;
+      var n = Number(v);
+      if (v == null || v === '' || !isFinite(n) || n <= 0) return '';
+      return '\u20B9' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '/QTL';
+    }
+  </script>
+  <!-- Auth guard: a dashboard is a protected view. Runs before anything else
+       renders so an unauthenticated visitor never sees a half-populated
+       dashboard. Session validity is confirmed against /auth/me below. -->
+  <script>
+    (function () {
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch (e) {}
+      if (!token) {
+        var here = location.pathname.split('/').pop() || 'buyer.html';
+        location.replace('auth.html?next=' + encodeURIComponent(here));
+      }
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="KisanLink Buyer Dashboard — Direct crop sourcing from verified farmers and FPOs, requirement matching, and digital offers.">
   <title>Buyer Dashboard — KisanLink | SIH 2026</title>
@@ -415,7 +438,17 @@
       fetch(API + '/auth/me', {
         headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
       })
-      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(r) {
+        if (r.status === 401 || r.status === 403) {
+          try {
+            localStorage.removeItem('kisanlink_auth_token');
+            localStorage.removeItem('kisanlink_user');
+          } catch (e) {}
+          location.replace('auth.html?expired=1&next=buyer.html');
+          return null;
+        }
+        return r.ok ? r.json() : null;
+      })
       .then(function(data) {
         if (!data || !data.success) return;
         var u = data.user || {};
@@ -424,10 +457,8 @@
         setBuyerProfile(u, p);
       })
       .catch(function() {});
-    } else {
-      // No token — show logged-out state
-      setBuyerProfile({ name: 'Guest', username: 'guest', role: 'Buyer' }, null);
     }
+    // No token is handled by the auth guard at the top of this page.
   })();
 
   // ===========================================================================
@@ -509,14 +540,16 @@
         return '<div class="lot-card">' +
           '<div class="lot-card-header">' +
           '<div><h3 class="lot-title">' + (lot.commodity || lot.crop || '—') + '</h3>' +
-          '<div class="lot-variety">' + (lot.grade || 'Standard') + '</div></div>' +
+          '<div class="lot-variety">' + [lot.variety, lot.grade].filter(Boolean).join(' · ') + '</div></div>' +
           '<span class="badge badge-success">' + (lot.status || 'ACTIVE') + '</span>' +
           '</div>' +
           '<div class="lot-spec-grid">' +
           '<div class="spec-item"><span class="spec-label">Volume</span><span class="spec-val">' + (lot.quantity_qtl || lot.quantity || '—') + ' QTL</span></div>' +
           '<div class="spec-item"><span class="spec-label">Location</span><span class="spec-val">' + (lot.location || (lot.district && lot.state ? lot.district + ', ' + lot.state : '—')) + '</span></div>' +
           '<div class="spec-item"><span class="spec-label">Lot ID</span><span class="spec-val font-mono">#' + lot.id + '</span></div>' +
-          '<div class="spec-item"><span class="spec-label">Price</span><span class="spec-val font-mono">' + (lot.price_per_qtl ? '₹' + Number(lot.price_per_qtl).toLocaleString('en-IN') + '/QTL' : 'Negotiable') + '</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Price</span><span class="spec-val font-mono">' + (klLotPrice(lot) || 'Negotiable') + '</span></div>' +
+          (lot.market ? '<div class="spec-item"><span class="spec-label">Preferred mandi</span><span class="spec-val">' + lot.market + '</span></div>' : '') +
+          (lot.harvest_date ? '<div class="spec-item"><span class="spec-label">Available from</span><span class="spec-val">' + String(lot.harvest_date).slice(0,10) + '</span></div>' : '') +
           '</div>' +
           '</div>';
       }).join('');

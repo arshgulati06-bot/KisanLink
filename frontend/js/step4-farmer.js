@@ -87,6 +87,12 @@ var KL_Step4 = (function () {
         el.textContent = 'Dataset latest date: ' + latest + ' · ' +
           (d.total_records || 0).toLocaleString('en-IN') + ' records · ' + live;
       }
+      var srcNote = document.getElementById('mc-source-note');
+      if (srcNote) {
+        srcNote.textContent = (d.data_source_label || 'Latest mandi data available to this server.') +
+          ' Prices are the latest modal prices in that source, not a live official API quote.';
+      }
+
       // Only the backend can declare the data synthetic; the UI never guesses.
       if (warn) {
         if (d.dev_fixture) {
@@ -446,7 +452,8 @@ var KL_Step4 = (function () {
           _set('lot-quantity', qty);
           _set('lot-unit', 'QTL');
           _set('lot-location', (rec.district || sel.district) + ', ' + (rec.state || sel.state));
-          _set('lot-price', rec.latest_price || rec.modal_price || '');
+          var recoPrice = rec.latest_price || rec.modal_price;
+          _set('lot-price', recoPrice != null ? Math.round(Number(recoPrice) * 100) / 100 : '');
           _set('lot-market', rec.market || '');
           _set('lot-district', rec.district || sel.district || '');
           _set('lot-state', rec.state || sel.state || '');
