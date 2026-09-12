@@ -453,8 +453,10 @@ function applyQualityToDecisionPipeline(crop, grade) {
   var cropEl    = document.getElementById('ba-crop');
   var qualityEl = document.getElementById('ba-quality');
 
-  if (cropEl) cropEl.textContent = crop || 'Onion';
-  if (qualityEl) qualityEl.textContent = grade || 'Grade A';
+  if (cropEl) cropEl.textContent = crop || '—';
+  // Never substitute a default grade — if the model produced no class, the
+  // farmer sets the grade themselves in Create Sale Lot.
+  if (qualityEl) qualityEl.textContent = grade || '—';
 
   // Highlight the decision section & smoothly scroll
   var target = document.getElementById('best-action-section');
@@ -508,9 +510,19 @@ function _showResultState(result) {
 
   // Real ML result rendering
   if (gradeEl && result.grade) {
-    var cls = result.grade === 'A' ? 'cqa-grade-a' : result.grade === 'B' ? 'cqa-grade-b' : 'cqa-grade-c';
-    gradeEl.innerHTML = '<span class="cqa-grade-badge ' + cls + '">Grade ' + _escapeHtml(result.grade) + '</span>';
-    CQA.state.assessedGrade = 'Grade ' + result.grade;
+    // The model's class name is shown as-is. These checkpoints may be graded
+    // (A/B/C) or condition/disease classifiers (e.g. "Late_blight"), so the
+    // word "Grade" is only added when the label really is a grade — otherwise
+    // a disease name would be printed as if it were a quality grade.
+    var raw = String(result.grade);
+    var pretty = raw.replace(/_+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    var isGrade = /^(grade\s*)?[ABC]$/i.test(pretty);
+    var letter = isGrade ? pretty.replace(/grade\s*/i, '').toUpperCase() : '';
+    var cls = letter === 'A' ? 'cqa-grade-a' : letter === 'B' ? 'cqa-grade-b'
+            : letter === 'C' ? 'cqa-grade-c' : 'cqa-grade-b';
+    var shown = isGrade ? ('Grade ' + letter) : pretty;
+    gradeEl.innerHTML = '<span class="cqa-grade-badge ' + cls + '">' + _escapeHtml(shown) + '</span>';
+    CQA.state.assessedGrade = shown;
   } else if (gradeEl) {
     gradeEl.innerHTML = '<span class="cqa-placeholder-dash">&mdash;</span>';
   }
@@ -523,9 +535,17 @@ function _showResultState(result) {
   }
 
   if (indEl) {
+    // The API returns the model's full class distribution as
+    // {name, value} pairs — render both, not the object itself.
     if (result.indicators && result.indicators.length > 0) {
       indEl.innerHTML = result.indicators.map(function(ind) {
-        return '<li class="cqa-indicator-item"><span class="cqa-indicator-dot" aria-hidden="true"></span>' + _escapeHtml(ind) + '</li>';
+        var name = (ind && ind.name != null) ? ind.name : ind;
+        var val  = (ind && ind.value != null) ? ind.value : '';
+        return '<li class="cqa-indicator-item">' +
+          '<span class="cqa-indicator-dot" aria-hidden="true"></span>' +
+          _escapeHtml(String(name).replace(/_+/g, ' ')) +
+          (val ? ' <span class="cqa-indicator-value">' + _escapeHtml(String(val)) + '</span>' : '') +
+          '</li>';
       }).join('');
     } else {
       indEl.innerHTML = '<li class="cqa-placeholder-item">No quality indicators returned by the model.</li>';
@@ -534,7 +554,12 @@ function _showResultState(result) {
 
   if (statusEl) {
     var modelName = (result.model && result.model.name) ? result.model.name : 'KisanLink Quality Model';
-    statusEl.textContent = 'Analysed by: ' + modelName;
+    // Say what the model actually predicts. These checkpoints classify
+    // physical condition/ripeness, so calling it a market grade would be wrong.
+    var kind = result.resultType === 'condition'
+      ? 'Condition predicted by the trained model (not a market grade). '
+      : '';
+    statusEl.textContent = kind + 'Analysed by: ' + modelName;
   }
 
   if (pipelineBtn) pipelineBtn.hidden = false;

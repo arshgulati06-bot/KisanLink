@@ -1243,6 +1243,14 @@
   flex-shrink: 0;
 }
 
+/* Class probability shown beside each label in the model's distribution. */
+.cqa-indicator-value {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-slate-900);
+}
+
 .cqa-placeholder-item {
   font-size: var(--text-xs);
   color: var(--color-slate-500);

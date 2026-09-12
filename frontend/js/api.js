@@ -252,7 +252,10 @@ async function assessCropQuality(image, crop = '') {
   // Real model output.
   return {
     _placeholder: false,
-    crop: data.crop || crop,
+    crop: data.crop_canonical || data.crop || crop,
+    // These checkpoints predict a physical condition class, not a market
+    // grade. `resultType` lets the UI say so instead of printing "Grade X".
+    resultType: data.result_type || 'condition',
     grade: data.label,
     confidence: data.confidence,
     indicators: (data.distribution || []).map(function (d) {

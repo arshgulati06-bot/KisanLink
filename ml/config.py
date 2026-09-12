@@ -47,6 +47,25 @@ CSV_AGRICULTURE = os.path.join(DATA_DIR, "Agriculture_price_dataset.csv")
 CSV_2022 = os.path.join(DATA_DIR, "2022.csv")
 CSV_2026 = os.path.join(DATA_DIR, "2026.csv")
 
+# The 2023-2025 mandi archives ship as Excel workbooks (one sheet each) rather
+# than CSV. Same column layout as the Arrival_Date CSVs above, plus a
+# Commodity_Code column that the loader drops.
+XLSX_2023 = os.path.join(DATA_DIR, "2023.csv.xlsx")
+XLSX_2024 = os.path.join(DATA_DIR, "2024.csv.xlsx")
+XLSX_2025 = os.path.join(DATA_DIR, "2025.csv.xlsx")
+
+#: Every historical mandi source, in chronological order. The loader reads
+#: each one that exists; the cache signature covers all of them, so dropping a
+#: new file into ml/data/ invalidates the cache automatically.
+HISTORICAL_SOURCES = [
+    CSV_AGRICULTURE,
+    CSV_2022,
+    XLSX_2023,
+    XLSX_2024,
+    XLSX_2025,
+    CSV_2026,
+]
+
 # Default CSV path — kept for backward compatibility with --csv CLI flag
 DEFAULT_CSV_PATH = CSV_AGRICULTURE
 
