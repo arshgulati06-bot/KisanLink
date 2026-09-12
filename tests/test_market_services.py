@@ -1021,11 +1021,93 @@ class TestQualityInference:
 
     def test_missing_checkpoint_is_refused_cleanly(self):
         from ml import quality_inference as qi
-        if "tomato" in qi.supported_crops():
+        if "Tomato" in qi.supported_crops():
             pytest.skip("a real tomato checkpoint is installed")
         with pytest.raises(qi.QualityUnavailable) as e:
             qi.assess(b"\xff\xd8\xff", "Tomato")
         assert e.value.reason == "model_missing"
+
+    def test_onion_never_resolves_to_a_model(self):
+        """The four checkpoints cover four crops. Onion is not one of them."""
+        from ml import quality_inference as qi
+        for name in ("Onion", "Onion (Red)", "Banana", "Wheat", ""):
+            assert qi.canonical_crop(name) is None
+            assert qi.model_file_for(name) is None
+
+    def test_aliases_resolve_to_the_four_trained_crops(self):
+        from ml import quality_inference as qi
+        assert qi.canonical_crop("tomato") == "Tomato"
+        assert qi.canonical_crop("Tomato (Hybrid)") == "Tomato"
+        assert qi.canonical_crop("aloo") == "Potato"
+        assert qi.canonical_crop("Potato - Jyoti") == "Potato"
+        assert qi.canonical_crop("mirchi") == "Chile Pepper"
+        assert qi.canonical_crop("hari mirch") == "New Mexico Green Chile"
+        assert set(qi.CROP_MODELS) == {
+            "Tomato", "Potato", "Chile Pepper", "New Mexico Green Chile",
+        }
+
+    def test_supported_crops_lists_one_entry_per_checkpoint(self):
+        from ml import quality_inference as qi
+        crops = qi.supported_crops()
+        assert len(crops) == len(set(crops))
+        assert set(crops) <= set(qi.CROP_MODELS)
+
+    def test_invalid_image_for_a_supported_crop_is_refused(self):
+        """A real checkpoint must still refuse a file that is not an image."""
+        from ml import quality_inference as qi
+        if "Tomato" not in qi.supported_crops():
+            pytest.skip("no tomato checkpoint installed")
+        with pytest.raises(qi.QualityUnavailable) as e:
+            qi.assess(b"this is definitely not a JPEG", "Tomato")
+        assert e.value.reason == "invalid_image"
+
+    def test_real_checkpoints_produce_a_real_prediction(self):
+        """
+        Run every installed checkpoint over a genuine decoded image and check
+        the output is a real distribution over that model's own class list —
+        no placeholder, no fabricated grade.
+        """
+        from ml import quality_inference as qi
+        installed = qi.supported_crops()
+        if not installed:
+            pytest.skip("no quality checkpoints installed")
+        pytest.importorskip("torch")
+        pytest.importorskip("torchvision")
+        from PIL import Image
+        import io as _io
+
+        buf = _io.BytesIO()
+        Image.new("RGB", (300, 300), (170, 60, 45)).save(buf, format="JPEG")
+        photo = buf.getvalue()
+
+        for crop in installed:
+            out = qi.assess(photo, crop)
+            assert out["success"] is True
+            assert out["crop_canonical"] == crop
+            assert out["result_type"] == "condition"
+            assert out["model"]["architecture"] == "mobilenet_v3_large"
+            assert out["labels_known"] is True
+            labels = [d["label"] for d in out["distribution"]]
+            assert len(labels) == out["model"]["num_classes"]
+            assert out["label"] in labels
+            probs = [d["probability"] for d in out["distribution"]]
+            assert all(0.0 <= p <= 1.0 for p in probs)
+            assert abs(sum(probs) - 1.0) < 0.02
+            assert out["confidence"] == max(probs)
+
+    def test_each_checkpoint_reports_its_own_class_list(self):
+        """Class names come from the checkpoints, never from a hardcoded list."""
+        from ml import quality_inference as qi
+        expected = {
+            "Tomato": ["Damaged", "Old", "Ripe", "Unripe"],
+            "Potato": ["Defective", "Good Condition"],
+            "Chile Pepper": ["Damaged", "Dried", "Old", "Ripe", "Unripe"],
+            "New Mexico Green Chile": ["Damaged", "Dried", "Old", "Ripe", "Unripe"],
+        }
+        for crop in qi.supported_crops():
+            entry = qi.load_model(crop)
+            assert entry["labels"] == expected[crop], crop
+            assert entry["label_source"].startswith("checkpoint")
 
     def test_empty_image_is_refused(self):
         from ml import quality_inference as qi

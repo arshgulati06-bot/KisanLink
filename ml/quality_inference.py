@@ -35,20 +35,48 @@ from typing import Optional
 
 MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "quality_models")
 
-#: Crop name (lowercase) -> checkpoint filename in MODELS_DIR.
-#: Several crop spellings map to the same trained model.
-CROP_MODEL_FILES = {
-    "tomato": "tomato_mobilenetv3_large.pth",
-    "potato": "potato_mobilenetv3_large.pth",
-    "chile pepper": "chile_pepper_mobilenetv3_large.pth",
-    "chili pepper": "chile_pepper_mobilenetv3_large.pth",
-    "chilli": "chile_pepper_mobilenetv3_large.pth",
-    "chili": "chile_pepper_mobilenetv3_large.pth",
-    "chilly": "chile_pepper_mobilenetv3_large.pth",
-    "green chilli": "new_mexico_green_chile_mobilenetv3_large.pth",
-    "green chili": "new_mexico_green_chile_mobilenetv3_large.pth",
-    "new mexico green chile": "new_mexico_green_chile_mobilenetv3_large.pth",
+#: The four trained checkpoints, keyed by the name shown to the user.
+#: Verified against the checkpoints themselves — each stores its own `classes`
+#: list, so no mapping here is guessed:
+#:   tomato                 4 classes  Damaged, Old, Ripe, Unripe
+#:   potato                 2 classes  Defective, Good Condition
+#:   chile pepper           5 classes  Damaged, Dried, Old, Ripe, Unripe
+#:   new mexico green chile 5 classes  Damaged, Dried, Old, Ripe, Unripe
+CROP_MODELS = {
+    "Tomato": "tomato_mobilenetv3_large.pth",
+    "Potato": "potato_mobilenetv3_large.pth",
+    "Chile Pepper": "chile_pepper_mobilenetv3_large.pth",
+    "New Mexico Green Chile": "new_mexico_green_chile_mobilenetv3_large.pth",
 }
+
+#: Spellings a farmer might type, mapped to the canonical crop above. Only
+#: these four crops have a model — anything else (Onion included) is refused.
+CROP_ALIASES = {
+    "tomato": "Tomato",
+    "tamatar": "Tomato",
+    "potato": "Potato",
+    "aloo": "Potato",
+    "alu": "Potato",
+    "chile pepper": "Chile Pepper",
+    "chili pepper": "Chile Pepper",
+    "chilli pepper": "Chile Pepper",
+    "chilli": "Chile Pepper",
+    "chili": "Chile Pepper",
+    "mirchi": "Chile Pepper",
+    "red chilli": "Chile Pepper",
+    "new mexico green chile": "New Mexico Green Chile",
+    "green chilli": "New Mexico Green Chile",
+    "green chili": "New Mexico Green Chile",
+    "green chile": "New Mexico Green Chile",
+    "hari mirch": "New Mexico Green Chile",
+}
+
+#: These models classify physical condition / ripeness, not a market grade and
+#: not a disease. Wording downstream must reflect that.
+RESULT_TYPE = "condition"
+
+# Backwards-compatible view used by older callers.
+CROP_MODEL_FILES = {alias: CROP_MODELS[canon] for alias, canon in CROP_ALIASES.items()}
 
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
@@ -69,24 +97,37 @@ class QualityUnavailable(Exception):
 
 
 def supported_crops() -> list:
-    """Crops with a checkpoint actually present on disk."""
-    present = []
-    for crop, filename in CROP_MODEL_FILES.items():
-        if os.path.exists(os.path.join(MODELS_DIR, filename)):
-            present.append(crop)
-    return sorted(set(present))
+    """
+    The canonical crops whose checkpoint is actually present on disk.
+
+    One entry per trained model — aliases are matched but not listed, so the
+    UI shows exactly four options rather than every spelling.
+    """
+    return [c for c, f in CROP_MODELS.items()
+            if os.path.exists(os.path.join(MODELS_DIR, f))]
+
+
+def canonical_crop(crop: str) -> Optional[str]:
+    """Resolve a typed crop name to one of the four trained crops, or None."""
+    key = (crop or "").strip().lower()
+    if not key:
+        return None
+    if key in CROP_ALIASES:
+        return CROP_ALIASES[key]
+    # Tolerate "Tomato (Hybrid)" / "Potato - Jyoti" style dropdown values, but
+    # only on a whole-word match so "Onion" can never fall through to a model.
+    import re as _re
+    words = set(_re.findall(r"[a-z]+", key))
+    for alias, canon in CROP_ALIASES.items():
+        parts = alias.split()
+        if all(p in words for p in parts):
+            return canon
+    return None
 
 
 def model_file_for(crop: str) -> Optional[str]:
-    key = (crop or "").strip().lower()
-    filename = CROP_MODEL_FILES.get(key)
-    if not filename:
-        # Tolerate "Tomato (Hybrid)" style values from the crop dropdown.
-        for name, f in CROP_MODEL_FILES.items():
-            if name in key:
-                filename = f
-                break
-    return filename
+    canon = canonical_crop(crop)
+    return CROP_MODELS.get(canon) if canon else None
 
 
 def _require_torch():
@@ -168,9 +209,12 @@ def load_model(crop: str):
     """
     filename = model_file_for(crop)
     if not filename:
+        available = supported_crops()
         raise QualityUnavailable(
-            f"Photo grading is not available for {crop or 'this crop'} yet. "
-            "Supported: " + (", ".join(c.title() for c in supported_crops()) or "none installed") + ".",
+            f"Photo condition check is not available for {crop or 'this crop'} — "
+            "there is no trained model for it. "
+            + ("Available for: " + ", ".join(available) + "."
+               if available else "No models are installed on this server."),
             reason="unsupported_crop",
         )
 
@@ -219,10 +263,25 @@ def load_model(crop: str):
 
     labels, label_source = _load_labels(path, wrapper, num_classes)
 
+    preprocess, preprocess_source = load_preprocess(path)
+    # Values saved with the checkpoint win over any sidecar.
+    if isinstance(wrapper, dict):
+        for key in ("preprocess", "transform_config", "input_size"):
+            val = wrapper.get(key)
+            if isinstance(val, dict):
+                preprocess.update({k: v for k, v in val.items() if k in DEFAULT_PREPROCESS})
+                preprocess_source = f"checkpoint[{key}]"
+            elif isinstance(val, int) and key == "input_size":
+                preprocess["center_crop"] = val
+                preprocess["resize"] = int(val * 256 / 224)
+                preprocess_source = f"checkpoint[{key}]"
+
     entry = {
         "model": net,
         "labels": labels,
         "label_source": label_source,
+        "preprocess": preprocess,
+        "preprocess_source": preprocess_source,
         "num_classes": num_classes,
         "file": filename,
         "mtime": os.path.getmtime(path),
@@ -234,14 +293,60 @@ def load_model(crop: str):
     return entry
 
 
-def _transform():
+#: Default transform. MobileNetV3 is an ImageNet model and this is the
+#: torchvision reference pipeline, but a model trained differently must not be
+#: fed the wrong preprocessing — override it per model with a sidecar
+#: `<model>.preprocess.json`, e.g.
+#:   {"resize": 232, "center_crop": 224,
+#:    "mean": [0.5,0.5,0.5], "std": [0.5,0.5,0.5]}
+DEFAULT_PREPROCESS = {
+    "resize": 256,
+    "center_crop": 224,
+    "mean": IMAGENET_MEAN,
+    "std": IMAGENET_STD,
+}
+
+
+def load_preprocess(ckpt_path: str) -> tuple:
+    """
+    Resolve the preprocessing for one checkpoint.
+
+    Order: values saved inside the checkpoint, then a sidecar
+    `<model>.preprocess.json` / shared `preprocess.json`, then the documented
+    default. @returns (config dict, source string)
+    """
+    base = os.path.splitext(ckpt_path)[0]
+    for candidate in (base + ".preprocess.json",
+                      os.path.join(MODELS_DIR, "preprocess.json")):
+        if not os.path.exists(candidate):
+            continue
+        try:
+            with open(candidate, encoding="utf-8") as fh:
+                data = json.load(fh)
+            if isinstance(data, dict):
+                # a shared file may be keyed by model name
+                data = data.get(os.path.basename(base), data)
+            if isinstance(data, dict):
+                cfg = dict(DEFAULT_PREPROCESS)
+                cfg.update({k: v for k, v in data.items() if k in DEFAULT_PREPROCESS})
+                return cfg, os.path.basename(candidate)
+        except Exception:
+            continue
+    return dict(DEFAULT_PREPROCESS), "default (torchvision ImageNet)"
+
+
+def _transform(cfg=None):
     from torchvision import transforms
-    return transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=IMAGENET_MEAN, std=IMAGENET_STD),
-    ])
+    cfg = cfg or DEFAULT_PREPROCESS
+    steps = []
+    if cfg.get("resize"):
+        steps.append(transforms.Resize(int(cfg["resize"])))
+    if cfg.get("center_crop"):
+        steps.append(transforms.CenterCrop(int(cfg["center_crop"])))
+    steps.append(transforms.ToTensor())
+    steps.append(transforms.Normalize(mean=cfg.get("mean", IMAGENET_MEAN),
+                                      std=cfg.get("std", IMAGENET_STD)))
+    return transforms.Compose(steps)
 
 
 def assess(image_bytes: bytes, crop: str) -> dict:
@@ -277,7 +382,7 @@ def assess(image_bytes: bytes, crop: str) -> dict:
         )
 
     try:
-        tensor = _transform()(img).unsqueeze(0)
+        tensor = _transform(entry.get("preprocess"))(img).unsqueeze(0)
         with torch.no_grad():
             logits = entry["model"](tensor)
             probs = torch.softmax(logits, dim=1)[0]
@@ -295,6 +400,10 @@ def assess(image_bytes: bytes, crop: str) -> dict:
     return {
         "success": True,
         "crop": crop,
+        "crop_canonical": canonical_crop(crop),
+        # These checkpoints classify physical condition / ripeness. Calling the
+        # output a "market grade" would misrepresent what was trained.
+        "result_type": RESULT_TYPE,
         "label": label,
         "class_index": top,
         "confidence": round(values[top], 4),
@@ -308,9 +417,12 @@ def assess(image_bytes: bytes, crop: str) -> dict:
             "file": entry["file"],
             "architecture": "mobilenet_v3_large",
             "num_classes": entry["num_classes"],
+            "preprocess": entry["preprocess"],
+            "preprocess_source": entry["preprocess_source"],
         },
         "note": (
-            "Prediction from the project's trained model."
+            "Condition predicted by the project's trained model — a physical "
+            "condition class, not a market grade."
             if labels else
             "Prediction from the project's trained model. Class names are not "
             "stored with this checkpoint, so classes are shown by index."

@@ -30,8 +30,11 @@ desktop.ini
 # ── ML Outputs (generated at runtime) ──
 ml/outputs/*.png
 
-# ── ML Dataset (52 MB — use Git LFS or download separately) ──
-# ── ML Dataset (large CSVs — not in git) ──
+# ── ML Dataset (large archives) ──
+# The CSV archives (Agriculture_price_dataset.csv, 2022.csv, 2026.csv) are
+# 50 MB+ each and stay out of git — download them separately into ml/data/.
+# The 2023/2024/2025 .xlsx workbooks ARE committed and are deliberately not
+# ignored here, so a fresh clone has real mandi history to forecast from.
 ml/data/*.csv
 ml/data/_cache/
 ml/data/ingested/ingest.log
@@ -55,5 +58,6 @@ backend/*.sqlite3-wal
 # Uploaded sale-lot photos (runtime data, not source)
 backend/uploads/
 
-# Trained quality-model checkpoints (large binaries, supplied separately)
-ml/quality_models/*.pth
+# NOTE: the four quality-model checkpoints in ml/quality_models/ ARE committed
+# (~17 MB each) so a fresh clone can run photo analysis with no extra download.
+# They are deliberately not ignored here.

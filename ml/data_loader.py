@@ -46,12 +46,12 @@ _COMBINED_SIG = None
 
 
 def _source_signature() -> str:
-    paths = [
-        config.CSV_AGRICULTURE,
-        config.CSV_2022,
-        config.CSV_2026,
-        getattr(config, "INGESTED_RECORDS_PATH", ""),
-    ]
+    # Every historical source plus the incremental file. A new or edited
+    # archive changes this signature, so the cached frame is rebuilt rather
+    # than silently hiding the new rows.
+    paths = list(getattr(config, "HISTORICAL_SOURCES", [
+        config.CSV_AGRICULTURE, config.CSV_2022, config.CSV_2026,
+    ])) + [getattr(config, "INGESTED_RECORDS_PATH", "")]
     parts = []
     for path in paths:
         if path and os.path.exists(path):
@@ -226,6 +226,33 @@ def _load_arrival(path: str) -> pd.DataFrame:
     return df[keep]
 
 
+def _load_arrival_excel(path: str) -> pd.DataFrame:
+    """
+    Load a 2023/2024/2025 mandi workbook.
+
+    These ship as .xlsx with one sheet, and carry exactly the Arrival_Date
+    layout used by 2022.csv / 2026.csv (State, District, Market, Commodity,
+    Variety, Grade, Arrival_Date, Min_Price, Max_Price, Modal_Price) plus a
+    Commodity_Code column that is dropped, so the same canonical mapping as
+    `_load_arrival` applies. Verified against all three files.
+    """
+    df = pd.read_excel(path, engine="openpyxl")
+    df.columns = df.columns.str.strip()
+
+    df = df.rename(columns={
+        "Arrival_Date": config.COL_DATE,
+    })
+
+    keep = [c for c in [
+        config.COL_STATE, config.COL_DISTRICT, config.COL_MARKET,
+        config.COL_COMMODITY, config.COL_VARIETY, config.COL_GRADE,
+        config.COL_DATE, config.COL_MIN_PRICE,
+        config.COL_MAX_PRICE, config.COL_MODAL_PRICE,
+    ] if c in df.columns]
+
+    return df[keep]
+
+
 # =============================================================================
 # load_combined_data  (primary public entry point)
 # =============================================================================
@@ -272,22 +299,39 @@ def load_combined_data(use_cache: bool = True) -> pd.DataFrame:
             _COMBINED_SIG = sig
             return cached
 
+    # Chronological. The 2023-2025 archives are Excel workbooks; everything
+    # else is CSV. All six normalise to the same canonical schema.
     sources = [
         (config.CSV_AGRICULTURE, _load_agriculture),
         (config.CSV_2022,        _load_arrival),
+        (config.XLSX_2023,       _load_arrival_excel),
+        (config.XLSX_2024,       _load_arrival_excel),
+        (config.XLSX_2025,       _load_arrival_excel),
         (config.CSV_2026,        _load_arrival),
     ]
 
     frames = []
+    loaded, skipped = [], []
     for path, loader_fn in sources:
+        name = os.path.basename(path)
         if not os.path.exists(path):
-            raise FileNotFoundError(
-                f"Dataset not found: {path}\n"
-                "Ensure all three CSV files are present in ml/data/"
-            )
+            skipped.append(name)
+            continue
         df = loader_fn(path)
         df = _normalize_strings(df)
         frames.append(df)
+        loaded.append(f"{name} ({len(df):,} rows)")
+
+    # Every source missing is a real configuration error; a subset missing is
+    # not, so the pipeline no longer refuses to start over one absent archive.
+    if not frames:
+        raise FileNotFoundError(
+            "No mandi datasets found in ml/data/. Expected one or more of: "
+            + ", ".join(os.path.basename(p) for p, _ in sources)
+        )
+    print(f"[data_loader] loaded: {', '.join(loaded)}")
+    if skipped:
+        print(f"[data_loader] not present (skipped): {', '.join(skipped)}")
 
     combined = pd.concat(frames, ignore_index=True)
 

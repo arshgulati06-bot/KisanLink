@@ -358,6 +358,83 @@ class TestEvaluation:
 
 
 # ===========================================================================
+# 9. Historical source coverage — 2023 / 2024 / 2025 workbooks
+# ===========================================================================
+
+class TestHistoricalSources:
+    """
+    The 2023, 2024 and 2025 AGMARKNET exports are .xlsx workbooks, so they need
+    a different reader than the CSVs. These tests use whichever sources are
+    actually present — the archives are gitignored, so a clean checkout has
+    none of them and every data-dependent assertion skips instead of failing.
+    """
+
+    XLSX = (config.XLSX_2023, config.XLSX_2024, config.XLSX_2025)
+
+    def test_all_six_archives_are_registered(self):
+        names = [os.path.basename(p) for p in config.HISTORICAL_SOURCES]
+        assert names == [
+            "Agriculture_price_dataset.csv", "2022.csv",
+            "2023.csv.xlsx", "2024.csv.xlsx", "2025.csv.xlsx",
+            "2026.csv",
+        ]
+
+    def test_signature_covers_every_registered_source(self):
+        from ml.data_loader import _source_signature
+        sig = _source_signature()
+        for path in config.HISTORICAL_SOURCES:
+            if os.path.exists(path):
+                assert os.path.basename(path) in sig, path
+
+    def test_signature_changes_when_a_source_changes(self):
+        """A re-exported archive must invalidate the cached frame."""
+        from ml import data_loader as dl
+        present = [p for p in config.HISTORICAL_SOURCES if os.path.exists(p)]
+        if not present:
+            pytest.skip("no historical archives present in ml/data/")
+        before = dl._source_signature()
+        stat = os.stat(present[0])
+        os.utime(present[0], (stat.st_atime, stat.st_mtime + 60))
+        try:
+            assert dl._source_signature() != before
+        finally:
+            os.utime(present[0], (stat.st_atime, stat.st_mtime))
+        assert dl._source_signature() == before
+
+    def test_cache_is_rejected_when_the_signature_moves_on(self):
+        from ml import data_loader as dl
+        if not os.path.exists(config.COMBINED_CACHE_PATH):
+            pytest.skip("no combined cache built in this environment")
+        assert dl._read_cache("a-different-signature") is None
+
+    def test_xlsx_reader_yields_the_canonical_columns(self):
+        """Arrival_Date must land in the canonical Date column, not be dropped."""
+        from ml.data_loader import _load_arrival_excel
+        present = [p for p in self.XLSX if os.path.exists(p)]
+        if not present:
+            pytest.skip("no yearly .xlsx archives present in ml/data/")
+        df = _load_arrival_excel(present[0])
+        for col in (config.COL_STATE, config.COL_DISTRICT, config.COL_MARKET,
+                    config.COL_COMMODITY, config.COL_DATE, config.COL_MODAL_PRICE):
+            assert col in df.columns, col
+        assert "Arrival_Date" not in df.columns
+        assert len(df) > 0
+
+    def test_combined_frame_covers_every_present_archive_year(self, ):
+        """Every yearly workbook on disk must show up in the combined frame."""
+        present = [p for p in self.XLSX if os.path.exists(p)]
+        if not present:
+            pytest.skip("no yearly .xlsx archives present in ml/data/")
+        df = load_combined_data()
+        years = set(pd.to_datetime(df[config.COL_DATE]).dt.year.unique())
+        for path in present:
+            year = int(os.path.basename(path).split(".")[0])
+            assert year in years, f"{year} rows missing from the combined frame"
+        assert len(df) > 0
+        assert df[config.COL_COMMODITY].nunique() > 0
+
+
+# ===========================================================================
 # Main
 # ===========================================================================
 
