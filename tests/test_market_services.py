@@ -851,10 +851,16 @@ class TestWeatherLocation:
         not depend on the external geocoder being reachable.
         """
         import urllib.request
+        import backend.app as appmod
 
         def _no_network(*a, **k):
             raise OSError("network blocked")
 
+        # Weather responses are cached process-wide for 10 minutes, which is
+        # deliberate — but it means an earlier test that reached Open-Meteo for
+        # Nashik would serve this one from cache. Start from empty so the
+        # geocoding path is what is actually under test.
+        appmod._WEATHER_CACHE.clear()
         # app.py imports urllib inside the handler, so patch it at the source.
         monkeypatch.setattr(urllib.request, "urlopen", _no_network)
         res = client.get("/api/weather?district=Nashik&state=Maharashtra")
@@ -1556,3 +1562,188 @@ class TestOfferFlow:
         assert "`TX-${" not in src, "dashboard.js is fabricating transaction ids again"
         assert "/offers/" in src and "respond" in src, (
             "accept/reject must call /api/offers/<id>/respond")
+
+
+# ---------------------------------------------------------------------------
+# 20. startup, laziness and the render-blocking font link
+# ---------------------------------------------------------------------------
+
+class TestStartupAndLaziness:
+    """
+    The dashboard used to wait ~13s before running a single line of JavaScript,
+    and the server loaded the whole mandi archive plus Chronos before opening
+    its socket. Neither is needed to show the page, sign in, check weather or
+    grade a photo.
+    """
+
+    PAGES = ["frontend/pages/farmer.html", "frontend/pages/buyer.html",
+             "frontend/pages/auth.html", "frontend/index.html"]
+
+    def _read(self, rel):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..", *rel.split("/"))
+        if not os.path.exists(path):
+            pytest.skip(f"{rel} not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    @pytest.mark.parametrize("page", PAGES)
+    def test_font_stylesheet_never_blocks_the_parser(self, page):
+        """
+        A render-blocking <link> to fonts.googleapis.com held DOMContentLoaded
+        for ~13s when the CDN was unreachable — offline demo wifi, captive
+        portal — freezing weather, quality and forecast alike.
+        """
+        import re
+        html = self._read(page)
+        for tag in re.findall(r"<link\b[^>]*fonts\.googleapis\.com/css2[^>]*>", html):
+            if 'rel="preconnect"' in tag or "rel='preconnect'" in tag:
+                continue
+            in_noscript = f"<noscript><link rel=\"stylesheet\" href" in html and tag in html
+            assert 'media="print"' in tag or in_noscript, (
+                f"{page} still loads the font CSS render-blocking: {tag[:110]}")
+
+    def test_chronos_is_not_loaded_during_create_app(self, monkeypatch):
+        """Chronos must load on the first forecast, not at import/startup."""
+        import backend.app as appmod
+        calls = []
+        monkeypatch.setattr(appmod, "load_model",
+                            lambda *a, **k: calls.append(1) or "PIPE")
+        application = appmod.create_app(load_real_data=False, load_chronos=True)
+        assert calls == [], "Chronos was loaded during create_app()"
+        assert application.extensions["kisanlink"]["pipeline"] is None
+
+    def test_pipeline_loads_once_and_is_reused(self, monkeypatch):
+        import backend.app as appmod
+        calls = []
+
+        def _fake():
+            calls.append(1)
+            return "PIPE"
+
+        monkeypatch.setattr(appmod, "load_model", _fake)
+        application = appmod.create_app(load_real_data=False, load_chronos=True)
+        with application.app_context():
+            assert appmod._pipeline() == "PIPE"
+            assert appmod._pipeline() == "PIPE"
+            assert appmod._pipeline() == "PIPE"
+        assert calls == [1], f"Chronos loaded {len(calls)} times, expected once"
+
+    def test_data_dependent_endpoints_answer_503_while_warming(self):
+        """Not a hang and not a 500 — a reason the frontend can act on."""
+        import backend.app as appmod
+        application = appmod.create_app(load_real_data=False, load_chronos=False)
+        application.config["TESTING"] = True
+        application.extensions["kisanlink"]["data_pending"] = True
+        c = application.test_client()
+        res = c.get("/api/commodities")
+        assert res.status_code == 503
+        body = res.get_json()
+        assert body["reason"] == "data_warming_up"
+        assert body["success"] is False
+
+    def test_data_status_reports_readiness(self):
+        import backend.app as appmod
+        application = appmod.create_app(dataframe=_frame(), load_real_data=False,
+                                        load_chronos=False)
+        application.config["TESTING"] = True
+        body = application.test_client().get("/api/data-status").get_json()
+        assert body["success"] is True
+        assert body["ready"] is True
+        assert body["records"] > 0
+        assert body["commodities"] >= 1
+
+    def test_reported_sources_reflect_the_filesystem(self):
+        """The list used to be hard-coded and omitted the yearly workbooks."""
+        import os
+        import backend.app as appmod
+        names = {s["name"] for s in appmod._describe_sources()}
+        for path in config.HISTORICAL_SOURCES:
+            assert os.path.basename(path) in names
+        for src in appmod._describe_sources():
+            assert src["present"] == os.path.exists(
+                os.path.join(os.path.dirname(__file__), "..", "ml", "data", src["name"])
+            ) or src["type"] == "incremental"
+
+
+# ---------------------------------------------------------------------------
+# 21. weather latency budget
+# ---------------------------------------------------------------------------
+
+class TestWeatherBudget:
+    def test_upstream_budget_fits_inside_the_browser_abort(self):
+        """
+        The client aborts at 30s. Two 12s upstream attempts plus an 8s geocode
+        exceeded that, so a slow first load was guaranteed to look like a
+        failure. Keep the server's worst case comfortably under the client's.
+        """
+        import os
+        import re
+        path = os.path.join(os.path.dirname(__file__), "..", "backend", "app.py")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        wx = [int(t) for t in re.findall(r"urlopen\(wx_url, timeout=(\d+)\)", src)]
+        geo = [int(t) for t in re.findall(r"urlopen\(geo_url, timeout=(\d+)\)", src)]
+        assert wx and geo, "could not find the weather timeouts"
+        worst = max(geo) + 2 * max(wx) + 1     # geocode + two attempts + backoff
+        assert worst < 25, f"weather worst case {worst}s is too close to the 30s client abort"
+
+    def test_weather_responses_are_cached(self):
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+        assert appmod._weather_cache_get(19.99, 73.79) is None
+        appmod._weather_cache_put(19.99, 73.79, b'{"current":{}}')
+        assert appmod._weather_cache_get(19.99, 73.79) == b'{"current":{}}'
+        # ~1 km bucketing: a nearby request reuses the entry
+        assert appmod._weather_cache_get(19.9903, 73.7904) == b'{"current":{}}'
+        appmod._WEATHER_CACHE.clear()
+
+    def test_weather_cache_is_bounded(self):
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+        for i in range(300):
+            appmod._weather_cache_put(10 + i / 100.0, 70.0, b"x")
+        assert len(appmod._WEATHER_CACHE) <= 256
+        appmod._WEATHER_CACHE.clear()
+
+
+# ---------------------------------------------------------------------------
+# 22. the quality request can never hang the card
+# ---------------------------------------------------------------------------
+
+class TestQualityRequestRobustness:
+    def _js(self, name):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..", "frontend", "js", name)
+        if not os.path.exists(path):
+            pytest.skip(f"{name} not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_quality_fetch_is_bounded_by_an_abort(self):
+        """A bare fetch() has no timeout: a stalled upload left the card on
+        "Analysing Crop Quality…" with no way out."""
+        src = self._js("api.js")
+        i = src.index("async function assessCropQuality")
+        body = src[i: src.index("async function", i + 10)]
+        assert "AbortController" in body, "the quality fetch has no abort controller"
+        assert "signal: controller.signal" in body, "the abort signal is not passed to fetch"
+        assert "AbortError" in body, "an abort is not reported as a timeout"
+
+    def test_a_non_json_reply_is_not_treated_as_success(self):
+        src = self._js("api.js")
+        assert "bad_response" in src
+
+    def test_the_analyse_handler_always_clears_loading_and_reenables(self):
+        src = self._js("crop-quality.js")
+        i = src.index("function _onAnalyzeClick")
+        body = src[i: i + 2200]
+        assert "btn.disabled = false" in body, "the button can stay stuck disabled"
+        assert "loadingState" in body, "the spinner is not guaranteed to clear"
+
+    def test_render_errors_do_not_masquerade_as_analysis_failure(self):
+        """A throw while painting used to land in the request's .catch()."""
+        src = self._js("crop-quality.js")
+        i = src.index("function _onAnalyzeClick")
+        body = src[i: i + 2200]
+        assert "renderErr" in body

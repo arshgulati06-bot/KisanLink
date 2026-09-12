@@ -91,12 +91,49 @@ def _store():
     return current_app.extensions["kisanlink"]
 
 
+class DataWarmingUp(Exception):
+    """Raised when an endpoint needs the mandi archive and it is still loading."""
+
+
 def _df():
-    return _store()["df"]
+    """
+    The combined mandi dataframe.
+
+    When the server is started with a deferred load, this raises DataWarmingUp
+    until the background thread finishes. A uniform 503 is far better than
+    holding the whole site — pages, auth, weather and photo grading need none
+    of this data — behind a multi-minute archive parse.
+    """
+    store = _store()
+    df = store.get("df")
+    if df is None:
+        raise DataWarmingUp()
+    if store.get("data_pending") and (df is None or df.empty):
+        raise DataWarmingUp()
+    return df
+
+
+#: Chronos is loaded once, on first use, and reused for every later request.
+#: Loading it during create_app() delayed the whole server — including pages,
+#: auth, weather and photo grading, none of which need forecasting — behind a
+#: model load the farmer may never trigger.
+_CHRONOS_LOCK = threading.Lock()
 
 
 def _pipeline():
-    return _store()["pipeline"]
+    """The Chronos pipeline, loaded on first use and cached in the app store."""
+    store = _store()
+    pipe = store.get("pipeline")
+    if pipe is not None:
+        return pipe
+    with _CHRONOS_LOCK:
+        pipe = store.get("pipeline")          # another thread may have won
+        if pipe is None:
+            print("[KisanLink API] Loading Chronos model (first forecast request)...")
+            pipe = load_model()
+            store["pipeline"] = pipe
+            print("[KisanLink API] Chronos model loaded.")
+    return pipe
 
 
 def _mask_commodity_state_district(df, commodity, state, district=None):
@@ -213,6 +250,28 @@ def _init_database():
         print("[KisanLink DB]   The ML forecast API will still work without the application DB.")
 
 
+_EAGER_CHRONOS = os.environ.get("KISANLINK_EAGER_CHRONOS", "").lower() in {"1", "true", "yes"}
+
+
+def _describe_sources():
+    """The historical archives that are actually present on this machine."""
+    out = []
+    for path in getattr(ml_config, "HISTORICAL_SOURCES", []):
+        out.append({
+            "name": os.path.basename(path),
+            "type": "historical",
+            "present": os.path.exists(path),
+        })
+    ingested = getattr(ml_config, "INGESTED_RECORDS_PATH", "")
+    if ingested:
+        out.append({
+            "name": "ingested/" + os.path.basename(ingested),
+            "type": "incremental",
+            "present": os.path.exists(ingested),
+        })
+    return out
+
+
 def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=True):
     app = Flask(__name__, static_folder=None)
     CORS(app)
@@ -250,8 +309,10 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     if dataframe is not None and not dataframe.empty and "_commodity_l" not in dataframe.columns:
         dataframe = _add_filter_columns(dataframe)
 
-    if pipeline is None and load_chronos:
-        print("[KisanLink API] Loading Chronos model...")
+    if pipeline is None and load_chronos and _EAGER_CHRONOS:
+        # Off by default: _pipeline() loads it on the first forecast request.
+        # Set KISANLINK_EAGER_CHRONOS=1 to pay the cost up front instead.
+        print("[KisanLink API] Loading Chronos model (eager mode)...")
         pipeline = load_model()
         print("[KisanLink API] Chronos model loaded.")
 
@@ -271,20 +332,122 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
             "total_records": 0 if dataframe is None else len(dataframe),
             "latest_date_in_dataset": latest,
             "live_api_connected": official_api_configured(),
+            # Report the archives actually on disk, not a fixed list. The old
+            # hard-coded list omitted the 2023/2024/2025 workbooks and named
+            # CSVs that may not be installed.
             "sources": [
                 {"name": "SYNTHETIC DEVELOPMENT FIXTURE", "type": "synthetic"},
-            ] if using_dev_fixture else [
-                {"name": "Agriculture_price_dataset.csv", "type": "historical"},
-                {"name": "2022.csv", "type": "historical"},
-                {"name": "2026.csv", "type": "historical"},
-                {"name": "ingested/records.csv", "type": "incremental"},
-            ],
+            ] if using_dev_fixture else _describe_sources(),
         },
     }
+
+    @app.route("/api/data-status", methods=["GET"])
+    def data_status():
+        """
+        Cheap readiness probe for the mandi archive.
+
+        The dashboard's crop dropdowns come from /api/commodities, which 503s
+        while the archive loads. This lets the frontend wait for real data
+        instead of rendering an empty list.
+        """
+        store = _store()
+        df = store.get("df")
+        pending = bool(store.get("data_pending"))
+        ready = df is not None and not df.empty
+        body = {
+            "success": True,
+            "ready": ready,
+            "loading": pending and not ready,
+            "records": 0 if df is None else len(df),
+        }
+        if ready:
+            body["commodities"] = int(df[ml_config.COL_COMMODITY].nunique())
+        return jsonify(body), 200
+
+    @app.errorhandler(DataWarmingUp)
+    def _warming(_e):
+        return jsonify({
+            "success": False,
+            "reason": "data_warming_up",
+            "error": ("Mandi price history is still loading on the server. "
+                      "Everything else works; retry this in a moment."),
+        }), 503
 
     _init_database()
     register_routes(app)
     return app
+
+
+def start_background_data_load(app):
+    """
+    Load the combined archive in a worker thread so the socket opens at once.
+
+    The dataframe is swapped in atomically when it is ready; until then
+    _df() raises DataWarmingUp and those endpoints answer 503 with a reason.
+    """
+    store = app.extensions["kisanlink"]
+    store["data_pending"] = True
+
+    def _work():
+        try:
+            df = load_combined_data()
+            from ml.data_loader import _add_filter_columns
+            if not df.empty and "_commodity_l" not in df.columns:
+                df = _add_filter_columns(df)
+            store["df"] = df
+            meta = store.get("ingestion_meta") or {}
+            meta["total_records"] = len(df)
+            if not df.empty:
+                meta["latest_date_in_dataset"] = str(
+                    pd.to_datetime(df[ml_config.COL_DATE]).max().date())
+            store["ingestion_meta"] = meta
+            print(f"[KisanLink API] Mandi archive ready: {len(df):,} records, "
+                  f"{df[ml_config.COL_COMMODITY].nunique()} commodities.")
+        except Exception as exc:
+            print(f"[KisanLink API] Background archive load FAILED: {exc}")
+        finally:
+            store["data_pending"] = False
+
+    threading.Thread(target=_work, name="kisanlink-data-load", daemon=True).start()
+
+
+# Open-Meteo is keyless but not instant: a cold call here measured ~13s, and
+# the farmer dashboard asks for weather on every load. Cache the raw upstream
+# body briefly so repeat loads and retries are served locally.
+_WEATHER_CACHE = {}
+_WEATHER_CACHE_LOCK = threading.Lock()
+WEATHER_CACHE_SECONDS = int(os.environ.get("KISANLINK_WEATHER_CACHE_SECONDS", "600") or 600)
+
+
+def _weather_cache_key(lat, lon):
+    # ~1 km resolution: neighbouring requests share an entry.
+    return (round(float(lat), 2), round(float(lon), 2))
+
+
+def _weather_cache_get(lat, lon):
+    try:
+        key = _weather_cache_key(lat, lon)
+    except (TypeError, ValueError):
+        return None
+    with _WEATHER_CACHE_LOCK:
+        hit = _WEATHER_CACHE.get(key)
+        if hit and (time.time() - hit[0]) < WEATHER_CACHE_SECONDS:
+            return hit[1]
+    return None
+
+
+def _weather_cache_put(lat, lon, raw):
+    if not raw:
+        return
+    try:
+        key = _weather_cache_key(lat, lon)
+    except (TypeError, ValueError):
+        return
+    with _WEATHER_CACHE_LOCK:
+        _WEATHER_CACHE[key] = (time.time(), raw)
+        if len(_WEATHER_CACHE) > 256:          # bounded; drop the oldest
+            oldest = min(_WEATHER_CACHE, key=lambda k: _WEATHER_CACHE[k][0])
+            _WEATHER_CACHE.pop(oldest, None)
 
 
 class _WxBytes:
@@ -1704,7 +1867,7 @@ def register_routes(app):
                         "https://geocoding-api.open-meteo.com/v1/search?"
                         + urllib.parse.urlencode({"name": query, "count": 1, "language": "en", "format": "json"})
                     )
-                    with urllib.request.urlopen(geo_url, timeout=8) as resp:
+                    with urllib.request.urlopen(geo_url, timeout=5) as resp:
                         geo = _json.loads(resp.read())
                     results = geo.get("results", [])
                     if results:
@@ -1745,17 +1908,23 @@ def register_routes(app):
             # One short retry: the upstream occasionally drops a connection
             # under concurrent dashboard loads, and a blank weather card is a
             # worse answer than waiting another second.
-            _wx_raw = None
-            for _attempt in range(2):
-                try:
-                    with urllib.request.urlopen(wx_url, timeout=12) as _r:
-                        _wx_raw = _r.read()
-                    break
-                except Exception as _exc:
-                    if _attempt == 1:
-                        raise
-                    print(f"[weather] upstream attempt 1 failed ({_exc}); retrying")
-                    time.sleep(0.8)
+            # Budget: 2 x 6s + 0.8s = ~13s worst case. It used to be 2 x 12s,
+            # which together with an 8s geocode could exceed the browser's 30s
+            # abort and made the dashboard's automatic weather load look broken
+            # while the request was still legitimately in flight.
+            _wx_raw = _weather_cache_get(lat, lon)
+            if _wx_raw is None:
+                for _attempt in range(2):
+                    try:
+                        with urllib.request.urlopen(wx_url, timeout=6) as _r:
+                            _wx_raw = _r.read()
+                        break
+                    except Exception as _exc:
+                        if _attempt == 1:
+                            raise
+                        print(f"[weather] upstream attempt 1 failed ({_exc}); retrying")
+                        time.sleep(0.8)
+                _weather_cache_put(lat, lon, _wx_raw)
             with _WxBytes(_wx_raw) as resp:
                 wx = _json.loads(resp.read())
 
@@ -2278,7 +2447,16 @@ app = _LazyApp()
 
 
 if __name__ == "__main__":
-    application = create_app()
+    # The dashboard, auth, weather and photo grading need neither the mandi
+    # archive nor Chronos, so neither is loaded before the socket opens.
+    # KISANLINK_EAGER_DATA=1 restores the old blocking behaviour.
+    eager_data = os.environ.get("KISANLINK_EAGER_DATA", "").lower() in {"1", "true", "yes"}
+    application = create_app(load_real_data=eager_data, load_chronos=False)
+    if not eager_data:
+        start_background_data_load(application)
+        print("[KisanLink API] Mandi archive loading in the background — "
+              "the site is usable now; forecasts and market pages become "
+              "available when it finishes.")
     print("[KisanLink API] Starting server on http://localhost:5000")
     print("[KisanLink API] Frontend: http://localhost:5000/pages/farmer.html")
-    application.run(host="127.0.0.1", port=5000, debug=False)
+    application.run(host="127.0.0.1", port=5000, debug=False, threaded=True)

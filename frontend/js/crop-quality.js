@@ -450,11 +450,34 @@ function _onAnalyzeClick() {
     return;
   }
 
+  var btn = document.getElementById(CQA.ids.analyzeBtn);
+  if (btn) btn.disabled = true;
+
+  // A throw inside the render step used to land in this same .catch(), so a
+  // successful analysis could paint and then be replaced by "Analysis Failed".
+  // Rendering is now guarded separately from the request.
   analyzeCropQuality(CQA.state.imageFile, crop).then(function(result) {
-    _showResultState(result);
+    try {
+      _showResultState(result);
+    } catch (renderErr) {
+      console.error('[CQA] Could not render the result:', renderErr);
+      _showErrorState('The analysis finished but the result could not be ' +
+                      'displayed (' + (renderErr && renderErr.message) + '). ' +
+                      'Press Try Again.');
+    }
   }).catch(function(err) {
-    _showErrorState(err.message || 'An unexpected error occurred during quality analysis.');
+    _showErrorState(
+      (err && err.message) ||
+      'The photo check could not be completed. Press Try Again.');
     console.error('[CQA] Analysis error:', err);
+  }).then(function () {
+    // Always runs: the button must never stay stuck disabled, and the
+    // "Analysing…" spinner must never be the final state.
+    if (btn) btn.disabled = false;
+    var loading = document.getElementById(CQA.ids.loadingState);
+    if (loading && !loading.hidden) {
+      _showErrorState('The photo check ended without a result. Press Try Again.');
+    }
   });
 }
 

@@ -159,7 +159,7 @@ var KL_PriceForecast = (function () {
   }
 
   /* ── Cascading dropdown loaders ────────────────────────────────────── */
-  function loadCrops() {
+  function loadCrops(isRetry) {
     var controller = new AbortController();
     requestState.cascadeController = controller;
     _fetchJSON('/api/commodities', controller.signal).then(function (crops) {
@@ -168,8 +168,22 @@ var KL_PriceForecast = (function () {
       _wireCropSearch();
     }).catch(function (err) {
       if (err.name === 'AbortError') return;
+      // The mandi archive loads in the background after a cold start, so this
+      // legitimately 503s for the first moments. Wait for it instead of
+      // telling the farmer the backend is down.
+      var warming = /503|warming/i.test(String(err && err.message));
+      if (warming && !isRetry && typeof window.waitForMarketData === 'function') {
+        _populateSelect(IDS.cropSelect, [], 'Loading market data…');
+        window.waitForMarketData().then(function (ok) {
+          if (ok) { loadCrops(true); return; }
+          _populateSelect(IDS.cropSelect, [], 'Market data unavailable');
+        });
+        return;
+      }
       console.error('[PriceForecast] Failed to load commodities:', err);
-      _populateSelect(IDS.cropSelect, [], 'Backend unavailable — start server');
+      _populateSelect(IDS.cropSelect, [],
+        warming ? 'Market data still loading — retry shortly'
+                : 'Backend unavailable — start server');
     }).finally(function () {
       if (requestState.cascadeController === controller) requestState.cascadeController = null;
     });

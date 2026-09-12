@@ -223,18 +223,46 @@ async function assessCropQuality(image, crop = '') {
   const token = window.apiClient.getAuthToken();
   if (token) headers['Authorization'] = 'Bearer ' + token;
 
+  // A raw fetch() has no timeout, so a stalled upload left the card on
+  // "Analysing Crop Quality…" forever with no way out. Bound it explicitly and
+  // always report a reason the farmer can act on.
+  const QUALITY_TIMEOUT_MS = 60000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), QUALITY_TIMEOUT_MS);
+
   let res, data;
   try {
     res = await fetch(window.apiClient.baseUrl + '/ml/quality-assessment', {
-      method: 'POST', body, headers,
+      method: 'POST', body, headers, signal: controller.signal,
     });
-    data = await res.json();
   } catch (err) {
+    clearTimeout(timer);
+    const abort = err && (err.name === 'AbortError');
     return {
       _placeholder: true, _unavailable: true, crop,
       grade: null, confidence: null, indicators: [],
-      reason: 'network',
-      message: 'Could not reach the analysis service. Set the grade manually for now.',
+      reason: abort ? 'timeout' : 'network',
+      message: abort
+        ? 'The photo check took longer than ' + (QUALITY_TIMEOUT_MS / 1000) +
+          ' seconds and was stopped. The first analysis after the server ' +
+          'starts is the slowest — press Try Again.'
+        : 'Could not reach the analysis service. Check that the backend is ' +
+          'running, then press Try Again.',
+    };
+  }
+  clearTimeout(timer);
+
+  try {
+    data = await res.json();
+  } catch (err) {
+    // A non-JSON body (proxy error page, crash) must not read as success.
+    return {
+      _placeholder: true, _unavailable: true, crop,
+      grade: null, confidence: null, indicators: [],
+      reason: 'bad_response',
+      httpStatus: res.status,
+      message: 'The server replied with something that was not a result ' +
+               '(HTTP ' + res.status + '). Press Try Again.',
     };
   }
 
@@ -323,6 +351,40 @@ window.getBuyerDemands                   = getBuyerDemands;
 window.matchBuyers                       = matchBuyers;
 window.getSaleWindow                     = getSaleWindow;
 window.getIngestStatus                   = getIngestStatus;
+/**
+ * Resolve once the server's mandi archive is loaded.
+ *
+ * The archive now loads in a background thread so the site is usable within
+ * seconds, which means /api/commodities can answer 503 for the first little
+ * while. Anything that populates a crop/market dropdown should wait on this
+ * rather than rendering an empty list.
+ *
+ * @param {function(boolean):void} [onProgress] called with `false` while waiting
+ * @returns {Promise<boolean>} true when data is ready, false if it never arrived
+ */
+function waitForMarketData(onProgress) {
+  const DEADLINE_MS = 10 * 60 * 1000;
+  const started = Date.now();
+  let told = false;
+  return new Promise(function (resolve) {
+    (function poll() {
+      fetch(window.apiClient.baseUrl + '/data-status')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.ready) { resolve(true); return; }
+          if (Date.now() - started > DEADLINE_MS) { resolve(false); return; }
+          if (!told && onProgress) { told = true; onProgress(false); }
+          setTimeout(poll, 2000);
+        })
+        .catch(function () {
+          if (Date.now() - started > DEADLINE_MS) { resolve(false); return; }
+          setTimeout(poll, 3000);
+        });
+    })();
+  });
+}
+
+window.waitForMarketData                 = waitForMarketData;
 window.assessCropQuality                 = assessCropQuality;
 window.getCropQualityStatus              = getCropQualityStatus;
 window.calculateExpectedNetRealisation   = calculateExpectedNetRealisation;

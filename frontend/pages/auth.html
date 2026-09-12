@@ -42,9 +42,13 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-    rel="stylesheet">
+  <!-- Loaded without blocking the parser. A render-blocking font link
+       stalled DOMContentLoaded for ~13s whenever the CDN was slow or
+       unreachable (offline demo wifi, captive portal), which froze the
+       whole dashboard - weather, quality and forecast all waited on it.
+       style.css carries a full system-font fallback stack. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all';this.onload=null">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
 
   <!-- Core Stylesheets -->
   <link rel="stylesheet" href="../css/style.css">

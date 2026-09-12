@@ -138,7 +138,46 @@ var KL_Step4 = (function () {
     var API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
       ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
       : 'http://localhost:5000';
-    fetch(API_BASE + '/api/commodities').then(function (r) { return r.json(); }).then(function (crops) {
+
+    // The mandi archive loads in the background, so /api/commodities answers
+    // 503 for the first moments after a cold start. Say so, wait for it, and
+    // then fill the lists — rather than silently leaving them empty.
+    function _note(msg) {
+      ['lot-crop', 'mp-commodity'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && el.options.length <= 1) {
+          el.innerHTML = '<option value="">' + msg + '</option>';
+        }
+      });
+    }
+
+    function _load() {
+      return fetch(API_BASE + '/api/commodities')
+        .then(function (r) {
+          if (r.status === 503) return null;          // still warming
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (crops) {
+          if (crops === null) {
+            _note('Loading market data…');
+            if (typeof window.waitForMarketData === 'function') {
+              return window.waitForMarketData().then(function (ok) {
+                if (ok) return _load();
+                _note('Market data unavailable');
+              });
+            }
+            return setTimeout(_load, 4000);
+          }
+          return _fill(crops);
+        })
+        .catch(function (e) {
+          console.warn('[commodities] could not load:', e);
+          _note('Could not load crops — refresh');
+        });
+    }
+
+    function _fill(crops) {
       if (!Array.isArray(crops)) return;
       window.__klCommodities = crops;
       // 'cqa-crop-select' is deliberately NOT filled from the full commodity
@@ -177,7 +216,9 @@ var KL_Step4 = (function () {
         });
       }
       wireFilter('lot-crop-search', 'lot-crop');
-    }).catch(function () {});
+    }
+
+    _load();
   }
 
   function _fmtInr(v) {
