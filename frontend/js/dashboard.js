@@ -598,8 +598,8 @@ function renderBuyerMatchedSupply(commodity, lotQty, grade, state, expectedPrice
           '<span style="font-size:0.65rem;color:var(--color-slate-400);">Needed by: ' + (m.required_date || '—') + '</span>' +
         '</div>' +
         '<button type="button" class="btn btn-primary btn-sm" style="width:100%;margin-top:var(--space-2);" ' +
-          'onclick="handleSendDigitalOffer(\'' + m.buyer_id + '\', \'' + (commodity||'') + '\', ' + lotQty + ')">' +
-          '<span>Send Digital Offer</span>' +
+          'onclick="handleSendDigitalOffer(\'' + m.buyer_id + '\', \'' + (commodity||'') + '\', ' + lotQty + ', ' + (m.offered_rate||0) + ')">' +
+          '<span>Make Offer</span>' +
         '</button>' +
       '</div>';
     }).join('');
@@ -656,9 +656,32 @@ document.addEventListener('kl:forecastCleared', function () {
   }
 });
 
-window.handleSendDigitalOffer = function(lotId, crop, quantity) {
+/**
+ * Send Digital Offer — opens the real offer modal.
+ *
+ * `buyerId` here is the id of the matched row. Seed sample buyers use a
+ * "DEMAND-SEED-..." id and are not registered users, so an offer cannot be
+ * delivered to them; the modal then lists the open requirements from real
+ * buyers instead of pretending the sample row can receive an offer.
+ */
+window.handleSendDigitalOffer = function (buyerId, crop, quantity, offeredRate) {
+  const isSampleBuyer = !/^\d+$/.test(String(buyerId || ''));
+  const note = isSampleBuyer
+    ? 'That matched row is a <strong>sample buyer</strong> bundled for the ' +
+      'matching demo, so it cannot receive an offer. Pick a real buyer ' +
+      'requirement below.'
+    : '';
+  if (typeof window.klOpenOfferModal === 'function') {
+    window.klOpenOfferModal({
+      commodity: crop,
+      quantity_qtl: quantity,
+      price_per_qtl: offeredRate,
+      contextNote: note,
+    });
+    return;
+  }
   if (typeof showToast === 'function') {
-    showToast(`Digital Purchase Offers are not connected to a backend yet for ${crop} (${quantity} QTL).`, 'warning');
+    showToast('Offer dialog is still loading — try again in a moment.', 'warning');
   }
 };
 

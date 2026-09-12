@@ -566,9 +566,81 @@
 
           <!-- Net Realisation Block -->
           <div class="ba-net-block">
-            <div class="ba-net-label">Expected Net Realisation</div>
+            <div class="ba-net-label">Estimated Net Realisation</div>
             <div id="ba-net-realisation" class="ba-net-value">—</div>
-            <div class="ba-net-note">After the forecast runs. Not labelled as today&rsquo;s live quote.</div>
+            <div id="ba-net-per-qtl" class="ba-net-sub">—</div>
+            <div class="ba-net-note">Planning estimate after transport and charges — not a guaranteed payout.</div>
+          </div>
+
+          <!-- Full money breakdown: filled by Sell Now from the backend's own
+               net-realisation figures. Hidden until a recommendation exists. -->
+          <div id="ba-breakdown" class="ba-breakdown" hidden>
+            <div class="ba-breakdown-head">
+              <h3 class="ba-breakdown-title">How this figure is built</h3>
+              <span id="ba-breakdown-market" class="badge badge-success">—</span>
+            </div>
+            <table class="ba-breakdown-table">
+              <tbody>
+                <tr>
+                  <th scope="row">Gross sale value <span>quantity × mandi price</span></th>
+                  <td id="ba-bd-gross-qtl" class="num">—</td>
+                  <td id="ba-bd-gross" class="num total">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Transport cost <span id="ba-bd-distance">—</span></th>
+                  <td id="ba-bd-transport-qtl" class="num">—</td>
+                  <td id="ba-bd-transport" class="num">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Handling &amp; loading</th>
+                  <td id="ba-bd-handling-qtl" class="num">—</td>
+                  <td id="ba-bd-handling" class="num">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Mandi fee <span>~1% of gross</span></th>
+                  <td id="ba-bd-fee-qtl" class="num">—</td>
+                  <td id="ba-bd-fee" class="num">—</td>
+                </tr>
+                <tr class="deduct subtotal">
+                  <th scope="row">Total deductions</th>
+                  <td id="ba-bd-costs-qtl" class="num">—</td>
+                  <td id="ba-bd-costs" class="num">—</td>
+                </tr>
+                <tr class="net">
+                  <th scope="row">Estimated Net Realisation</th>
+                  <td id="ba-bd-net-qtl" class="num">—</td>
+                  <td id="ba-bd-net" class="num total">—</td>
+                </tr>
+              </tbody>
+              <caption class="ba-breakdown-caption">
+                All figures in ₹ per quintal and ₹ total for the quantity entered.
+              </caption>
+            </table>
+
+            <!-- Sell Now vs Wait -->
+            <div id="ba-timing" class="ba-timing" hidden>
+              <div class="ba-timing-col">
+                <div class="ba-timing-label">Sell now</div>
+                <div id="ba-timing-now" class="ba-timing-val">—</div>
+                <div id="ba-timing-now-note" class="ba-timing-note">At today&rsquo;s modal price</div>
+              </div>
+              <div class="ba-timing-vs" aria-hidden="true">vs</div>
+              <div class="ba-timing-col">
+                <div class="ba-timing-label">Wait (7-day forecast)</div>
+                <div id="ba-timing-wait" class="ba-timing-val">—</div>
+                <div id="ba-timing-wait-note" class="ba-timing-note">At forecast P50</div>
+              </div>
+              <div id="ba-timing-delta" class="ba-timing-delta">—</div>
+            </div>
+
+            <div class="ba-cta-row">
+              <button type="button" id="ba-sell-now-btn" class="btn btn-primary">
+                <span>Sell Now — list this lot</span>
+              </button>
+              <button type="button" id="ba-make-offer-btn" class="btn btn-outline">
+                <span>Make Offer to a Buyer</span>
+              </button>
+            </div>
           </div>
 
           <!-- Arrow flow -->
@@ -1392,6 +1464,71 @@
   <!-- =========================================================================
        CREATE SALE LOT MODAL
        ========================================================================= -->
+  <!-- =========================================================================
+       MAKE OFFER MODAL (farmer -> open buyer requirement)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="make-offer-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="offer-modal-title">
+    <div class="modal-dialog" style="max-width: 560px;">
+      <button type="button" class="modal-close-btn" id="close-make-offer-modal" aria-label="Close offer dialog">&times;</button>
+      <h2 id="offer-modal-title" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-1);">Send Offer to Buyer</h2>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-500); margin-bottom: var(--space-4);">
+        Offer one of your published lots against an open buyer requirement. The buyer
+        receives it in their offers list and can accept or reject.
+      </p>
+
+      <form id="make-offer-form">
+        <div id="offer-context" class="lot-reco-summary" hidden></div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-requirement">Buyer requirement *</label>
+          <select class="form-select" id="offer-requirement" name="requirement_id" required>
+            <option value="">Loading open requirements…</option>
+          </select>
+          <p id="offer-requirement-help" style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;"></p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-lot">Your lot to offer *</label>
+          <select class="form-select" id="offer-lot" name="lot_id" required>
+            <option value="">Loading your lots…</option>
+          </select>
+          <p id="offer-lot-help" style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;"></p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="offer-quantity">Quantity (QTL) *</label>
+            <input type="number" class="form-input" id="offer-quantity" name="quantity_qtl"
+                   min="0.01" step="0.01" required inputmode="decimal">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="offer-price">Your asking price (₹/QTL) *</label>
+            <input type="number" class="form-input" id="offer-price" name="price_per_qtl"
+                   min="0.01" step="0.01" required inputmode="decimal">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-message">Message to buyer (optional)</label>
+          <textarea class="form-input" id="offer-message" name="message" rows="2" maxlength="500"
+                    placeholder="e.g. Grade A produce, ready for pickup from 15th."></textarea>
+        </div>
+
+        <div id="offer-total-line" style="font-size:0.82rem;color:var(--color-slate-700);margin-top:4px;"></div>
+        <div id="offer-feedback" role="status" style="margin-top:10px;font-size:0.82rem;"></div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" id="cancel-make-offer">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm" id="submit-make-offer">
+            <span>Send Offer</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="create-lot-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-lot-title">
     <div class="modal-dialog" style="max-width: 600px;">
       <button type="button" class="modal-close-btn" id="close-create-lot-modal" aria-label="Close modal">&times;</button>

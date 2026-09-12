@@ -718,3 +718,123 @@ class TestSeedBuyerProvenance:
         blob = json.dumps(demands)
         for real_or_invented in ("BigBasket", "Sahyadri", "MahaFresh", "Deccan Agri"):
             assert real_or_invented not in blob
+
+
+# ---------------------------------------------------------------------------
+# 11. farmer-initiated offers (Make Offer)
+# ---------------------------------------------------------------------------
+
+class TestFarmerOffers:
+    """A farmer offers one of their own lots against an open buyer requirement."""
+
+    def _buyer(self, client):
+        import uuid
+        s = uuid.uuid4().hex[:10]
+        res = client.post("/api/auth/register", json={
+            "name": "Offer Buyer", "username": f"ob_{s}",
+            "phone": "7" + s[:9].translate(str.maketrans("abcdef", "123456")),
+            "password": "StrongPass!234", "role": "BUYER",
+            "district": "Pune", "state": "Maharashtra",
+        })
+        assert res.status_code in (200, 201), res.get_json()
+        return {"Authorization": f"Bearer {res.get_json()['token']}"}
+
+    def _requirement(self, client, headers, commodity="Onion"):
+        res = client.post("/api/buyer-requirements", headers=headers, json={
+            "commodity": commodity, "quantity_qtl_min": 20,
+            "grade": "Grade A", "price_per_qtl": 2050,
+            "preferred_district": "Pune", "valid_until": "2026-12-01",
+        })
+        assert res.status_code in (200, 201), res.get_json()
+        body = res.get_json()
+        return body.get("requirement_id") or (body.get("requirement") or {}).get("id")
+
+    def _lot(self, client, headers, commodity="Onion"):
+        res = client.post("/api/lots", headers=headers, json={
+            "commodity": commodity, "quantity_qtl": 25, "grade": "Grade A",
+            "location": "Nashik, Maharashtra", "district": "Nashik",
+            "state": "Maharashtra", "price_per_qtl": 1943.27,
+        })
+        assert res.status_code == 201, res.get_json()
+        return res.get_json()["lot"]["id"]
+
+    def test_farmer_offer_is_created_and_attributed(self, client, auth_headers):
+        buyer = self._buyer(client)
+        req_id = self._requirement(client, buyer)
+        lot_id = self._lot(client, auth_headers)
+
+        res = client.post("/api/offers", headers=auth_headers, json={
+            "requirement_id": req_id, "lot_id": lot_id,
+            "quantity_qtl": 25, "price_per_qtl": 1943.27,
+            "message": "Grade A, ready for pickup.",
+        })
+        assert res.status_code == 201, res.get_json()
+        body = res.get_json()
+        assert body["success"] is True
+        assert body["initiated_by"] == "FARMER"
+        assert body["offer_id"]
+
+        mine = client.get("/api/offers/my", headers=auth_headers).get_json()
+        offers = mine.get("offers") or []
+        assert any(o["id"] == body["offer_id"] for o in offers)
+        offer = [o for o in offers if o["id"] == body["offer_id"]][0]
+        assert offer["initiated_by"] == "FARMER"
+        assert offer["status"] == "PENDING"
+        assert offer["price_per_qtl"] == pytest.approx(1943.27)
+
+    def test_offer_requires_a_requirement(self, client, auth_headers):
+        lot_id = self._lot(client, auth_headers)
+        res = client.post("/api/offers", headers=auth_headers, json={"lot_id": lot_id})
+        assert res.status_code == 400
+        assert "requirement_id" in res.get_json()["error"]
+
+    def test_offer_requires_a_lot(self, client, auth_headers):
+        buyer = self._buyer(client)
+        req_id = self._requirement(client, buyer)
+        res = client.post("/api/offers", headers=auth_headers,
+                          json={"requirement_id": req_id})
+        assert res.status_code == 400
+        assert "lot_id" in res.get_json()["error"]
+
+    def test_farmer_cannot_offer_someone_elses_lot(self, client, auth_headers):
+        import uuid
+        buyer = self._buyer(client)
+        req_id = self._requirement(client, buyer)
+        lot_id = self._lot(client, auth_headers)
+
+        s = uuid.uuid4().hex[:10]
+        other = client.post("/api/auth/register", json={
+            "name": "Other Farmer", "username": f"of_{s}",
+            "phone": "8" + s[:9].translate(str.maketrans("abcdef", "123456")),
+            "password": "StrongPass!234", "role": "FARMER",
+            "district": "Nashik", "state": "Maharashtra",
+        })
+        other_headers = {"Authorization": f"Bearer {other.get_json()['token']}"}
+
+        res = client.post("/api/offers", headers=other_headers, json={
+            "requirement_id": req_id, "lot_id": lot_id,
+            "quantity_qtl": 10, "price_per_qtl": 2000,
+        })
+        assert res.status_code == 403
+
+    def test_unknown_requirement_is_rejected(self, client, auth_headers):
+        lot_id = self._lot(client, auth_headers)
+        res = client.post("/api/offers", headers=auth_headers, json={
+            "requirement_id": 999999, "lot_id": lot_id,
+            "quantity_qtl": 10, "price_per_qtl": 2000,
+        })
+        assert res.status_code == 404
+
+    @pytest.mark.parametrize("price,qty", [(0, 10), (-5, 10), (2000, 0)])
+    def test_non_positive_amounts_rejected(self, client, auth_headers, price, qty):
+        buyer = self._buyer(client)
+        req_id = self._requirement(client, buyer)
+        lot_id = self._lot(client, auth_headers)
+        res = client.post("/api/offers", headers=auth_headers, json={
+            "requirement_id": req_id, "lot_id": lot_id,
+            "quantity_qtl": qty, "price_per_qtl": price,
+        })
+        assert res.status_code == 400
+
+    def test_anonymous_cannot_offer(self, client):
+        assert client.post("/api/offers", json={"requirement_id": 1, "lot_id": 1}).status_code == 401

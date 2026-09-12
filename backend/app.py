@@ -276,6 +276,72 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     return app
 
 
+def _create_farmer_offer(user_id, data):
+    """A farmer offers one of their own lots against an open buyer requirement."""
+    requirement_id = data.get("requirement_id")
+    if not requirement_id:
+        return _public_error(
+            "'requirement_id' is required: a farmer offer is made against an "
+            "open buyer requirement."
+        )
+    try:
+        requirement_id = int(requirement_id)
+    except (TypeError, ValueError):
+        return _public_error("Invalid 'requirement_id'.")
+
+    requirement = _lot_repo.get_requirement_by_id(requirement_id)
+    if not requirement:
+        return _public_error("Buyer requirement not found.", 404)
+    if str(requirement.get("status", "OPEN")).upper() != "OPEN":
+        return _public_error("That buyer requirement is no longer open.", 409)
+
+    lot_id = data.get("lot_id")
+    if not lot_id:
+        return _public_error("'lot_id' is required: choose which of your lots to offer.")
+    try:
+        lot = _lot_repo.get_lot_by_id(int(lot_id))
+    except (TypeError, ValueError):
+        return _public_error("Invalid 'lot_id'.")
+    if not lot:
+        return _public_error("Lot not found.", 404)
+    if lot.get("farmer_user_id") != user_id:
+        return _public_error("You can only offer your own lots.", 403)
+
+    # `x or default` would turn an explicit 0 into the lot quantity, so only an
+    # absent value falls back.
+    raw_qty = data.get("quantity_qtl")
+    if raw_qty in (None, ""):
+        raw_qty = lot.get("quantity_qtl")
+    try:
+        price = float(data.get("price_per_qtl") or 0)
+        qty = float(raw_qty or 0)
+    except (TypeError, ValueError):
+        return _public_error("'price_per_qtl' and 'quantity_qtl' must be numbers.")
+    if price <= 0:
+        return _public_error("'price_per_qtl' must be greater than zero.")
+    if qty <= 0:
+        return _public_error("'quantity_qtl' must be greater than zero.")
+
+    try:
+        offer_id = _lot_repo.create_offer(
+            buyer_user_id=requirement["buyer_user_id"],
+            seller_user_id=user_id,
+            lot_id=lot["id"],
+            data={**data, "requirement_id": requirement_id,
+                  "price_per_qtl": price, "quantity_qtl": qty},
+            initiated_by="FARMER",
+        )
+        return jsonify({
+            "success": True,
+            "offer_id": offer_id,
+            "initiated_by": "FARMER",
+            "message": "Offer sent to the buyer.",
+        }), 201
+    except Exception as exc:
+        print(f"[DB] farmer create_offer error: {exc}")
+        return _public_error("Could not save offer.", 500)
+
+
 def register_routes(app):
     @app.route("/")
     def serve_index():
@@ -1383,12 +1449,23 @@ def register_routes(app):
     @app.route("/api/offers", methods=["POST"])
     @_auth.login_required
     def create_offer():
-        """Buyer makes an offer on a lot."""
+        """
+        Create an offer.
+
+        Two directions, both persisted in the same `offers` table and told
+        apart by `initiated_by`:
+          BUYER  -> offers on a farmer's lot          (needs lot_id)
+          FARMER -> offers a lot against a buyer's
+                    open requirement                  (needs lot_id + requirement_id)
+        """
         user_id = _auth.get_current_user_id()
         role = _auth.get_current_role()
-        if role not in ("BUYER", "ADMIN"):
-            return _public_error("Only buyers can make offers.", 403)
         data = request.get_json(silent=True) or {}
+
+        if role == "FARMER":
+            return _create_farmer_offer(user_id, data)
+        if role not in ("BUYER", "ADMIN"):
+            return _public_error("Only buyers and farmers can make offers.", 403)
         lot_id = data.get("lot_id")
         if not lot_id:
             return _public_error("'lot_id' is required.")

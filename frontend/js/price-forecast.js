@@ -732,6 +732,34 @@ document.addEventListener('kl:forecastReady', function (e) {
   var data = e.detail;
   if (!data) return;
 
+  // Publish the best forecast point so the Best Action breakdown can show a
+  // real "sell now vs wait" comparison. Uses the decision engine's own
+  // recommended day when it gave one, else the last day of the horizon.
+  try {
+    var fdays = data.forecast || [];
+    if (fdays.length) {
+      var pick = null;
+      var recDay = data.sale_window && data.sale_window.recommended_day;
+      if (recDay != null) {
+        pick = fdays.filter(function (f) { return f.day === recDay; })[0] || null;
+      }
+      if (!pick) pick = fdays[fdays.length - 1];
+      var p50 = pick.p50 != null ? pick.p50 : pick.price;
+      window.__klLastForecast = {
+        p50: Number(p50),
+        day: pick.day || fdays.length,
+        date: pick.date || '',
+        latest_price: Number(data.latest_price),
+        market: data.market || '',
+        commodity: data.commodity || '',
+      };
+    } else {
+      window.__klLastForecast = null;
+    }
+  } catch (err) {
+    window.__klLastForecast = null;
+  }
+
   var sw = data.sale_window;
 
   /* ── Best Action section ─────────────────────────────────────────── */

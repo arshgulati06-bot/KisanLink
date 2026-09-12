@@ -121,6 +121,8 @@ var KL_Step4 = (function () {
     _initLanguageSelector();
     _loadIngestBanner();
     _wireSellNow();
+    _wireOfferModal();
+    _wireBestActionCtas();
     _fillCommoditySelects();
   }
 
@@ -329,6 +331,360 @@ var KL_Step4 = (function () {
     }
   }
 
+
+  // ---------------------------------------------------------------------
+  // Best Action: money breakdown + sell-now-vs-wait, straight from the
+  // backend's own net-realisation figures. Nothing is recomputed here.
+  // ---------------------------------------------------------------------
+  function _perQtl(total, qty) {
+    var n = Number(total), q = Number(qty);
+    if (!isFinite(n) || !isFinite(q) || q <= 0) return null;
+    return n / q;
+  }
+
+  function _txt(id, value) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  function _renderBreakdown(rec, qty, data, sel) {
+    var box = document.getElementById('ba-breakdown');
+    if (!box || !rec) return;
+
+    var gross = Number(rec.gross_value != null ? rec.gross_value : rec.gross_sale_value);
+    var transport = Number(rec.transport_cost);
+    var handling = Number(rec.handling_cost);
+    var fee = Number(rec.mandi_fee != null ? rec.mandi_fee : rec.mandi_fee_estimate);
+    var costs = Number(rec.total_cost);
+    var net = Number(rec.net_realisation);
+
+    function pair(idTotal, idPerQtl, total) {
+      _txt(idTotal, _fmtInr(total));
+      var pq = _perQtl(total, qty);
+      _txt(idPerQtl, pq == null ? '—' : _fmtInr(pq) + '/QTL');
+    }
+
+    _txt('ba-breakdown-market', (rec.market || '—') + (rec.district ? ', ' + rec.district : ''));
+    pair('ba-bd-gross', 'ba-bd-gross-qtl', gross);
+    pair('ba-bd-transport', 'ba-bd-transport-qtl', transport);
+    pair('ba-bd-handling', 'ba-bd-handling-qtl', handling);
+    pair('ba-bd-fee', 'ba-bd-fee-qtl', fee);
+    pair('ba-bd-costs', 'ba-bd-costs-qtl', costs);
+    pair('ba-bd-net', 'ba-bd-net-qtl', net);
+
+    _txt('ba-bd-distance', rec.distance_km != null ? _distLine(rec) : 'distance unavailable');
+
+    var perQtlNet = _perQtl(net, qty);
+    _txt('ba-net-per-qtl', perQtlNet == null
+      ? '—'
+      : _fmtInr(perQtlNet) + '/QTL net · ' + qty + ' QTL of ' + (data.commodity || sel.commodity || 'crop'));
+
+    box.hidden = false;
+
+    // Remember what a "Sell Now" CTA should prefill.
+    window.__klRecommendation = {
+      commodity: data.commodity || sel.commodity || '',
+      quantity_qtl: qty,
+      price_per_qtl: rec.latest_price || rec.modal_price || null,
+      market: rec.market || '',
+      district: rec.district || sel.district || '',
+      state: rec.state || sel.state || '',
+      net_realisation: net,
+    };
+
+    _renderTiming(rec, qty, net);
+  }
+
+  // Sell now vs wait, using the forecast already on the page. Only shown when
+  // a real forecast P50 exists — never invented.
+  function _renderTiming(rec, qty, netNow) {
+    var row = document.getElementById('ba-timing');
+    if (!row) return;
+    var fc = window.__klLastForecast;
+    var spot = Number(rec.modal_price != null ? rec.modal_price : rec.latest_price);
+    if (!fc || !isFinite(Number(fc.p50)) || !isFinite(spot) || spot <= 0) {
+      row.hidden = true;
+      return;
+    }
+    var p50 = Number(fc.p50);
+    // Costs do not change with the sale date, so the difference in net
+    // realisation is exactly the difference in gross.
+    var netWait = netNow + (p50 - spot) * qty;
+    var delta = netWait - netNow;
+
+    _txt('ba-timing-now', _fmtInr(netNow));
+    _txt('ba-timing-now-note', 'At ' + _fmtInr(spot) + '/QTL today');
+    _txt('ba-timing-wait', _fmtInr(netWait));
+    _txt('ba-timing-wait-note', 'At forecast P50 ' + _fmtInr(p50) + '/QTL'
+      + (fc.day ? ' (day ' + fc.day + ')' : ''));
+
+    var d = document.getElementById('ba-timing-delta');
+    if (d) {
+      var better = delta > 0;
+      d.className = 'ba-timing-delta ' + (better ? 'gain' : 'loss');
+      if (Math.abs(delta) < 1) {
+        d.className = 'ba-timing-delta';
+        d.textContent = 'Waiting makes almost no difference on this forecast — '
+          + 'selling now avoids storage risk.';
+      } else {
+        d.textContent = (better ? 'Waiting could add ' : 'Waiting could cost ')
+          + _fmtInr(Math.abs(delta))
+          + ' (' + _fmtInr(Math.abs(delta) / qty) + '/QTL) versus selling now. '
+          + 'Forecast, not a guarantee — storage and spoilage are not included.';
+      }
+    }
+    row.hidden = false;
+  }
+
+
+  // =====================================================================
+  // Make Offer: farmer offers one of their published lots against an open
+  // buyer requirement. Posts to the real /api/offers endpoint.
+  // =====================================================================
+  function _offerFeedback(msg, kind) {
+    var el = document.getElementById('offer-feedback');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.style.color = kind === 'error' ? '#b91c1c'
+                   : kind === 'success' ? 'var(--color-accent-green,#16a34a)'
+                   : 'var(--color-slate-500,#64748b)';
+  }
+
+  function _offerModal(open) {
+    var m = document.getElementById('make-offer-modal');
+    if (!m) return;
+    if (open) m.classList.add('modal-open');
+    else m.classList.remove('modal-open');
+  }
+
+  function _offerTotal() {
+    var q = Number((document.getElementById('offer-quantity') || {}).value);
+    var p = Number((document.getElementById('offer-price') || {}).value);
+    var el = document.getElementById('offer-total-line');
+    if (!el) return;
+    if (!isFinite(q) || !isFinite(p) || q <= 0 || p <= 0) { el.textContent = ''; return; }
+    el.textContent = 'Offer value: ' + _fmtInr(q * p) + ' (' + q + ' QTL × ' + _fmtInr(p) + '/QTL)';
+  }
+
+  window.klOpenOfferModal = function (opts) {
+    opts = opts || {};
+    var rec = window.__klRecommendation || {};
+    var commodity = opts.commodity || rec.commodity || '';
+    var qty = opts.quantity_qtl || rec.quantity_qtl || '';
+    var price = opts.price_per_qtl || rec.price_per_qtl || '';
+
+    _offerFeedback('');
+    var form = document.getElementById('make-offer-form');
+    if (form && form.getAttribute('data-sent')) {
+      form.removeAttribute('data-sent');
+      form.reset();
+      var sb = document.getElementById('submit-make-offer');
+      if (sb) { sb.disabled = false; sb.textContent = 'Send Offer'; }
+      var cb = document.getElementById('cancel-make-offer');
+      if (cb) { var cs = cb.querySelector('span'); if (cs) cs.textContent = 'Cancel'; }
+    }
+    var ctx = document.getElementById('offer-context');
+    if (ctx) {
+      if (opts.contextNote) {
+        ctx.innerHTML = '<span class="lot-reco-title">Context</span>' + opts.contextNote;
+        ctx.hidden = false;
+      } else {
+        ctx.hidden = true;
+        ctx.innerHTML = '';
+      }
+    }
+
+    var qEl = document.getElementById('offer-quantity');
+    var pEl = document.getElementById('offer-price');
+    if (qEl && qty) qEl.value = Math.round(Number(qty) * 100) / 100;
+    if (pEl && price) pEl.value = Math.round(Number(price) * 100) / 100;
+
+    _offerModal(true);
+    _offerTotal();
+    _loadOfferRequirements(commodity);
+    _loadOfferLots(commodity);
+  };
+
+  function _loadOfferRequirements(commodity) {
+    var sel = document.getElementById('offer-requirement');
+    var help = document.getElementById('offer-requirement-help');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Loading open requirements…</option>';
+    var url = '/buyer-requirements' + (commodity ? '?commodity=' + encodeURIComponent(commodity) : '');
+    window.apiClient.get(url).then(function (r) {
+      var reqs = (r.data && (r.data.requirements || r.data.demands)) || [];
+      if (!reqs.length) {
+        sel.innerHTML = '<option value="">No open buyer requirements' +
+          (commodity ? ' for ' + commodity : '') + '</option>';
+        if (help) {
+          help.textContent = commodity
+            ? 'No buyer has posted an open requirement for ' + commodity + ' yet. ' +
+              'Offers can only be sent to a real registered buyer.'
+            : 'No open buyer requirements right now.';
+        }
+        return;
+      }
+      sel.innerHTML = reqs.map(function (q) {
+        var label = q.commodity + ' · needs ' + (q.quantity_qtl_min || 0) + '+ QTL' +
+          (q.price_per_qtl ? ' · offering ' + _fmtInr(q.price_per_qtl) + '/QTL' : '') +
+          (q.preferred_district ? ' · ' + q.preferred_district : '');
+        return '<option value="' + q.id + '" data-price="' + (q.price_per_qtl || '') +
+          '" data-qty="' + (q.quantity_qtl_min || '') + '">' + label + '</option>';
+      }).join('');
+      if (help) help.textContent = reqs.length + ' open requirement(s) from registered buyers.';
+    }).catch(function (err) {
+      sel.innerHTML = '<option value="">Could not load requirements</option>';
+      if (help) help.textContent = (err && err.message) || 'Requirement lookup failed.';
+    });
+  }
+
+  function _loadOfferLots(commodity) {
+    var sel = document.getElementById('offer-lot');
+    var help = document.getElementById('offer-lot-help');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Loading your lots…</option>';
+    window.apiClient.get('/lots/my').then(function (r) {
+      var lots = (r.data && r.data.lots) || [];
+      var match = commodity
+        ? lots.filter(function (l) {
+            return String(l.commodity || '').toLowerCase() === String(commodity).toLowerCase();
+          })
+        : lots;
+      var use = match.length ? match : lots;
+      if (!use.length) {
+        sel.innerHTML = '<option value="">You have no published lots yet</option>';
+        if (help) help.textContent = 'Publish a sale lot first — an offer always references one of your lots.';
+        return;
+      }
+      sel.innerHTML = use.map(function (l) {
+        return '<option value="' + l.id + '" data-qty="' + (l.quantity_qtl || '') +
+          '" data-price="' + (l.expected_price || '') + '">#' + l.id + ' · ' +
+          l.commodity + ' · ' + (l.quantity_qtl || 0) + ' QTL · ' + (l.grade || '') + '</option>';
+      }).join('');
+      if (help) {
+        help.textContent = match.length
+          ? use.length + ' matching lot(s) for ' + commodity + '.'
+          : 'No lot for ' + commodity + ' — showing all your lots.';
+      }
+      sel.dispatchEvent(new Event('change'));
+    }).catch(function (err) {
+      sel.innerHTML = '<option value="">Could not load your lots</option>';
+      if (help) help.textContent = (err && err.message) || 'Lot lookup failed.';
+    });
+  }
+
+  function _wireOfferModal() {
+    var form = document.getElementById('make-offer-form');
+    if (!form || form.dataset.wired) return;
+    form.dataset.wired = '1';
+
+    var closeBtn = document.getElementById('close-make-offer-modal');
+    var cancelBtn = document.getElementById('cancel-make-offer');
+    var modal = document.getElementById('make-offer-modal');
+    if (closeBtn) closeBtn.addEventListener('click', function () { _offerModal(false); });
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { _offerModal(false); });
+    if (modal) modal.addEventListener('click', function (e) {
+      if (e.target === modal) _offerModal(false);
+    });
+
+    ['offer-quantity', 'offer-price'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', _offerTotal);
+    });
+
+    // Picking a lot caps the quantity at what that lot actually holds.
+    var lotSel = document.getElementById('offer-lot');
+    if (lotSel) lotSel.addEventListener('change', function () {
+      var opt = lotSel.options[lotSel.selectedIndex];
+      if (!opt) return;
+      var lotQty = Number(opt.getAttribute('data-qty'));
+      var qEl = document.getElementById('offer-quantity');
+      if (qEl && isFinite(lotQty) && lotQty > 0) {
+        qEl.max = lotQty;
+        if (!qEl.value || Number(qEl.value) > lotQty) qEl.value = lotQty;
+      }
+      var pEl = document.getElementById('offer-price');
+      var lotPrice = Number(opt.getAttribute('data-price'));
+      if (pEl && !pEl.value && isFinite(lotPrice) && lotPrice > 0) pEl.value = lotPrice;
+      _offerTotal();
+    });
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = document.getElementById('submit-make-offer');
+      var reqId = (document.getElementById('offer-requirement') || {}).value;
+      var lotId = (document.getElementById('offer-lot') || {}).value;
+      var qty = Number((document.getElementById('offer-quantity') || {}).value);
+      var price = Number((document.getElementById('offer-price') || {}).value);
+      var message = (document.getElementById('offer-message') || {}).value || '';
+
+      if (!reqId) { _offerFeedback('Choose a buyer requirement to offer against.', 'error'); return; }
+      if (!lotId) { _offerFeedback('Choose which of your lots to offer.', 'error'); return; }
+      if (!isFinite(qty) || qty <= 0) { _offerFeedback('Enter a quantity greater than zero.', 'error'); return; }
+      if (!isFinite(price) || price <= 0) { _offerFeedback('Enter an asking price greater than zero.', 'error'); return; }
+
+      if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+      _offerFeedback('Sending your offer…');
+
+      window.apiClient.post('/offers', {
+        requirement_id: Number(reqId),
+        lot_id: Number(lotId),
+        quantity_qtl: qty,
+        price_per_qtl: price,
+        message: message,
+      }).then(function (r) {
+        var d = r.data || {};
+        // Leave the success state on screen — the user closes it. Auto-closing
+        // hid the confirmation before it could be read.
+        _offerFeedback('✓ Offer #' + (d.offer_id || '') + ' sent to the buyer for ' +
+          qty + ' QTL at ' + _fmtInr(price) + '/QTL (' + _fmtInr(qty * price) + ' total). ' +
+          'It is now pending the buyer\'s response.', 'success');
+        if (typeof showToast === 'function') showToast('Offer sent to the buyer.', 'success');
+        form.setAttribute('data-sent', '1');
+        if (btn) { btn.disabled = true; btn.textContent = 'Offer sent'; }
+        var cancel = document.getElementById('cancel-make-offer');
+        if (cancel) {
+          var span = cancel.querySelector('span');
+          if (span) span.textContent = 'Close';
+        }
+      }).catch(function (err) {
+        _offerFeedback((err && err.message) || 'Could not send the offer.', 'error');
+        if (typeof showToast === 'function') showToast('Offer failed: ' + ((err && err.message) || 'server error'), 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Offer'; }
+      });
+    });
+  }
+
+  function _wireBestActionCtas() {
+    var sellBtn = document.getElementById('ba-sell-now-btn');
+    if (sellBtn && !sellBtn.dataset.wired) {
+      sellBtn.dataset.wired = '1';
+      sellBtn.addEventListener('click', function () {
+        // Reuse the same prefill path as the Sell Now result card.
+        var proceed = document.getElementById('sn-proceed-btn');
+        if (proceed) { proceed.click(); return; }
+        var modal = document.getElementById('create-lot-modal');
+        if (modal) modal.classList.add('modal-open');
+      });
+    }
+    var offerBtn = document.getElementById('ba-make-offer-btn');
+    if (offerBtn && !offerBtn.dataset.wired) {
+      offerBtn.dataset.wired = '1';
+      offerBtn.addEventListener('click', function () {
+        var rec = window.__klRecommendation || {};
+        window.klOpenOfferModal({
+          commodity: rec.commodity,
+          quantity_qtl: rec.quantity_qtl,
+          price_per_qtl: rec.price_per_qtl,
+          contextNote: rec.market
+            ? 'Best market <strong>' + rec.market + '</strong> · estimated net realisation ' +
+              _fmtInr(rec.net_realisation) + ' for ' + rec.quantity_qtl + ' QTL.'
+            : '',
+        });
+      });
+    }
+  }
+
   window.klRunSellNow = function () {
     var sel = _selectedOutlook();
     var qtyEl = document.getElementById('sn-qty');
@@ -414,8 +770,13 @@ var KL_Step4 = (function () {
           '<p style="font-size:0.78rem;color:var(--color-slate-700);margin-bottom:10px;">' + (data.explanation || '') + '</p>' +
           '<p style="font-size:0.68rem;color:var(--color-slate-400);margin-bottom:10px;">' + (data.cost_disclaimer || '') + ' ' + (data.distance_disclaimer || '') + '</p>' +
           others +
-          '<button type="button" class="btn btn-primary btn-sm" id="sn-proceed-btn" style="margin-top:12px;">Proceed to Sell</button>';
+          '<div class="ba-cta-row">' +
+          '<button type="button" class="btn btn-primary btn-sm" id="sn-proceed-btn">Sell Now — list this lot</button>' +
+          '<button type="button" class="btn btn-outline btn-sm" id="sn-offer-btn">Make Offer to a Buyer</button>' +
+          '</div>';
       }
+      _renderBreakdown(rec, qty, data, sel);
+
       var netEl = document.getElementById('ba-net-realisation');
       if (netEl) netEl.textContent = _fmtInr(rec.net_realisation);
       var locEl = document.getElementById('ba-location');
@@ -428,6 +789,19 @@ var KL_Step4 = (function () {
       if (priceEl) priceEl.textContent = _fmtInr(rec.latest_price) + '/QTL';
       var logEl = document.getElementById('ba-logistics');
       if (logEl) logEl.textContent = _fmtInr(rec.transport_cost) + ' est.';
+      var offerBtn = document.getElementById('sn-offer-btn');
+      if (offerBtn) {
+        offerBtn.addEventListener('click', function () {
+          window.klOpenOfferModal({
+            commodity: data.commodity || sel.commodity,
+            quantity_qtl: qty,
+            price_per_qtl: rec.latest_price || rec.modal_price,
+            contextNote: 'Best market <strong>' + (rec.market || '—') + '</strong> · estimated net realisation ' +
+              _fmtInr(rec.net_realisation) + ' for ' + qty + ' QTL.',
+          });
+        });
+      }
+
       var proceed = document.getElementById('sn-proceed-btn');
       if (proceed) {
         proceed.addEventListener('click', function () {

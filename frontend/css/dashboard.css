@@ -2505,3 +2505,137 @@
   letter-spacing: 0.04em;
   color: var(--color-primary-700, #15803d);
 }
+
+/* ── Best Action: net-realisation breakdown ─────────────────────────────── */
+.ba-net-sub {
+  font-size: 0.9rem;
+  font-weight: var(--weight-semibold, 600);
+  color: var(--color-slate-600, #475569);
+  margin-top: 2px;
+}
+
+.ba-breakdown {
+  margin-top: var(--space-4, 16px);
+  padding: var(--space-5, 20px);
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  border-radius: 12px;
+  background: #fff;
+}
+.ba-breakdown[hidden] { display: none; }
+
+.ba-breakdown-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3, 12px);
+}
+.ba-breakdown-title {
+  font-size: var(--text-base, 1rem);
+  font-weight: var(--weight-bold, 700);
+  color: var(--color-slate-900, #0f172a);
+}
+
+.ba-breakdown-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+.ba-breakdown-table caption {
+  caption-side: bottom;
+  text-align: left;
+  padding-top: 8px;
+  font-size: 0.68rem;
+  color: var(--color-slate-400, #94a3b8);
+}
+.ba-breakdown-table th[scope="row"] {
+  text-align: left;
+  font-weight: var(--weight-medium, 500);
+  color: var(--color-slate-700, #334155);
+  padding: 9px 8px 9px 0;
+}
+.ba-breakdown-table th[scope="row"] span {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 400;
+  color: var(--color-slate-400, #94a3b8);
+}
+.ba-breakdown-table td.num {
+  text-align: right;
+  padding: 9px 0 9px 12px;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono, monospace);
+  white-space: nowrap;
+  color: var(--color-slate-700, #334155);
+}
+.ba-breakdown-table td.total { font-weight: var(--weight-bold, 700); }
+.ba-breakdown-table tr.deduct td.num { color: #b45309; }
+.ba-breakdown-table tr.deduct td.num::before { content: '− '; }
+.ba-breakdown-table tr.subtotal th,
+.ba-breakdown-table tr.subtotal td { border-top: 1px solid var(--color-slate-200, #e2e8f0); }
+.ba-breakdown-table tr.net th,
+.ba-breakdown-table tr.net td {
+  border-top: 2px solid var(--color-slate-300, #cbd5e1);
+  padding-top: 12px;
+  font-size: 1rem;
+  font-weight: var(--weight-bold, 700);
+  color: var(--color-accent-green, #16a34a);
+}
+
+/* Sell now vs wait */
+.ba-timing {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: var(--space-4, 16px);
+  padding: 14px;
+  border: 1px dashed var(--color-slate-300, #cbd5e1);
+  border-radius: 10px;
+  background: var(--color-slate-50, #f8fafc);
+}
+.ba-timing[hidden] { display: none; }
+.ba-timing-col { min-width: 0; }
+.ba-timing-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-slate-500, #64748b);
+}
+.ba-timing-val {
+  font-size: 1.05rem;
+  font-weight: var(--weight-bold, 700);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-slate-900, #0f172a);
+}
+.ba-timing-note { font-size: 0.68rem; color: var(--color-slate-400, #94a3b8); }
+.ba-timing-vs {
+  font-size: 0.72rem;
+  color: var(--color-slate-400, #94a3b8);
+  text-transform: uppercase;
+}
+.ba-timing-delta {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-slate-200, #e2e8f0);
+  font-size: 0.82rem;
+  font-weight: var(--weight-semibold, 600);
+}
+.ba-timing-delta.gain { color: var(--color-accent-green, #16a34a); }
+.ba-timing-delta.loss { color: #b45309; }
+
+.ba-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: var(--space-4, 16px);
+}
+.ba-cta-row .btn { flex: 1 1 200px; justify-content: center; }
+
+@media (max-width: 640px) {
+  .ba-timing { grid-template-columns: 1fr; }
+  .ba-timing-vs { display: none; }
+  .ba-breakdown { padding: var(--space-4, 16px); }
+  .ba-breakdown-table { font-size: 0.8rem; }
+}

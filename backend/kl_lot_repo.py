@@ -126,7 +126,14 @@ def get_open_requirements(commodity: str | None = None) -> list[dict]:
 # Offers
 # ------------------------------------------------------------------
 
-def create_offer(buyer_user_id: int, seller_user_id: int, lot_id: int, data: dict) -> int:
+def get_requirement_by_id(requirement_id: int) -> dict | None:
+    return db.query_one(
+        "SELECT * FROM buyer_requirements WHERE id = ?", (requirement_id,)
+    )
+
+
+def create_offer(buyer_user_id: int, seller_user_id: int, lot_id: int, data: dict,
+                 initiated_by: str = "BUYER") -> int:
     payload = {
         "lot_id": lot_id,
         "requirement_id": data.get("requirement_id"),
@@ -135,7 +142,7 @@ def create_offer(buyer_user_id: int, seller_user_id: int, lot_id: int, data: dic
         "price_per_qtl": float(data["price_per_qtl"]),
         "quantity_qtl": float(data["quantity_qtl"]),
         "status": "PENDING",
-        "initiated_by": "BUYER",
+        "initiated_by": "FARMER" if initiated_by == "FARMER" else "BUYER",
         "message": data.get("message"),
         "created_at": _utcnow(),
         "updated_at": _utcnow(),
