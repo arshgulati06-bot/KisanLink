@@ -18,7 +18,9 @@ class ApiError extends Error {
 
 class ApiClient {
   constructor(config = window.CONFIG) {
-    this.baseUrl = (config && config.API_BASE_URL) || 'http://localhost:5000/api';
+    this.baseUrl = (config && config.API_BASE_URL) ||
+      (window.location.port === '5000' ? '/api'
+        : window.location.protocol + '//' + window.location.hostname + ':5000/api');
     this.timeout = (config && config.REQUEST_TIMEOUT_MS) || 60000; // 60s for ML inference
   }
 

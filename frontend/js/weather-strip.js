@@ -169,6 +169,33 @@
     return null;
   }
 
+  /**
+   * The register/login response carries the user row but not the farmer
+   * profile, so the cached user often has no district on a first visit. Ask
+   * the API directly rather than depending on another script having run.
+   */
+  function fetchAccountLocation() {
+    var token = null;
+    try { token = localStorage.getItem('kisanlink_auth_token'); } catch (e) {}
+    if (!token || typeof window.apiClient === 'undefined') return Promise.resolve(null);
+    return window.apiClient.get('/auth/me').then(function (r) {
+      var d = r.data || {};
+      var prof = d.profile || {};
+      var user = d.user || {};
+      var district = prof.district || user.district || '';
+      var state = prof.state || user.state || '';
+      if (!district && !state) return null;
+      // Cache it so the next load is instant.
+      try {
+        var cached = JSON.parse(localStorage.getItem('kisanlink_user') || '{}') || {};
+        cached.district = district;
+        cached.state = state;
+        localStorage.setItem('kisanlink_user', JSON.stringify(cached));
+      } catch (e) {}
+      return { district: district, state: state };
+    }).catch(function () { return null; });
+  }
+
   function useMyLocation() {
     var btn = el('wx-strip-gps');
     if (!navigator.geolocation) {
@@ -218,15 +245,17 @@
       }
     });
 
-    setTimeout(function () {
-      if (loaded) return;
-      var later = accountLocation();
-      if (later) { tryLoad(later); return; }
-      set('wx-strip-cond', 'Choose a location');
-      var ico = el('wx-strip-icon');
-      if (ico) ico.textContent = '📍';
-      status('Set your district in your profile, or tap "Use my location".');
-    }, 3000);
+    // Ask the API directly instead of waiting on another script.
+    if (!loaded) {
+      fetchAccountLocation().then(function (where) {
+        if (where) { tryLoad(where); return; }
+        if (loaded) return;
+        set('wx-strip-cond', 'Choose a location');
+        var ico = el('wx-strip-icon');
+        if (ico) ico.textContent = '📍';
+        status('Set your district in your profile, or tap "Use my location".');
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

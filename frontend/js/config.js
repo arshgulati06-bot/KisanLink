@@ -12,8 +12,20 @@ const CONFIG = {
   VERSION: '1.2.0-step2',
   IS_PROTOTYPE: true,
 
-  // Backend API Base URL (Configurable for local vs production environments)
-  API_BASE_URL: window.KISANLINK_API_URL || 'http://localhost:5000/api',
+  // Backend API Base URL.
+  // Flask serves both the API and these pages on :5000, so when the page is
+  // already on that origin we use a same-origin relative path (no CORS, and it
+  // keeps working behind a tunnel or on another host). If the pages are served
+  // from a separate static server (commonly :3000 during development), fall
+  // back to the Flask origin on the same hostname. Override either with
+  //   <script>window.KISANLINK_API_URL = 'http://192.168.1.5:5000/api'</script>
+  API_BASE_URL: (function () {
+    if (window.KISANLINK_API_URL) return window.KISANLINK_API_URL;
+    var loc = window.location;
+    if (loc.protocol === 'file:') return 'http://127.0.0.1:5000/api';
+    if (loc.port === '5000') return '/api';          // served by Flask itself
+    return loc.protocol + '//' + loc.hostname + ':5000/api';
+  })(),
 
   // Request Timeout in milliseconds
   REQUEST_TIMEOUT_MS: 90000,
