@@ -83,6 +83,8 @@ CREATE TABLE IF NOT EXISTS lots (
     state                VARCHAR(120) DEFAULT 'Maharashtra',
     market               VARCHAR(180),
     harvest_date         DATE,
+    -- Filename of the farmer's crop photo, served via /api/lots/<id>/image.
+    image_file           VARCHAR(120),
     -- True when the lot originated from a Chronos forecast
     has_forecast         TINYINT(1)   NOT NULL DEFAULT 0,
     forecast_sale_day    INT,

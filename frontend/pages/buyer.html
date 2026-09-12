@@ -536,8 +536,16 @@
         return;
       }
 
+      var API_ORIGIN = API.replace(/\/api\/?$/, '');
       container.innerHTML = lots.map(function(lot) {
-        return '<div class="lot-card">' +
+        // Photo comes from /api/lots/<id>/image; the element is removed if the
+        // lot has none, so a broken icon never shows.
+        var photo = lot.image_file
+          ? '<img class="lot-photo" loading="lazy" alt="Crop photo for lot #' + lot.id + '" ' +
+            'src="' + API_ORIGIN + '/api/lots/' + lot.id + '/image" ' +
+            'onerror="this.outerHTML=\'<div class=&quot;lot-photo-none&quot;>Photo unavailable</div>\'">'
+          : '<div class="lot-photo-none">📷 No photo provided</div>';
+        return '<div class="lot-card">' + photo +
           '<div class="lot-card-header">' +
           '<div><h3 class="lot-title">' + (lot.commodity || lot.crop || '—') + '</h3>' +
           '<div class="lot-variety">' + [lot.variety, lot.grade].filter(Boolean).join(' · ') + '</div></div>' +

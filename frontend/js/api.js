@@ -200,19 +200,84 @@ async function getIngestStatus() {
  * ML model not yet connected — returns clear "not connected" status.
  * Does NOT fake a grade or confidence.
  */
+/**
+ * Crop quality — real inference against the project's trained models.
+ * Posts the photo to /api/ml/quality-assessment. Returns the model's actual
+ * prediction, or an explicit unavailable state. Never a fabricated grade.
+ */
 async function assessCropQuality(image, crop = '') {
-  // No ML quality model is connected yet.
-  // Return explicit not-connected status rather than fake data.
+  if (!image) {
+    return {
+      _placeholder: true, _unavailable: true, crop,
+      grade: null, confidence: null, indicators: [],
+      reason: 'no_image',
+      message: 'Choose or capture a crop photo first.',
+    };
+  }
+
+  const body = new FormData();
+  body.append('image', image);
+  body.append('crop', crop || '');
+
+  const headers = {};
+  const token = window.apiClient.getAuthToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  let res, data;
+  try {
+    res = await fetch(window.apiClient.baseUrl + '/ml/quality-assessment', {
+      method: 'POST', body, headers,
+    });
+    data = await res.json();
+  } catch (err) {
+    return {
+      _placeholder: true, _unavailable: true, crop,
+      grade: null, confidence: null, indicators: [],
+      reason: 'network',
+      message: 'Could not reach the analysis service. Set the grade manually for now.',
+    };
+  }
+
+  if (!res.ok || !data || !data.success) {
+    return {
+      _placeholder: true, _unavailable: true, crop,
+      grade: null, confidence: null, indicators: [],
+      reason: (data && data.reason) || 'unavailable',
+      supported_crops: (data && data.supported_crops) || [],
+      message: (data && data.error) ||
+        'Photo grading is unavailable. Choose the quality grade yourself when listing.',
+    };
+  }
+
+  // Real model output.
   return {
     _placeholder: false,
-    _not_connected: true,
-    crop,
-    grade:      null,
-    confidence: null,
-    indicators: [],
-    model:      { name: 'CropQualityNet-v1', status: 'not_connected' },
-    message:    'Crop quality ML model is not yet integrated. Results will appear when connected.',
+    crop: data.crop || crop,
+    grade: data.label,
+    confidence: data.confidence,
+    indicators: (data.distribution || []).map(function (d) {
+      return { name: d.label, value: Math.round(d.probability * 100) + '%' };
+    }),
+    distribution: data.distribution || [],
+    labels_known: data.labels_known,
+    model: {
+      name: (data.model && data.model.file) || 'quality model',
+      architecture: (data.model && data.model.architecture) || '',
+      status: 'connected',
+    },
+    message: data.note || '',
   };
+}
+
+/** Which crops this server can actually grade from a photo. */
+async function getCropQualityStatus() {
+  try {
+    const res = await window.apiClient.get('/ml/quality-status');
+    return res.data;
+  } catch (err) {
+    return { success: false, available: false, supported_crops: [],
+             note: 'Could not reach the analysis service.' };
+  }
 }
 
 /**
@@ -250,6 +315,7 @@ window.matchBuyers                       = matchBuyers;
 window.getSaleWindow                     = getSaleWindow;
 window.getIngestStatus                   = getIngestStatus;
 window.assessCropQuality                 = assessCropQuality;
+window.getCropQualityStatus              = getCropQualityStatus;
 window.calculateExpectedNetRealisation   = calculateExpectedNetRealisation;
 // Legacy aliases (for any existing code that calls old names)
 window.getBuyerDemand                    = getBuyerDemands;

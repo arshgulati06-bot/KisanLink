@@ -725,6 +725,61 @@ function initCreateLotModal() {
     field.focus({ preventScroll: true });
   }, true);
 
+  // Crop photo: preview + validation. Held as a data URL and posted with the
+  // lot, so no separate upload step and no partially-created lot.
+  let lotImageDataUrl = null;
+  const imgInput = document.getElementById('lot-image');
+  const imgPrev = document.getElementById('lot-image-preview');
+  const imgPrevImg = document.getElementById('lot-image-preview-img');
+  const imgErr = document.getElementById('lot-image-error');
+  const imgRemove = document.getElementById('lot-image-remove');
+
+  function lotImageError(msg) {
+    if (!imgErr) return;
+    imgErr.textContent = msg || '';
+    imgErr.hidden = !msg;
+  }
+
+  function clearLotImage() {
+    lotImageDataUrl = null;
+    if (imgInput) imgInput.value = '';
+    if (imgPrev) imgPrev.hidden = true;
+    if (imgPrevImg) imgPrevImg.removeAttribute('src');
+    lotImageError('');
+  }
+
+  if (imgRemove) imgRemove.addEventListener('click', clearLotImage);
+
+  if (imgInput) {
+    imgInput.addEventListener('change', () => {
+      const file = imgInput.files && imgInput.files[0];
+      if (!file) { clearLotImage(); return; }
+      const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+      if (allowed.indexOf(file.type) < 0) {
+        clearLotImage();
+        lotImageError('Please choose a JPG, PNG or WebP image.');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        clearLotImage();
+        lotImageError('That photo is larger than 5 MB. Please choose a smaller one.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        lotImageDataUrl = reader.result;
+        if (imgPrevImg) imgPrevImg.src = lotImageDataUrl;
+        if (imgPrev) imgPrev.hidden = false;
+        lotImageError('');
+      };
+      reader.onerror = () => {
+        clearLotImage();
+        lotImageError('That photo could not be read. Please choose it again.');
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const submitBtn = form.querySelector('[type="submit"]');
@@ -779,6 +834,8 @@ function initCreateLotModal() {
       price_per_qtl: Number(expectedPrice) || 0,
     };
     if (recoNotes) lotPayload.notes = recoNotes;
+    // Optional — a missing photo must never block publishing.
+    if (lotImageDataUrl) lotPayload.image_data_url = lotImageDataUrl;
 
     // Disable submit to prevent double submission
     if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector('span').textContent = 'Creating…'; }
@@ -792,6 +849,7 @@ function initCreateLotModal() {
         form.reset();
         const recoBox = document.getElementById('lot-reco-summary');
         if (recoBox) { recoBox.hidden = true; recoBox.innerHTML = ''; }
+        clearLotImage();
         if (typeof showToast === 'function') {
           showToast(`Lot #${result.lot && result.lot.id ? result.lot.id : '—'} for ${commodity} created!`, 'success');
         }

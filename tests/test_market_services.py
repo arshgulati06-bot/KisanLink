@@ -883,10 +883,243 @@ class TestWeatherLocation:
 
 
 class TestCropQualityHonesty:
-    """The photo grader is not connected; nothing may imply that it ran."""
+    """The grader may only speak when a real model actually ran."""
 
-    def test_no_backend_endpoint_claims_to_grade_photos(self, client):
-        # There is no quality-assessment route, so the UI must not be told one
-        # exists. A 404/405 here is the correct, honest answer.
+    def test_endpoint_exists_and_refuses_without_an_image(self, client):
+        # The route is now backed by ml/quality_inference.py. With no file
+        # attached the honest answer is a 400 naming the reason.
         res = client.post("/api/ml/quality-assessment", data={})
-        assert res.status_code in (404, 405)
+        assert res.status_code == 400
+        assert res.get_json()["reason"] == "no_image"
+
+    def test_unavailable_response_carries_no_grade(self, client):
+        import io
+        res = client.post(
+            "/api/ml/quality-assessment",
+            data={"crop": "Banana", "image": (io.BytesIO(b"x"), "x.jpg")},
+            content_type="multipart/form-data",
+        )
+        body = res.get_json()
+        assert body["success"] is False
+        assert "label" not in body and "confidence" not in body
+
+
+# ---------------------------------------------------------------------------
+# 13. AGMARKNET day-first dates (the "today's record dated in the future" bug)
+# ---------------------------------------------------------------------------
+
+class TestMandiDateParsing:
+    """
+    data.gov.in sends DD/MM/YYYY. Parsed month-first, 12/09/2026 (12 September)
+    became 9 December, so today's record landed in the future and the live feed
+    could never match "today".
+    """
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("12/09/2026", "2026-09-12"),   # 12 September, not 9 December
+        ("12-09-2026", "2026-09-12"),
+        ("31/12/2025", "2025-12-31"),   # unambiguous day-first
+        ("01/01/2020", "2020-01-01"),
+        ("2026-09-12", "2026-09-12"),   # ISO must stay untouched
+        ("2026-12-09", "2026-12-09"),
+    ])
+    def test_day_first_dates(self, raw, expected):
+        from ml.ingest import parse_date
+        assert str(parse_date(raw).date()) == expected
+
+    def test_todays_official_row_is_marked_live(self, monkeypatch):
+        """A row dated today in AGMARKNET's own format must come back LIVE."""
+        import datetime
+        import services.mandi_live as ml
+
+        today = datetime.date.today()
+        row = {
+            "state": "Punjab", "district": "Sangrur", "market": "Ahmedgarh",
+            "commodity": "Onion", "variety": "Other", "grade": "FAQ",
+            "arrival_date": today.strftime("%d/%m/%Y"),
+            "min_price": "1500", "max_price": "1900", "modal_price": "1700",
+        }
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+
+        class _R:
+            def read(self): return json.dumps({"records": [row]}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: _R())
+        out = ml.fetch_live_prices(commodity="Onion", state="Punjab",
+                                   district="Sangrur", market="Ahmedgarh")
+        assert out["success"] is True
+        assert out["live"] is True
+        assert out["label"] == "TODAY'S LIVE MANDI DATA"
+        assert out["records"][0]["arrival_date"] == today.isoformat()
+        assert out["records"][0]["is_today"] is True
+
+    def test_yesterdays_row_is_not_live(self, monkeypatch):
+        import datetime
+        import services.mandi_live as ml
+
+        y = datetime.date.today() - datetime.timedelta(days=1)
+        row = {
+            "state": "Punjab", "district": "Sangrur", "market": "Ahmedgarh",
+            "commodity": "Onion", "arrival_date": y.strftime("%d/%m/%Y"),
+            "min_price": "1500", "max_price": "1900", "modal_price": "1700",
+        }
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+
+        class _R:
+            def read(self): return json.dumps({"records": [row]}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: _R())
+        out = ml.fetch_live_prices(commodity="Onion", state="Punjab")
+        assert out["live"] is False
+        assert out["label"] == "LATEST AVAILABLE MANDI DATA"
+        assert out["records"][0]["arrival_date"] == y.isoformat()
+
+    def test_todays_row_sorts_first(self, monkeypatch):
+        import datetime
+        import services.mandi_live as ml
+
+        today = datetime.date.today()
+        old = today - datetime.timedelta(days=4)
+        base = {"state": "Punjab", "district": "Sangrur", "market": "Ahmedgarh",
+                "commodity": "Onion", "min_price": "1500", "max_price": "1900",
+                "modal_price": "1700"}
+        rows = [dict(base, arrival_date=old.strftime("%d/%m/%Y")),
+                dict(base, arrival_date=today.strftime("%d/%m/%Y"))]
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+
+        class _R:
+            def read(self): return json.dumps({"records": rows}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: _R())
+        out = ml.fetch_live_prices(commodity="Onion")
+        assert out["live"] is True
+        assert out["records"][0]["arrival_date"] == today.isoformat()
+
+
+# ---------------------------------------------------------------------------
+# 14. crop quality inference — real model or an honest refusal
+# ---------------------------------------------------------------------------
+
+class TestQualityInference:
+    def test_unsupported_crop_is_refused_cleanly(self):
+        from ml import quality_inference as qi
+        with pytest.raises(qi.QualityUnavailable) as e:
+            qi.assess(b"\xff\xd8\xff", "Banana")
+        assert e.value.reason in ("unsupported_crop", "model_missing")
+
+    def test_missing_checkpoint_is_refused_cleanly(self):
+        from ml import quality_inference as qi
+        if "tomato" in qi.supported_crops():
+            pytest.skip("a real tomato checkpoint is installed")
+        with pytest.raises(qi.QualityUnavailable) as e:
+            qi.assess(b"\xff\xd8\xff", "Tomato")
+        assert e.value.reason == "model_missing"
+
+    def test_empty_image_is_refused(self):
+        from ml import quality_inference as qi
+        with pytest.raises(qi.QualityUnavailable) as e:
+            qi.assess(b"", "Tomato")
+        assert e.value.reason == "no_image"
+
+    def test_status_endpoint_is_truthful(self, client):
+        from ml import quality_inference as qi
+        body = client.get("/api/ml/quality-status").get_json()
+        assert body["success"] is True
+        assert body["available"] is bool(qi.supported_crops())
+        assert body["supported_crops"] == qi.supported_crops()
+
+    def test_assessment_without_a_file_is_a_clean_400(self, client):
+        res = client.post("/api/ml/quality-assessment", data={"crop": "Tomato"})
+        assert res.status_code == 400
+        assert res.get_json()["reason"] == "no_image"
+
+    def test_no_endpoint_ever_returns_a_grade_without_a_model(self, client):
+        """Whatever happens, an unavailable analysis must not carry a grade."""
+        import io
+        data = {"crop": "Tomato", "image": (io.BytesIO(b"not an image"), "x.jpg")}
+        res = client.post("/api/ml/quality-assessment", data=data,
+                          content_type="multipart/form-data")
+        body = res.get_json()
+        if not body.get("success"):
+            assert "label" not in body
+            assert "confidence" not in body
+
+
+# ---------------------------------------------------------------------------
+# 15. sale-lot crop photo
+# ---------------------------------------------------------------------------
+
+class TestSaleLotImage:
+    _PNG = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\nIDATx\x9cc\x00"
+            b"\x01\x00\x00\x05\x00\x01\r\n-\xb4\x00\x00\x00\x00IEND\xaeB`\x82")
+
+    def _data_url(self, mime="image/png", raw=None):
+        import base64
+        return f"data:{mime};base64," + base64.b64encode(raw or self._PNG).decode()
+
+    def test_lot_without_an_image_still_publishes(self, client, auth_headers):
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 10,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 1900,
+        })
+        assert res.status_code == 201
+        assert not res.get_json()["lot"].get("image_file")
+
+    def test_lot_with_an_image_stores_and_serves_it(self, client, auth_headers):
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 25,
+            "location": "Nashik, Maharashtra", "price_per_qtl": 1950,
+            "image_data_url": self._data_url(),
+        })
+        assert res.status_code == 201, res.get_json()
+        lot = res.get_json()["lot"]
+        assert lot["image_file"]
+        # The stored name is generated server-side, never client-supplied.
+        assert lot["image_file"].startswith("lot_")
+        served = client.get(f"/api/lots/{lot['id']}/image")
+        assert served.status_code == 200
+        assert served.mimetype.startswith("image/")
+
+    def test_non_image_payload_is_rejected(self, client, auth_headers):
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 5, "location": "Nashik",
+            "image_data_url": self._data_url(mime="application/pdf"),
+        })
+        assert res.status_code == 400
+        assert "JPG" in res.get_json()["error"]
+
+    def test_malformed_data_url_is_rejected(self, client, auth_headers):
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 5, "location": "Nashik",
+            "image_data_url": "totally-not-a-data-url",
+        })
+        assert res.status_code == 400
+
+    def test_image_request_for_a_lot_without_one_is_404(self, client, auth_headers):
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 8, "location": "Nashik",
+        })
+        lot_id = res.get_json()["lot"]["id"]
+        assert client.get(f"/api/lots/{lot_id}/image").status_code == 404
+
+    def test_client_cannot_choose_the_stored_filename(self, client, auth_headers):
+        """A traversal attempt in the mime/name must never reach the filesystem."""
+        res = client.post("/api/lots", headers=auth_headers, json={
+            "commodity": "Onion", "quantity_qtl": 5, "location": "Nashik",
+            "image_data_url": self._data_url(),
+        })
+        name = res.get_json()["lot"]["image_file"]
+        assert "/" not in name and "\\" not in name and ".." not in name

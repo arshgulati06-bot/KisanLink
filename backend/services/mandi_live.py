@@ -138,6 +138,9 @@ def fetch_live_prices(
             "source": "data.gov.in / AGMARKNET",
         })
 
+    # Newest arrival first, so the UI's "latest_date" and first row reflect
+    # today's record when the official feed has published one.
+    records.sort(key=lambda r: (r["is_today"], r["arrival_date"]), reverse=True)
     live = bool(records) and any(r["is_today"] for r in records)
     result = {
         "success": True,

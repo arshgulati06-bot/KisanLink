@@ -72,6 +72,10 @@ var CQA = {
   MAX_FILE_BYTES: 10 * 1024 * 1024
 };
 
+// api.js defines the real network-backed assessor. Capture it before this
+// module reassigns window.assessCropQuality to its own wrapper below.
+var KL_REAL_ASSESS = (typeof window !== "undefined" && window.assessCropQuality) || null;
+
 /* ============================================================
    INITIALISATION
    ============================================================ */
@@ -399,32 +403,24 @@ function _onAnalyzeClick() {
  * Single Integration Boundary: analyzeCropQuality(imageFile, crop)
  */
 function analyzeCropQuality(imageFile, crop) {
-  /* ── INTEGRATION POINT ──────────────────────────────────────────────
-     When ML backend is ready, replace with:
-     var formData = new FormData();
-     formData.append('image', imageFile);
-     formData.append('crop', crop || 'Onion');
-     return fetch(`${window.apiClient.baseUrl}/ml/quality-assessment`, {
-       method: 'POST',
-       body: formData,
-       headers: { Authorization: `Bearer ${window.apiClient.getAuthToken() || ''}` }
-     }).then(res => res.json());
-  ────────────────────────────────────────────────────────────────────── */
-
-  // No model or scoring service is wired up, so there is nothing to wait for.
-  // Returning immediately (rather than after a staged pause) keeps the UI from
-  // implying that an analysis ran.
+  // Delegates to the real client in api.js, which posts the photo to
+  // /api/ml/quality-assessment and returns the trained model's own output.
+  // api.js is loaded first, so its implementation is captured at load time
+  // before this module publishes its own window.assessCropQuality alias.
+  if (typeof KL_REAL_ASSESS === 'function') {
+    return KL_REAL_ASSESS(imageFile, crop);
+  }
   return Promise.resolve({
     _placeholder: true,
     _unavailable: true,
-    crop:         crop || '',
-    grade:        null,
-    confidence:   null,
-    indicators:   [],
-    model:        { name: 'crop-quality', status: 'not_connected' },
-    message:      'Automatic photo grading is not available yet. Choose the ' +
-                  'quality grade yourself when you list the crop — buyers see ' +
-                  'the grade you set.'
+    crop: crop || '',
+    grade: null,
+    confidence: null,
+    indicators: [],
+    reason: 'client_missing',
+    model: { name: 'crop-quality', status: 'not_connected' },
+    message: 'Photo grading could not start on this page. Choose the quality ' +
+             'grade yourself when you list the crop.'
   });
 }
 

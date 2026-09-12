@@ -29,7 +29,7 @@ def create_lot(farmer_user_id: int, data: dict) -> int:
     """Insert a new sale lot and return its id."""
     allowed = {
         "commodity", "variety", "grade", "quantity_qtl", "expected_price",
-        "district", "state", "market", "harvest_date", "notes",
+        "district", "state", "market", "harvest_date", "notes", "image_file",
         "has_forecast", "forecast_sale_day", "forecast_price_p50",
     }
     payload = {k: v for k, v in data.items() if k in allowed and v is not None}

@@ -51,3 +51,9 @@ node_modules/
 backend/*.sqlite3
 backend/*.sqlite3-shm
 backend/*.sqlite3-wal
+
+# Uploaded sale-lot photos (runtime data, not source)
+backend/uploads/
+
+# Trained quality-model checkpoints (large binaries, supplied separately)
+ml/quality_models/*.pth
