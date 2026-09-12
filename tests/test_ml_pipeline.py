@@ -386,20 +386,44 @@ class TestHistoricalSources:
             if os.path.exists(path):
                 assert os.path.basename(path) in sig, path
 
-    def test_signature_changes_when_a_source_changes(self):
-        """A re-exported archive must invalidate the cached frame."""
+    def test_signature_ignores_an_mtime_only_change(self):
+        """
+        `git checkout`/merge rewrites these archives byte-for-byte with a fresh
+        mtime. An mtime-based signature threw away a perfectly good cache and
+        spent ~3.5 minutes rebuilding an identical frame, so the signature
+        hashes content instead.
+        """
         from ml import data_loader as dl
         present = [p for p in config.HISTORICAL_SOURCES if os.path.exists(p)]
         if not present:
             pytest.skip("no historical archives present in ml/data/")
         before = dl._source_signature()
         stat = os.stat(present[0])
-        os.utime(present[0], (stat.st_atime, stat.st_mtime + 60))
+        os.utime(present[0], (stat.st_atime, stat.st_mtime + 9999))
         try:
-            assert dl._source_signature() != before
+            assert dl._source_signature() == before
         finally:
             os.utime(present[0], (stat.st_atime, stat.st_mtime))
-        assert dl._source_signature() == before
+
+    def test_signature_changes_when_a_source_content_changes(self, tmp_path,
+                                                             monkeypatch):
+        """An edited or re-exported archive must invalidate the cached frame."""
+        from ml import data_loader as dl
+        fake = tmp_path / "2026.csv"
+        fake.write_text("Arrival_Date,Modal_Price\n2026-01-01,1000\n")
+        monkeypatch.setattr(config, "HISTORICAL_SOURCES", [str(fake)])
+        before = dl._source_signature()
+        fake.write_text("Arrival_Date,Modal_Price\n2026-01-01,1000\n2026-01-02,1100\n")
+        assert dl._source_signature() != before
+
+    def test_content_digest_is_stable_and_content_sensitive(self, tmp_path):
+        from ml import data_loader as dl
+        a = tmp_path / "a.bin"
+        a.write_bytes(b"kisanlink" * 1000)
+        first = dl._content_digest(str(a))
+        assert dl._content_digest(str(a)) == first
+        a.write_bytes(b"kisanlink" * 1000 + b"!")
+        assert dl._content_digest(str(a)) != first
 
     def test_cache_is_rejected_when_the_signature_moves_on(self):
         from ml import data_loader as dl

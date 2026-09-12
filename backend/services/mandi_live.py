@@ -73,9 +73,14 @@ def fetch_live_prices(
     limit = max(1, min(int(limit or 200), 500))
     key = _cache_key(commodity, state, district, market, limit)
     now = time.time()
+    today_iso = date.today().isoformat()
     with _LOCK:
         hit = _CACHE.get(key)
-        if hit and now - hit["ts"] < CACHE_SECONDS:
+        # A cached payload carries a frozen "is this today?" verdict, so an
+        # entry built at 23:58 would still claim TODAY'S LIVE MANDI DATA a few
+        # minutes after midnight. Expire on the date as well as the TTL.
+        if (hit and now - hit["ts"] < CACHE_SECONDS
+                and hit.get("day") == today_iso):
             payload = dict(hit["data"])
             payload["cached"] = True
             return payload
@@ -115,7 +120,7 @@ def fetch_live_prices(
     if not isinstance(rows, list):
         return _fail(fetched_at, "Official mandi API returned an unexpected payload.", configured=True)
 
-    today = date.today().isoformat()
+    today = today_iso
     records = []
     for rec in rows:
         if not isinstance(rec, dict):
@@ -160,7 +165,7 @@ def fetch_live_prices(
         ),
     }
     with _LOCK:
-        _CACHE[key] = {"ts": now, "data": result}
+        _CACHE[key] = {"ts": now, "day": today_iso, "data": result}
     return result
 
 

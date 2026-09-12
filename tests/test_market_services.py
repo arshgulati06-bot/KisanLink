@@ -1007,6 +1007,50 @@ class TestMandiDateParsing:
         assert out["live"] is True
         assert out["records"][0]["arrival_date"] == today.isoformat()
 
+    def test_cached_live_verdict_expires_when_the_date_rolls_over(self, monkeypatch):
+        """
+        A cached payload carries a frozen is_today/live verdict. Served after
+        midnight it would announce TODAY'S LIVE MANDI DATA over yesterday's
+        row, so the cache must expire on the calendar date, not the TTL alone.
+        """
+        import datetime
+        import services.mandi_live as ml
+
+        today = datetime.date.today()
+        row = {"state": "Punjab", "district": "Sangrur", "market": "Ahmedgarh",
+               "commodity": "Onion", "arrival_date": today.strftime("%d/%m/%Y"),
+               "min_price": "1500", "max_price": "1900", "modal_price": "1700"}
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+
+        class _R:
+            def read(self): return json.dumps({"records": [row]}).encode()
+            def __enter__(self): return self
+            def __exit__(self, *a): return False
+
+        monkeypatch.setattr(ml.urllib.request, "urlopen", lambda *a, **k: _R())
+
+        first = ml.fetch_live_prices(commodity="Onion")
+        assert first["live"] is True and first["cached"] is False
+        # Same query inside the TTL on the same day: the cache is used.
+        again = ml.fetch_live_prices(commodity="Onion")
+        assert again["cached"] is True and again["live"] is True
+
+        # Now the clock passes midnight. The stored row is yesterday's.
+        tomorrow = today + datetime.timedelta(days=1)
+
+        class _FakeDate(datetime.date):
+            @classmethod
+            def today(cls):
+                return tomorrow
+
+        monkeypatch.setattr(ml, "date", _FakeDate)
+        rolled = ml.fetch_live_prices(commodity="Onion")
+        assert rolled["cached"] is False, "stale cache served across a date change"
+        assert rolled["live"] is False, "yesterday's row still announced as LIVE"
+        assert rolled["label"] == "LATEST AVAILABLE MANDI DATA"
+
 
 # ---------------------------------------------------------------------------
 # 14. crop quality inference — real model or an honest refusal

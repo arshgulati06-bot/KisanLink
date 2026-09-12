@@ -31,8 +31,9 @@ Market name normalization:
   existing fuzzy resolver will match it to "Pimpalgaon" in the combined data.
 """
 
-import re
+import hashlib
 import os
+import re
 
 import pandas as pd
 import torch
@@ -43,6 +44,23 @@ from .ingest import load_ingested_frame
 
 _COMBINED_MEMORY = None
 _COMBINED_SIG = None
+
+
+def _content_digest(path: str) -> str:
+    """
+    Short content hash of one source file.
+
+    Content, not mtime: a `git checkout`/merge rewrites these archives with
+    identical bytes and a fresh mtime, and an mtime signature would then throw
+    away a valid cache and spend ~3.5 minutes rebuilding an identical frame.
+    Hashing all six archives costs ~0.3s for ~170 MB, so it is far cheaper than
+    one needless rebuild while still catching a genuinely edited file.
+    """
+    h = hashlib.blake2b(digest_size=16)
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(4 * 1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _source_signature() -> str:
@@ -56,7 +74,13 @@ def _source_signature() -> str:
     for path in paths:
         if path and os.path.exists(path):
             st = os.stat(path)
-            parts.append(f"{os.path.basename(path)}:{int(st.st_mtime)}:{st.st_size}")
+            try:
+                digest = _content_digest(path)
+            except OSError:
+                # Unreadable mid-scan: fall back to mtime so the cache is
+                # rebuilt rather than trusted.
+                digest = f"unreadable-{int(st.st_mtime)}"
+            parts.append(f"{os.path.basename(path)}:{digest}:{st.st_size}")
         else:
             parts.append(f"{os.path.basename(path) if path else 'missing'}:0:0")
     return "|".join(parts)
