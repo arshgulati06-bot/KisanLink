@@ -103,7 +103,7 @@ class DashboardStateManager {
 
     // Create corresponding transaction
     const newTx = {
-      id: `TX-2026-${String(this.state.transactions.length + 50).padStart(3, '0')}`,
+      id: `TX-${new Date().getFullYear()}-${String(this.state.transactions.length + 50).padStart(3, '0')}`,
       lotId: offer.lotId,
       crop: offer.crop,
       quantity: offer.quantity,
@@ -178,30 +178,89 @@ function initDashboardSidebar() {
 
 /**
  * Farmer Dashboard UI Controller
+ * Loads lots from the backend API on page init.
  */
 function initFarmerDashboard() {
   const lotsContainer = document.getElementById('farmer-lots-container');
   if (!lotsContainer) return; // Not on farmer page
 
-  renderFarmerLots();
+  loadLotsFromBackend();
   renderFarmerOffers();
   renderFarmerTransactions();
 }
 
-function renderFarmerLots() {
+/**
+ * Load farmer lots from backend, fall back to localStorage state if backend fails.
+ */
+async function loadLotsFromBackend() {
   const container = document.getElementById('farmer-lots-container');
   const statCount = document.getElementById('stat-active-lots-count');
+  const sidebarBadge = document.getElementById('sidebar-lot-badge');
   if (!container) return;
 
-  const lots = window.dashboardState.getLots();
+  // Show loading spinner
+  container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto 8px;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);">Loading your lots…</p></div>';
+
+  try {
+    const token = localStorage.getItem('kisanlink_auth_token');
+    if (!token) {
+      // Not logged in — show empty state
+      renderLotsUI([]);
+      return;
+    }
+    const result = await window.getMyLots();
+    const lots = (result && result.lots) ? result.lots : [];
+    // Sync backend lots into dashboardState for compatibility with match/offer handlers
+    window.dashboardState.state.lots = lots.map(l => ({
+      id: l.id || l.lot_id,
+      crop: l.commodity || l.crop,
+      variety: l.variety || 'Standard',
+      quantity: l.quantity_qtl || l.quantity || 0,
+      unit: 'QTL',
+      grade: l.grade || 'Grade A',
+      location: l.location || (l.district && l.state ? `${l.district}, ${l.state}` : ''),
+      harvestDate: l.harvest_date || l.harvestDate || '',
+      expectedPrice: l.expected_price || l.price_per_qtl || l.expectedPrice || 0,
+      status: l.status || 'ACTIVE',
+      createdDate: l.created_at ? l.created_at.split('T')[0] : '',
+    }));
+    window.dashboardState.saveState();
+    renderLotsUI(window.dashboardState.state.lots);
+  } catch (err) {
+    // Backend unavailable — show local lots if any exist
+    const localLots = window.dashboardState.getLots();
+    if (localLots.length > 0) {
+      renderLotsUI(localLots);
+      if (typeof showToast === 'function') showToast('Could not sync with backend — showing cached lots.', 'warning');
+    } else {
+      renderLotsUI([]);
+    }
+  }
+}
+
+function renderLotsUI(lots) {
+  const container = document.getElementById('farmer-lots-container');
+  const statCount = document.getElementById('stat-active-lots-count');
+  const sidebarBadge = document.getElementById('sidebar-lot-badge');
+  if (!container) return;
   if (statCount) statCount.textContent = lots.length;
+  if (sidebarBadge) sidebarBadge.textContent = lots.length;
+  renderFarmerLots(lots);
+}
+
+function renderFarmerLots(lots) {
+  const container = document.getElementById('farmer-lots-container');
+  if (!container) return;
+
+  // Accept lots as parameter (from backend) or fall back to dashboardState
+  if (!lots) lots = window.dashboardState.getLots();
 
   if (lots.length === 0) {
     container.innerHTML = `
       <div class="empty-state" style="grid-column: 1 / -1;">
         <div class="empty-state-icon">🌾</div>
         <h3>No Active Sale Lots</h3>
-        <p>Create your first crop lot to discover live market prices and buyer matching opportunities.</p>
+        <p>Create your first crop lot to discover market prices and buyer matching opportunities.</p>
         <button type="button" class="btn btn-primary btn-sm open-create-lot-modal">
           <span>+ Create Sale Lot</span>
         </button>
@@ -215,39 +274,40 @@ function renderFarmerLots() {
       <div class="lot-card-header">
         <div>
           <h3 class="lot-title">${lot.crop}</h3>
-          <div class="lot-variety">${lot.variety}</div>
+          <div class="lot-variety">${lot.variety || 'Standard'}</div>
         </div>
         <span class="badge ${lot.status === 'OFFER_ACCEPTED' ? 'badge-verified' : lot.status === 'OFFER_RECEIVED' ? 'badge-amber' : 'badge-success'}">
-          ${lot.status.replace('_', ' ')}
+          ${(lot.status || 'ACTIVE').replace(/_/g, ' ')}
         </span>
       </div>
 
       <div class="lot-spec-grid">
         <div class="spec-item">
-          <span class="spec-label">Available Volume</span>
-          <span class="spec-val">${lot.quantity} ${lot.unit}</span>
+          <span class="spec-label">Volume</span>
+          <span class="spec-val">${lot.quantity} ${lot.unit || 'QTL'}</span>
         </div>
         <div class="spec-item">
-          <span class="spec-label">Quality Grade</span>
-          <span class="spec-val">${lot.grade}</span>
+          <span class="spec-label">Grade</span>
+          <span class="spec-val">${lot.grade || '—'}</span>
         </div>
         <div class="spec-item">
-          <span class="spec-label">Farm Location</span>
-          <span class="spec-val">${lot.location}</span>
+          <span class="spec-label">Location</span>
+          <span class="spec-val">${lot.location || '—'}</span>
         </div>
         <div class="spec-item">
-          <span class="spec-label">Harvest Date</span>
-          <span class="spec-val">${lot.harvestDate}</span>
+          <span class="spec-label">${lot.harvestDate ? 'Harvest Date' : 'Created'}</span>
+          <span class="spec-val">${lot.harvestDate || lot.createdDate || '—'}</span>
         </div>
       </div>
 
       <div class="flex items-center justify-between" style="padding-top: var(--space-2); border-top: 1px solid var(--color-slate-100);">
         <div>
-          <span class="text-xs text-slate">Expected Base:</span>
-          <span class="font-mono font-bold text-slate-900" style="margin-left: 4px;">₹${lot.expectedPrice.toLocaleString('en-IN')}/${lot.unit}</span>
+          <span class="text-xs text-slate">Lot ID:</span>
+          <span class="font-mono text-xs text-slate-600" style="margin-left: 4px;">#${lot.id}</span>
+          ${lot.expectedPrice ? `<span class="font-mono font-bold text-slate-900" style="margin-left: 8px;">₹${Number(lot.expectedPrice).toLocaleString('en-IN')}/${lot.unit || 'QTL'}</span>` : ''}
         </div>
         <button type="button" class="btn btn-outline btn-sm"
-          onclick="handleViewMatches('${lot.id}', '${lot.crop}', ${lot.quantity}, '${lot.unit}', '${lot.grade}', '${lot.location}', ${lot.expectedPrice})"
+          onclick="handleViewMatches('${lot.id}', '${lot.crop}', ${lot.quantity || 0}, '${lot.unit || 'QTL'}', '${lot.grade || ''}', '${lot.location || ''}', ${lot.expectedPrice || 0})"
           aria-label="View matched buyers for ${lot.crop} lot">
           <span>View Matches</span>
         </button>
@@ -255,6 +315,7 @@ function renderFarmerLots() {
     </div>
   `).join('');
 }
+
 
 function renderFarmerOffers() {
   const container = document.getElementById('farmer-offers-container');
@@ -611,11 +672,12 @@ function initCreateLotModal() {
   const closeBtn = document.getElementById('close-create-lot-modal');
   if (!modal || !form) return;
 
-  openButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  // Dynamically attach open buttons (including those added after init)
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.open-create-lot-modal')) {
       e.preventDefault();
       modal.classList.add('modal-open');
-    });
+    }
   });
 
   if (closeBtn) {
@@ -626,37 +688,74 @@ function initCreateLotModal() {
     if (e.target === modal) modal.classList.remove('modal-open');
   });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const submitBtn = form.querySelector('[type="submit"]');
     const formData = new FormData(form);
-    const lotData = {
-      crop: formData.get('crop'),
-      variety: formData.get('variety'),
-      quantity: formData.get('quantity'),
-      unit: formData.get('unit'),
-      grade: formData.get('grade'),
-      location: formData.get('location'),
-      harvestDate: formData.get('harvestDate'),
-      expectedPrice: formData.get('expectedPrice')
-    };
 
-    if (!lotData.crop || !lotData.quantity || !lotData.location) {
+    const commodity = formData.get('crop');
+    const quantity  = formData.get('quantity');
+    const location  = formData.get('location');
+
+    if (!commodity || !quantity || !location) {
       if (typeof showToast === 'function') {
-        showToast('Please fill in all mandatory fields (Crop, Quantity, Location).', 'warning');
+        showToast('Please fill in Crop, Quantity, and Location.', 'warning');
       }
       return;
     }
 
-    const created = window.dashboardState.createLot(lotData);
-    modal.classList.remove('modal-open');
-    form.reset();
+    const lotPayload = {
+      commodity,
+      variety:       formData.get('variety') || '',
+      quantity_qtl:  Number(quantity),
+      unit:          formData.get('unit') || 'QTL',
+      grade:         formData.get('grade') || 'Grade A',
+      location,
+      district:      formData.get('district') || '',
+      state:         formData.get('state') || '',
+      harvest_date:  formData.get('harvestDate') || '',
+      price_per_qtl: Number(formData.get('expectedPrice')) || 0,
+    };
 
-    renderFarmerLots();
-    if (typeof showToast === 'function') {
-      showToast(`Sale lot ${created.id} for ${created.crop} created successfully!`, 'success');
+    // Disable submit to prevent double submission
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector('span').textContent = 'Creating…'; }
+
+    try {
+      const token = localStorage.getItem('kisanlink_auth_token');
+      if (token) {
+        // Authenticated: persist to backend
+        const result = await window.createLot(lotPayload);
+        modal.classList.remove('modal-open');
+        form.reset();
+        if (typeof showToast === 'function') {
+          showToast(`Lot #${result.lot && result.lot.id ? result.lot.id : '—'} for ${commodity} created!`, 'success');
+        }
+        // Reload from backend to show real ID
+        loadLotsFromBackend();
+      } else {
+        // Not authenticated: create locally (for demo/dev only)
+        const created = window.dashboardState.createLot({
+          crop: commodity, variety: lotPayload.variety, quantity: lotPayload.quantity_qtl,
+          unit: lotPayload.unit, grade: lotPayload.grade, location,
+          harvestDate: lotPayload.harvest_date, expectedPrice: lotPayload.price_per_qtl
+        });
+        modal.classList.remove('modal-open');
+        form.reset();
+        renderLotsUI(window.dashboardState.getLots());
+        if (typeof showToast === 'function') {
+          showToast(`Lot ${created.id} for ${commodity} created (local only — please log in to persist).`, 'warning');
+        }
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') {
+        showToast(`Could not create lot: ${err.message || 'Server error'}`, 'error');
+      }
+    } finally {
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('span').textContent = 'Publish Sale Lot'; }
     }
   });
 }
+
 
 /**
  * Create Sourcing Requirement Modal Handler
@@ -683,17 +782,21 @@ function initCreateDemandModal() {
     if (e.target === modal) modal.classList.remove('modal-open');
   });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = new FormData(form);
     const demandData = {
+      commodity: formData.get('crop'),
       crop: formData.get('crop'),
+      quantity_qtl_min: Number(formData.get('quantity')),
       quantity: formData.get('quantity'),
       unit: formData.get('unit'),
       grade: formData.get('grade'),
       deliveryLocation: formData.get('deliveryLocation'),
       offeredRate: formData.get('offeredRate'),
-      requiredDate: formData.get('requiredDate')
+      price_per_qtl: Number(formData.get('offeredRate')) || 0,
+      requiredDate: formData.get('requiredDate'),
+      valid_until: formData.get('requiredDate'),
     };
 
     if (!demandData.crop || !demandData.quantity || !demandData.deliveryLocation) {
@@ -703,13 +806,35 @@ function initCreateDemandModal() {
       return;
     }
 
+    try {
+      const token = localStorage.getItem('kisanlink_auth_token');
+      if (token && window.createBuyerRequirement) {
+        await window.createBuyerRequirement(demandData);
+        modal.classList.remove('modal-open');
+        form.reset();
+        if (typeof showToast === 'function') {
+          showToast('Requirement posted to your buyer account.', 'success');
+        }
+        if (window.loadBuyerRequirementsFromBackend) {
+          window.loadBuyerRequirementsFromBackend();
+        } else {
+          renderBuyerDemands();
+        }
+        return;
+      }
+    } catch (err) {
+      if (typeof showToast === 'function') {
+        showToast(err.message || 'Could not post requirement.', 'error');
+      }
+      return;
+    }
+
     const created = window.dashboardState.createDemand(demandData);
     modal.classList.remove('modal-open');
     form.reset();
-
     renderBuyerDemands();
     if (typeof showToast === 'function') {
-      showToast(`Demand requirement ${created.id} posted successfully!`, 'success');
+      showToast('Requirement saved locally. Log in as a buyer to persist it.', 'warning');
     }
   });
 }

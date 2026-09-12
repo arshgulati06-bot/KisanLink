@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="KisanLink Buyer Dashboard — SIH 2026: Direct crop sourcing from verified farmers and FPOs, requirement matching, and digital offers.">
+  <meta name="description" content="KisanLink Buyer Dashboard — Direct crop sourcing from verified farmers and FPOs, requirement matching, and digital offers.">
   <title>Buyer Dashboard — KisanLink | SIH 2026</title>
 
   <!-- Google Fonts -->
@@ -43,7 +43,7 @@
             <rect width="7" height="9" x="14" y="12" rx="1"/>
             <rect width="7" height="5" x="3" y="16" rx="1"/>
           </svg>
-          <span>Procurement Overview</span>
+          <span>Overview</span>
         </a>
 
         <a href="#demands-section" class="sidebar-link">
@@ -51,17 +51,15 @@
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          <span>Sourcing Demands</span>
-          <span class="sidebar-link-badge badge-success">2 Active</span>
+          <span>My Requirements</span>
+          <span class="sidebar-link-badge badge-success" id="buyer-req-badge">0</span>
         </a>
 
-        <a href="#matched-lots-section" class="sidebar-link">
+        <a href="#available-lots-section" class="sidebar-link">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
           </svg>
-          <span>Matched Farmer Lots</span>
-          <span class="sidebar-link-badge badge-amber">New Supply</span>
+          <span>Available Lots</span>
         </a>
 
         <a href="#transactions-section" class="sidebar-link">
@@ -69,7 +67,7 @@
             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
             <polyline points="9 12 11 14 15 10"/>
           </svg>
-          <span>Sourcing Transactions</span>
+          <span>Transactions</span>
         </a>
       </nav>
 
@@ -77,27 +75,41 @@
         <!-- 13-Language Selector -->
         <div class="kl-lang-dropdown-wrap" style="width:100%;margin-bottom:var(--space-3);">
           <select class="kl-lang-select" style="width:100%;" aria-label="Select preferred language" data-lang-select>
-            <option value="en">English (English)</option>
-            <option value="hi">हिन्दी (Hindi)</option>
-            <option value="mr">मराठी (Marathi)</option>
-            <option value="gu">ગુજરાતી (Gujarati)</option>
-            <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
-            <option value="bn">বাংলা (Bengali)</option>
-            <option value="ta">தமிழ் (Tamil)</option>
-            <option value="te">తెలుగు (Telugu)</option>
-            <option value="kn">ಕನ್ನಡ (Kannada)</option>
-            <option value="ml">മലയാളം (Malayalam)</option>
-            <option value="or">ଓଡ଼ିଆ (Odia)</option>
-            <option value="as">অসমীয়া (Assamese)</option>
-            <option value="ur">اردو (Urdu)</option>
+            <option value="en">English</option>
+            <option value="hi">हिन्दी</option>
+            <option value="mr">मराठी</option>
+            <option value="gu">ગુજરાતી</option>
+            <option value="pa">ਪੰਜਾਬੀ</option>
+            <option value="bn">বাংলা</option>
+            <option value="ta">தமிழ்</option>
+            <option value="te">తెలుగు</option>
+            <option value="kn">ಕನ್ನಡ</option>
+            <option value="ml">മലയാളം</option>
+            <option value="or">ଓଡ଼ିଆ</option>
+            <option value="as">অসমীয়া</option>
+            <option value="ur">اردو</option>
           </select>
         </div>
 
-        <div class="user-profile-badge">
-          <div class="user-avatar" style="background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">SA</div>
+        <!-- Buyer Profile (dynamic from /api/auth/me) -->
+        <div class="user-profile-badge" id="buyer-profile-badge" style="cursor:pointer;" onclick="document.getElementById('buyer-profile-panel').classList.toggle('panel-open')">
+          <div class="user-avatar" id="buyer-avatar">?</div>
           <div class="user-info">
-            <h4>Sahyadri Agro</h4>
-            <p>Food Processor • Pune</p>
+            <h4 id="buyer-name">Loading…</h4>
+            <p id="buyer-role">Buyer</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <!-- Profile Panel -->
+        <div id="buyer-profile-panel" class="profile-panel" hidden>
+          <div class="profile-panel-row">
+            <span class="profile-panel-label">Username</span>
+            <span id="buyer-username" class="profile-panel-val">—</span>
+          </div>
+          <div class="profile-panel-row" style="gap:6px;">
+            <button type="button" class="btn btn-outline btn-xs" style="flex:1;" onclick="location.href='farmer.html'">Switch to Farmer</button>
+            <button type="button" class="btn btn-xs" style="flex:1;background:#e11d48;color:#fff;border:none;cursor:pointer;"
+              onclick="localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';">Logout</button>
           </div>
         </div>
       </div>
@@ -118,13 +130,13 @@
             </svg>
           </button>
           <div class="dashboard-title-group">
-            <h1>Buyer Procurement Cockpit</h1>
-            <p>Sahyadri Agro Processors Ltd. • Verified Commercial Sourcing Portal</p>
+            <h1>Buyer Procurement Dashboard</h1>
+            <p id="buyer-topbar-sub">KisanLink — Direct Farm-to-Buyer Sourcing</p>
           </div>
         </div>
 
         <div class="topbar-right">
-          <!-- 13-Language Topbar Selector -->
+          <!-- Language Topbar Selector -->
           <div class="kl-lang-dropdown-wrap">
             <select class="kl-lang-select" aria-label="Language selector" data-lang-select>
               <option value="en">English</option>
@@ -149,22 +161,25 @@
           <a href="farmer.html" class="btn btn-outline btn-sm">
             <span>Switch to Farmer Portal</span>
           </a>
-          <a href="../index.html" class="btn btn-ghost btn-sm" data-i18n="topbar.home">
+          <a href="../index.html" class="btn btn-ghost btn-sm">
             <span>Home</span>
           </a>
+          <button type="button" class="btn btn-ghost btn-sm" style="color:#e11d48;"
+            onclick="localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';"
+            title="Logout">Logout</button>
         </div>
       </header>
 
       <div class="dashboard-body">
-        <!-- ===================================================================
-             1. PROCUREMENT METRICS
-             =================================================================== -->
+        <!-- ==================================================================
+             1. OVERVIEW METRICS (dynamic — loaded from backend)
+             ================================================================== -->
         <section class="metric-grid" id="overview-section">
           <div class="stat-widget">
             <div>
-              <div class="stat-label">Active Sourcing Demands</div>
-              <div class="stat-value">2</div>
-              <div class="stat-subtext">90 QTL total target volume</div>
+              <div class="stat-label">My Requirements</div>
+              <div class="stat-value" id="buyer-stat-reqs">—</div>
+              <div class="stat-subtext">Active sourcing demands</div>
             </div>
             <div class="stat-icon-wrapper">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -175,9 +190,9 @@
 
           <div class="stat-widget widget-amber">
             <div>
-              <div class="stat-label">Matched Farmer Lots</div>
-              <div class="stat-value">2</div>
-              <div class="stat-subtext">Compatibility > 90%</div>
+              <div class="stat-label">Available Farmer Lots</div>
+              <div class="stat-value" id="buyer-stat-lots">—</div>
+              <div class="stat-subtext">Active lots from farmers</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-amber-light); color: var(--color-accent-amber);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -189,114 +204,94 @@
 
           <div class="stat-widget widget-sky">
             <div>
-              <div class="stat-label">Active Digital Offers</div>
-              <div class="stat-value">1</div>
-              <div class="stat-subtext">Pending farmer acceptance</div>
+              <div class="stat-label">Account</div>
+              <div class="stat-value" id="buyer-stat-username" style="font-size:1.2rem;">—</div>
+              <div class="stat-subtext">Buyer Portal</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-sky-light); color: var(--color-accent-sky);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
               </svg>
             </div>
           </div>
 
           <div class="stat-widget widget-rose">
             <div>
-              <div class="stat-label">Procured Volume (MTD)</div>
-              <div class="stat-value">20 QTL</div>
-              <div class="stat-subtext">Soybean Batch in Transit</div>
+              <div class="stat-label">Platform</div>
+              <div class="stat-value" style="font-size:1.1rem;">KisanLink</div>
+              <div class="stat-subtext">Direct Farm-Gate Sourcing</div>
             </div>
             <div class="stat-icon-wrapper" style="background-color: var(--color-accent-rose-light); color: var(--color-accent-rose);">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
               </svg>
             </div>
           </div>
         </section>
 
-        <!-- ===================================================================
-             2. ACTIVE SOURCING DEMANDS
-             =================================================================== -->
+        <!-- ==================================================================
+             2. MY SOURCING REQUIREMENTS (from backend /api/buyer-requirements)
+             ================================================================== -->
         <section id="demands-section">
           <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
             <div>
-              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Active Sourcing Requirements</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Open demand requirements visible to matching farmers and FPOs</p>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">My Sourcing Requirements</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Your open sourcing requirements visible to matched farmers and FPOs</p>
             </div>
             <button type="button" class="btn btn-primary btn-sm open-create-demand-modal">
-              <span>+ Create Sourcing Requirement</span>
+              <span>+ Post Requirement</span>
             </button>
           </div>
 
           <div class="lot-grid" id="buyer-demands-container">
-            <!-- Dynamic demands rendered by dashboard.js -->
+            <div class="empty-state" style="grid-column: 1 / -1;">
+              <div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto 8px;"></div>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Loading requirements…</p>
+            </div>
           </div>
         </section>
 
-        <!-- ===================================================================
-             3. MATCHED FARMER LOTS
-             =================================================================== -->
-        <section id="matched-lots-section">
+        <!-- ==================================================================
+             3. AVAILABLE FARMER LOTS (from backend /api/lots)
+             ================================================================== -->
+        <section id="available-lots-section">
           <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
             <div>
-              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Direct Farmer Supply Matches</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Verified farmer lots in Maharashtra matching your grade and volume criteria</p>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Available Farmer Lots</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Active lots listed by farmers across the platform</p>
             </div>
-            <span class="badge badge-verified">Direct Farm-Gate Sourcing</span>
+            <span class="badge badge-verified">Direct Farm-Gate</span>
           </div>
-
-          <div class="buyer-matching-grid" id="buyer-matched-lots-container">
-            <!-- Dynamic matched supply rendered by dashboard.js -->
+          <div style="margin-bottom:var(--space-3);">
+            <select id="buyer-lots-filter" class="form-select" style="max-width:200px;" onchange="buyerLoadAvailableLots()">
+              <option value="">All Commodities</option>
+            </select>
+            <input type="search" id="buyer-lots-crop-search" class="form-input" placeholder="Search crop…" style="max-width:180px;margin-left:8px;">
+          </div>
+          <div class="lot-grid" id="buyer-lots-container">
+            <div class="empty-state" style="grid-column: 1 / -1;">
+              <div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto 8px;"></div>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Loading available lots…</p>
+            </div>
           </div>
         </section>
 
-        <!-- ===================================================================
-             4. SOURCING TRANSACTIONS
-             =================================================================== -->
+        <!-- ==================================================================
+             4. TRANSACTIONS (placeholder — milestone tracker)
+             ================================================================== -->
         <section id="transactions-section">
           <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
             <div>
               <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Procurement Milestone Tracker</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Real-time dispatch, weighing, inspection, and payment settlement</p>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Track status of accepted offers through delivery and payment</p>
             </div>
           </div>
-
-          <div class="transaction-card">
-            <div class="tx-header">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-slate-900">TX-2026-044</span>
-                  <span class="badge badge-sky">Soybean (Standard Yellow) • 20 QTL</span>
-                </div>
-                <div class="text-xs text-slate" style="margin-top: 2px;">
-                  Supplier: <strong>Deccan Agri Aggregators (Nashik)</strong> • Agreed Total: <span class="font-mono font-bold text-slate-900">₹97,000</span>
-                </div>
-              </div>
-              <span class="badge badge-verified">LOGISTICS IN TRANSIT</span>
-            </div>
-
-            <!-- Stepper Lifecycle -->
-            <div class="stepper-track">
-              <div class="step-node completed">
-                <div class="step-node-icon">1</div>
-                <span class="step-node-label">Offer Accepted</span>
-              </div>
-              <div class="step-node completed">
-                <div class="step-node-icon">2</div>
-                <span class="step-node-label">Contract Locked</span>
-              </div>
-              <div class="step-node active">
-                <div class="step-node-icon">3</div>
-                <span class="step-node-label">In Transit</span>
-              </div>
-              <div class="step-node">
-                <div class="step-node-icon">4</div>
-                <span class="step-node-label">Quality Check</span>
-              </div>
-              <div class="step-node">
-                <div class="step-node-icon">5</div>
-                <span class="step-node-label">Direct Settlement</span>
-              </div>
+          <div id="buyer-transactions-container">
+            <div class="empty-state">
+              <div class="empty-state-icon">📋</div>
+              <h3>No Active Transactions</h3>
+              <p>Transactions will appear here once you accept offers from farmers.</p>
             </div>
           </div>
         </section>
@@ -310,23 +305,20 @@
   <div class="modal-backdrop" id="create-demand-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-demand-title">
     <div class="modal-dialog" style="max-width: 600px;">
       <button type="button" class="modal-close-btn" id="close-create-demand-modal" aria-label="Close modal">&times;</button>
-      
-      <div class="section-tag" style="margin-bottom: var(--space-2);">Procurement Demand</div>
+
+      <div class="section-tag" style="margin-bottom: var(--space-2);">Sourcing Requirement</div>
       <h3 id="modal-demand-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Post Sourcing Requirement</h3>
       <p style="font-size: var(--text-xs); color: var(--color-slate-600); margin-bottom: var(--space-6);">
-        Specify required crop volume, quality grade requirements, and plant delivery terms.
+        Specify crop, quantity, quality grade, delivery location and date.
       </p>
 
       <form id="create-demand-form">
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="demand-crop">Crop Commodity *</label>
+            <input class="form-input" id="demand-crop-search" type="search" placeholder="Search crop…" style="margin-bottom:6px;">
             <select class="form-select" id="demand-crop" name="crop" required>
-              <option value="Onion (कांदा)">Onion (कांदा)</option>
-              <option value="Tomato (टोमॅटो)">Tomato (टोमॅटो)</option>
-              <option value="Soybean (सोयाबीन)">Soybean (सोयाबीन)</option>
-              <option value="Cotton (कापूस)">Cotton (कापूस)</option>
-              <option value="Wheat (गहू)">Wheat (गहू)</option>
+              <option value="">Loading commodities…</option>
             </select>
           </div>
 
@@ -342,42 +334,32 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label" for="demand-quantity">Required Volume *</label>
-            <input type="number" class="form-input" id="demand-quantity" name="quantity" min="1" step="1" placeholder="e.g. 50" required value="50">
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="demand-unit">Unit of Measure *</label>
-            <select class="form-select" id="demand-unit" name="unit" required>
-              <option value="QTL" selected>Quintals (QTL)</option>
-              <option value="MT">Metric Tonnes (MT)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="demand-location">Plant / Delivery Location *</label>
-            <input type="text" class="form-input" id="demand-location" name="deliveryLocation" placeholder="e.g. Pune Processing Plant" required value="Pune Food Park, Sanaswadi">
+            <label class="form-label" for="demand-quantity">Required Volume (QTL) *</label>
+            <input type="number" class="form-input" id="demand-quantity" name="quantity" min="1" step="1" placeholder="e.g. 50" required>
           </div>
 
           <div class="form-group">
             <label class="form-label" for="demand-date">Required Delivery Date *</label>
-            <input type="date" class="form-input" id="demand-date" name="requiredDate" required value="2026-09-05">
+            <input type="date" class="form-input" id="demand-date" name="requiredDate" required>
           </div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="demand-price">Max Target Offer Rate (₹/Unit)</label>
-            <input type="number" class="form-input" id="demand-price" name="offeredRate" placeholder="e.g. 3200">
+          <label class="form-label" for="demand-location">Plant / Delivery Location *</label>
+          <input type="text" class="form-input" id="demand-location" name="deliveryLocation" placeholder="e.g. Pune Food Park, Sanaswadi" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="demand-price">Max Offer Rate (₹/QTL) — Optional</label>
+          <input type="number" class="form-input" id="demand-price" name="offeredRate" placeholder="e.g. 3200">
         </div>
 
         <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-demand-modal').classList.remove('modal-open')">
             <span>Cancel</span>
           </button>
-          <button type="submit" class="btn btn-primary btn-sm">
-            <span>Publish Sourcing Demand</span>
+          <button type="submit" class="btn btn-primary btn-sm" id="demand-submit-btn">
+            <span>Publish Requirement</span>
           </button>
         </div>
       </form>
@@ -392,5 +374,273 @@
   <script src="../js/api.js"></script>
   <script src="../js/i18n.js"></script>
   <script src="../js/dashboard.js"></script>
+
+  <!-- Buyer Auth + Dynamic Loading -->
+  <script>
+  (function() {
+    var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+
+    // Set buyer profile UI from user object
+    function setBuyerProfile(user, profile) {
+      var nameEl = document.getElementById('buyer-name');
+      var roleEl = document.getElementById('buyer-role');
+      var avEl   = document.getElementById('buyer-avatar');
+      var usEl   = document.getElementById('buyer-username');
+      var statU  = document.getElementById('buyer-stat-username');
+      var topSub = document.getElementById('buyer-topbar-sub');
+
+      var name = user.name || user.username || 'Buyer';
+      var role = user.role || 'Buyer';
+      var district = (profile && profile.district) ? profile.district : '';
+
+      if (nameEl) nameEl.textContent = name;
+      if (avEl)   avEl.textContent   = name.slice(0, 2).toUpperCase();
+      if (roleEl) roleEl.textContent = (district ? district + ' • ' : '') + role;
+      if (usEl)   usEl.textContent   = user.username || '—';
+      if (statU)  statU.textContent  = user.username || name;
+      if (topSub) topSub.textContent = 'KisanLink — Logged in as ' + name;
+    }
+
+    // Fast path: cached
+    try {
+      var cached = JSON.parse(localStorage.getItem('kisanlink_user') || 'null');
+      if (cached && cached.name) setBuyerProfile(cached, null);
+    } catch(e) {}
+
+    // Authoritative fetch
+    var token = null;
+    try { token = localStorage.getItem('kisanlink_auth_token'); } catch(e) {}
+    if (token) {
+      fetch(API + '/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+      })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data || !data.success) return;
+        var u = data.user || {};
+        var p = data.profile || {};
+        try { localStorage.setItem('kisanlink_user', JSON.stringify(u)); } catch(e) {}
+        setBuyerProfile(u, p);
+      })
+      .catch(function() {});
+    } else {
+      // No token — show logged-out state
+      setBuyerProfile({ name: 'Guest', username: 'guest', role: 'Buyer' }, null);
+    }
+  })();
+
+  // ===========================================================================
+  // Load buyer's own requirements from backend
+  // ===========================================================================
+  async function buyerLoadRequirements() {
+    var container = document.getElementById('buyer-demands-container');
+    var badge     = document.getElementById('buyer-req-badge');
+    var statEl    = document.getElementById('buyer-stat-reqs');
+    try {
+      var token = localStorage.getItem('kisanlink_auth_token');
+      if (!token) {
+        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🔒</div><h3>Login Required</h3><p><a href="auth.html" class="btn btn-primary btn-sm" style="margin-top:8px;">Login to view your requirements</a></p></div>';
+        return;
+      }
+
+      // Try buyer-requirements endpoint (own requirements)
+      var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+      var resp = await fetch(API + '/buyer-requirements/my', {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+      });
+      var data = await resp.json();
+      var reqs = (data && data.requirements) ? data.requirements : [];
+
+      if (badge) badge.textContent = reqs.length;
+      if (statEl) statEl.textContent = reqs.length;
+
+      if (reqs.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">📋</div><h3>No Requirements Posted</h3><p>Post your crop requirements to get matched with farmer lots.</p><button type="button" class="btn btn-primary btn-sm open-create-demand-modal" style="margin-top:8px;"><span>+ Post Requirement</span></button></div>';
+        return;
+      }
+
+      container.innerHTML = reqs.map(function(req) {
+        return '<div class="lot-card">' +
+          '<div class="lot-card-header">' +
+          '<div><h3 class="lot-title">' + (req.commodity || req.crop || '—') + '</h3>' +
+          '<div class="lot-variety">Grade: ' + (req.grade || '—') + '</div></div>' +
+          '<span class="badge badge-success">ACTIVE</span>' +
+          '</div>' +
+          '<div class="lot-spec-grid">' +
+          '<div class="spec-item"><span class="spec-label">Volume</span><span class="spec-val">' + (req.quantity_qtl || req.quantity || '—') + ' QTL</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Delivery Location</span><span class="spec-val">' + (req.delivery_location || req.deliveryLocation || '—') + '</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Required By</span><span class="spec-val">' + (req.required_date || req.requiredDate || '—') + '</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Offer Rate</span><span class="spec-val font-mono">' + (req.offered_rate ? '₹' + Number(req.offered_rate).toLocaleString('en-IN') + '/QTL' : 'Open') + '</span></div>' +
+          '</div></div>';
+      }).join('');
+
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">⚠️</div><h3>Could Not Load Requirements</h3><p>' + (err.message || 'Backend unavailable') + '</p></div>';
+    }
+  }
+
+  // ===========================================================================
+  // Load available farmer lots from backend
+  // ===========================================================================
+  window.buyerLoadAvailableLots = async function() {
+    var container  = document.getElementById('buyer-lots-container');
+    var statEl     = document.getElementById('buyer-stat-lots');
+    var commodity  = (document.getElementById('buyer-lots-filter') || {}).value || '';
+    container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="cqa-spinner-ring" style="width:24px;height:24px;border-width:3px;margin:0 auto 8px;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);">Loading lots…</p></div>';
+    try {
+      var token = localStorage.getItem('kisanlink_auth_token');
+      var API   = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+      var url   = API + '/lots' + (commodity ? '?commodity=' + encodeURIComponent(commodity) : '');
+      var headers = { 'Accept': 'application/json' };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      var resp = await fetch(url, { headers: headers });
+      var data = await resp.json();
+      var lots = (data && data.lots) ? data.lots : [];
+
+      if (statEl) statEl.textContent = lots.length;
+
+      if (lots.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">🌾</div><h3>No Lots Available</h3><p>No active farmer lots found' + (commodity ? ' for ' + commodity : '') + '. Check back soon.</p></div>';
+        return;
+      }
+
+      container.innerHTML = lots.map(function(lot) {
+        return '<div class="lot-card">' +
+          '<div class="lot-card-header">' +
+          '<div><h3 class="lot-title">' + (lot.commodity || lot.crop || '—') + '</h3>' +
+          '<div class="lot-variety">' + (lot.grade || 'Standard') + '</div></div>' +
+          '<span class="badge badge-success">' + (lot.status || 'ACTIVE') + '</span>' +
+          '</div>' +
+          '<div class="lot-spec-grid">' +
+          '<div class="spec-item"><span class="spec-label">Volume</span><span class="spec-val">' + (lot.quantity_qtl || lot.quantity || '—') + ' QTL</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Location</span><span class="spec-val">' + (lot.location || (lot.district && lot.state ? lot.district + ', ' + lot.state : '—')) + '</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Lot ID</span><span class="spec-val font-mono">#' + lot.id + '</span></div>' +
+          '<div class="spec-item"><span class="spec-label">Price</span><span class="spec-val font-mono">' + (lot.price_per_qtl ? '₹' + Number(lot.price_per_qtl).toLocaleString('en-IN') + '/QTL' : 'Negotiable') + '</span></div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="empty-state-icon">⚠️</div><h3>Could Not Load Lots</h3><p>' + (err.message || 'Backend unavailable') + '</p></div>';
+    }
+  };
+
+  // ===========================================================================
+  // Create Requirement Modal
+  // ===========================================================================
+  (function() {
+    var modal     = document.getElementById('create-demand-modal');
+    var form      = document.getElementById('create-demand-form');
+    var closeBtn  = document.getElementById('close-create-demand-modal');
+    var submitBtn = document.getElementById('demand-submit-btn');
+    if (!modal || !form) return;
+
+    // Open buttons (static + dynamic)
+    document.addEventListener('click', function(e) {
+      if (e.target.closest('.open-create-demand-modal')) {
+        modal.classList.add('modal-open');
+      }
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', function() { modal.classList.remove('modal-open'); });
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.classList.remove('modal-open'); });
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      var fd = new FormData(form);
+      var payload = {
+        commodity:         fd.get('crop'),
+        grade:             fd.get('grade') || 'Grade A',
+        quantity_qtl:      Number(fd.get('quantity')),
+        delivery_location: fd.get('deliveryLocation'),
+        required_date:     fd.get('requiredDate'),
+        offered_rate:      Number(fd.get('offeredRate')) || 0,
+      };
+
+      if (!payload.commodity || !payload.quantity_qtl || !payload.delivery_location) {
+        if (typeof showToast === 'function') showToast('Please fill in all required fields.', 'warning');
+        return;
+      }
+
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.querySelector('span').textContent = 'Posting…'; }
+      try {
+        var token = localStorage.getItem('kisanlink_auth_token');
+        if (!token) {
+          if (typeof showToast === 'function') showToast('Please log in to post requirements.', 'error');
+          return;
+        }
+        var result = await window.createBuyerRequirement(payload);
+        modal.classList.remove('modal-open');
+        form.reset();
+        if (typeof showToast === 'function') showToast('Requirement posted successfully!', 'success');
+        buyerLoadRequirements();
+      } catch(err) {
+        if (typeof showToast === 'function') showToast('Could not post requirement: ' + (err.message || 'Server error'), 'error');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.querySelector('span').textContent = 'Publish Requirement'; }
+      }
+    });
+  })();
+
+  // Sidebar toggle for mobile
+  (function() {
+    var btn     = document.querySelector('.sidebar-toggle-btn');
+    var sidebar = document.querySelector('.dashboard-sidebar');
+    if (btn && sidebar) {
+      btn.addEventListener('click', function() { sidebar.classList.toggle('sidebar-open'); });
+      document.querySelectorAll('.sidebar-link').forEach(function(l) {
+        l.addEventListener('click', function() { sidebar.classList.remove('sidebar-open'); });
+      });
+    }
+  })();
+
+  // Init — load data on page load
+  (function fillBuyerCrops() {
+    var API = (window.CONFIG && window.CONFIG.API_BASE_URL)
+      ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
+      : 'http://localhost:5000';
+    fetch(API + '/api/commodities').then(function (r) { return r.json(); }).then(function (crops) {
+      if (!Array.isArray(crops)) return;
+      window.__klCommodities = crops;
+      function fill(selectId) {
+        var el = document.getElementById(selectId);
+        if (!el) return;
+        var keepFirst = selectId === 'buyer-lots-filter';
+        el.innerHTML = keepFirst ? '<option value="">All Commodities</option>' : '<option value="">Select commodity…</option>';
+        crops.forEach(function (c) {
+          var opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          el.appendChild(opt);
+        });
+      }
+      fill('buyer-lots-filter');
+      fill('demand-crop');
+      function wire(searchId, selectId) {
+        var search = document.getElementById(searchId);
+        var select = document.getElementById(selectId);
+        if (!search || !select) return;
+        search.addEventListener('input', function () {
+          var q = search.value.toLowerCase();
+          var current = select.value;
+          var keepFirst = selectId === 'buyer-lots-filter';
+          select.innerHTML = keepFirst ? '<option value="">All Commodities</option>' : '<option value="">Select commodity…</option>';
+          crops.filter(function (c) { return !q || String(c).toLowerCase().indexOf(q) >= 0; }).forEach(function (c) {
+            var opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            select.appendChild(opt);
+          });
+          if (current) select.value = current;
+        });
+      }
+      wire('buyer-lots-crop-search', 'buyer-lots-filter');
+      wire('demand-crop-search', 'demand-crop');
+    }).catch(function () {});
+  })();
+
+  buyerLoadRequirements();
+  buyerLoadAvailableLots();
+  </script>
 </body>
 </html>

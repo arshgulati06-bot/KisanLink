@@ -37,6 +37,15 @@ Repeating the same POST is safe: duplicates are skipped.
 
 If both `DATA_GOV_API_KEY` and `DATA_GOV_RESOURCE_ID` are set, `POST /api/ingest/update` with `{"fetch_from_source": true}` calls `https://api.data.gov.in/resource/<id>`. If they are not set, the handler returns an error and `live_api_connected` remains false. No fake success payload is generated.
 
+`GET /api/market-prices/live` uses the same credentials via `backend/services/mandi_live.py`. A successful response with arrival dates equal to today is labelled **TODAY'S LIVE MANDI DATA**. Anything else is **LATEST AVAILABLE** or an honest error (`configured: false`). Historical CSV dates are never rewritten to today.
+
+## Routing and GPS
+
+- `GET /api/location/reverse?lat=&lon=` — Nominatim reverse geocode (User-Agent required). Coordinates are not stored.
+- `POST /api/route` — OpenRouteService when `ROUTING_API_KEY` is set; otherwise public OSRM if reachable; otherwise Haversine with `estimated: true`.
+
+See `.env.example`. Never commit `.env`.
+
 ## How the frontend sees new data
 
 The Flask process holds the combined frame. After a successful ingest, list/forecast/compare endpoints read the updated frame immediately. A process restart reloads CSVs + cache invalidation + `ingested/records.csv`.

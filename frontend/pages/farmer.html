@@ -128,6 +128,44 @@
           <span data-i18n="nav.cropQuality">Crop Quality Check</span>
           <span class="sidebar-link-badge badge-sky">Step 3</span>
         </a>
+
+        <div style="height:1px;background:var(--color-slate-100,#f1f5f9);margin:var(--space-2) var(--space-4);"></div>
+        <div style="font-size:0.6rem;font-weight:700;letter-spacing:0.08em;color:var(--color-slate-400);text-transform:uppercase;padding:0 var(--space-4) var(--space-1);">Farmer Resources</div>
+
+        <a href="#market-prices-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Mandi Prices</span>
+        </a>
+
+        <a href="#weather-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          <span>Weather</span>
+        </a>
+
+        <a href="#schemes-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Govt Schemes</span>
+        </a>
+
+        <a href="#knowledge-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Farming Knowledge</span>
+        </a>
+
+        <a href="#learning-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          <span>Learn &amp; Videos</span>
+        </a>
+
+        <a href="#helpline-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.9 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.83 2.93h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91"/></svg>
+          <span>Helpline</span>
+        </a>
+
+        <a href="#seeds-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          <span>Seeds</span>
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -152,10 +190,10 @@
 
         <!-- Farmer Profile -->
         <div class="user-profile-badge" id="farmer-profile-badge" style="cursor:pointer;" onclick="document.getElementById('farmer-profile-panel').classList.toggle('panel-open')" aria-expanded="false" aria-controls="farmer-profile-panel" title="View Profile">
-          <div class="user-avatar">RP</div>
+          <div class="user-avatar" id="profile-avatar">?</div>
           <div class="user-info">
-            <h4 id="profile-name">Ramesh Patil</h4>
-            <p id="profile-location">Nashik APMC Zone • Farmer</p>
+            <h4 id="profile-name">Loading…</h4>
+            <p id="profile-location">Farmer</p>
           </div>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
@@ -164,14 +202,15 @@
         <div id="farmer-profile-panel" class="profile-panel" hidden>
           <div class="profile-panel-row">
             <span class="profile-panel-label" data-i18n="profile.contact">Contact</span>
-            <span id="profile-contact" class="profile-panel-val">+91 94XXX XXXXX</span>
+            <span id="profile-contact" class="profile-panel-val">—</span>
           </div>
           <div class="profile-panel-row">
             <span class="profile-panel-label" data-i18n="profile.language">Language</span>
             <span id="profile-lang" class="profile-panel-val">English</span>
           </div>
-          <div class="profile-panel-row">
-            <a href="auth.html" class="btn btn-outline btn-xs" style="width:100%;text-align:center;" data-i18n="profile.switch">Switch Account</a>
+          <div class="profile-panel-row" style="gap:6px;">
+            <button type="button" class="btn btn-outline btn-xs" style="flex:1;" onclick="location.href='auth.html'">Switch Account</button>
+            <button type="button" class="btn btn-xs" style="flex:1;background:var(--color-accent-rose,#e11d48);color:#fff;border:none;cursor:pointer;" onclick="(function(){localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';})()">Logout</button>
           </div>
         </div>
       </div>
@@ -238,6 +277,7 @@
           </button>
           <a href="buyer.html" class="btn btn-outline btn-sm" data-i18n="topbar.switchBuyer">Switch to Buyer Portal</a>
           <a href="../index.html" class="btn btn-ghost btn-sm" data-i18n="topbar.home">Home</a>
+          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--color-accent-rose,#e11d48);" onclick="localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';" title="Logout">Logout</button>
         </div>
       </header>
 
@@ -522,7 +562,28 @@
           <div class="ba-recommendation-block">
             <div class="ba-rec-label">Recommended Action</div>
             <div id="ba-recommendation-chip" class="ba-rec-chip" style="background:var(--color-slate-200);color:var(--color-slate-600);">Generate Forecast First</div>
-            <p id="ba-rec-reason" class="ba-rec-reason" style="font-size:0.7rem;color:var(--color-slate-500);">Select a market and generate a forecast above — the recommendation will update from real data.</p>
+            <p id="ba-rec-reason" class="ba-rec-reason" style="font-size:0.7rem;color:var(--color-slate-500);">Select a market and generate a forecast — or use Find best net market below.</p>
+          </div>
+
+          <div id="sell-now-panel" class="ba-recommendation-block" style="margin-top:var(--space-5);">
+            <div class="ba-rec-label">Best market · Net realisation</div>
+            <p style="font-size:var(--text-xs);color:var(--color-slate-500);margin:0 0 var(--space-3);">
+              Ranks candidate mandis by net realisation (modal × quantity minus estimated transport, handling, and mandi fee).
+              LIVE is shown only after a successful government feed for today. Road distance is used when a routing provider responds; otherwise a labelled straight-line estimate.
+            </p>
+            <div class="pf-controls" style="flex-wrap:wrap;margin-bottom:var(--space-3);">
+              <div class="form-group" style="flex:1;min-width:140px;">
+                <label class="form-label" for="sn-qty">Quantity (QTL)</label>
+                <input class="form-input" id="sn-qty" type="number" min="0.5" step="0.5" value="10">
+              </div>
+              <div style="align-self:flex-end;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="sn-gps-btn" class="btn btn-sm">Use My Current Location</button>
+                <button type="button" id="sn-run-btn" class="btn btn-primary">Find best net market</button>
+              </div>
+            </div>
+            <div id="sn-gps-status" style="font-size:var(--text-xs);color:var(--color-slate-500);margin-bottom:var(--space-2);"></div>
+            <div id="sn-status" style="font-size:var(--text-xs);color:var(--color-slate-500);margin-bottom:var(--space-2);"></div>
+            <div id="sn-result"></div>
           </div>
         </section>
 
@@ -542,6 +603,10 @@
 
           <!-- Cascading Selectors: Crop → State → District → Market -->
           <div class="pf-controls" style="flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-crop-search">Search crop</label>
+              <input class="form-input" id="pf-crop-search" type="search" placeholder="Type onion, tomato…" autocomplete="off">
+            </div>
             <div class="form-group" style="flex:1;min-width:140px;">
               <label class="form-label" for="pf-crop-select">Commodity / Crop</label>
               <select class="form-input" id="pf-crop-select">
@@ -625,7 +690,7 @@
               <div class="section-tag">Location Intelligence</div>
               <h2 id="mc-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
                   data-i18n="section.marketCompare">Compare Nearby Markets</h2>
-              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">INTEGRATION NOTE: Google Maps / location services can be connected here later. No fake GPS used.</p>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Compare the latest available prices across mandis in the same district and state.</p>
             </div>
             <span class="badge badge-success" id="mc-data-badge">Real Data</span>
           </div>
@@ -827,13 +892,11 @@
 
               <!-- Crop Selector -->
               <div class="form-group" style="margin-bottom: var(--space-3);">
+                <label class="form-label" for="cqa-crop-search" style="font-size: var(--text-xs); font-weight: var(--weight-bold);">Search crop</label>
+                <input class="form-input" id="cqa-crop-search" type="search" placeholder="Type onion, tomato…" style="margin-bottom:6px;font-size:var(--text-xs);">
                 <label class="form-label" for="cqa-crop-select" style="font-size: var(--text-xs); font-weight: var(--weight-bold);">Selected Crop for Quality Check</label>
                 <select class="form-input" id="cqa-crop-select" style="font-size: var(--text-xs);">
-                  <option value="Onion">Onion (प्याज / कांदा)</option>
-                  <option value="Tomato">Tomato (टमाटर / टोमॅटो)</option>
-                  <option value="Soybean">Soybean (सोयाबीन)</option>
-                  <option value="Wheat">Wheat (गेहूं / गहू)</option>
-                  <option value="Cotton">Cotton (कपास / कापूस)</option>
+                  <option value="">Loading commodities…</option>
                 </select>
               </div>
 
@@ -1171,14 +1234,11 @@
       <form id="create-lot-form">
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label" for="lot-crop-search">Search crop</label>
+            <input class="form-input" id="lot-crop-search" type="search" placeholder="Type to filter commodities" autocomplete="off" style="margin-bottom:6px;">
             <label class="form-label" for="lot-crop">Crop Commodity *</label>
             <select class="form-select" id="lot-crop" name="crop" required>
-              <option value="Onion (कांदा)">Onion (कांदा)</option>
-              <option value="Tomato (टोमॅटो)">Tomato (टोमॅटो)</option>
-              <option value="Soybean (सोयाबीन)">Soybean (सोयाबीन)</option>
-              <option value="Cotton (कापूस)">Cotton (कापूस)</option>
-              <option value="Wheat (गहू)">Wheat (गहू)</option>
-              <option value="Pomegranate (डाळिंब)">Pomegranate (डाळिंब)</option>
+              <option value="">Loading commodities…</option>
             </select>
           </div>
 
@@ -1216,7 +1276,7 @@
 
           <div class="form-group">
             <label class="form-label" for="lot-harvest">Harvest / Availability Date *</label>
-            <input type="date" class="form-input" id="lot-harvest" name="harvestDate" required value="2026-08-30">
+            <input type="date" class="form-input" id="lot-harvest" name="harvestDate" required>
           </div>
         </div>
 
@@ -1225,13 +1285,22 @@
             <label class="form-label" for="lot-location">Farm / Pickup Location *</label>
             <input type="text" class="form-input" id="lot-location" name="location" placeholder="e.g. Dindori, Nashik (Maharashtra)" required>
           </div>
-          </div>
-
           <div class="form-group">
-            <label class="form-label" for="lot-price">Expected Base Price (₹/Unit)</label>
-            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000">
+            <label class="form-label" for="lot-market">Recommended market</label>
+            <input type="text" class="form-input" id="lot-market" name="market" placeholder="Filled from best-market comparison">
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-price">Expected Base Price (₹/QTL)</label>
+            <input type="number" class="form-input" id="lot-price" name="expectedPrice" placeholder="e.g. 2000">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lot-district">District</label>
+            <input type="text" class="form-input" id="lot-district" name="district" placeholder="District">
+          </div>
+        </div>
+        <input type="hidden" id="lot-state" name="state" value="">
 
         <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
           <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-lot-modal').classList.remove('modal-open')">
@@ -1330,6 +1399,537 @@
     </div>
   </div>
 
+  <!-- =========================================================================
+       FARMER SUPER-APP SECTIONS
+       ========================================================================= -->
+
+  <!-- MARKET PRICES SECTION -->
+  <section id="market-prices-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Mandi Prices</div>
+        <h2 class="section-heading">Mandi Prices</h2>
+        <p class="section-subtext">Search crop, state, district, and market. LIVE only after a successful official feed for today; otherwise latest verified records with their real dates.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="mp-commodity-search" class="form-input" placeholder="Search crop (Onion, Tomato…)" style="max-width:220px;">
+      <select id="mp-commodity" class="form-select" style="max-width:220px;">
+        <option value="">Select Commodity…</option>
+      </select>
+      <input type="text" id="mp-state" class="form-input" placeholder="State" style="max-width:150px;">
+      <input type="text" id="mp-district" class="form-input" placeholder="District" style="max-width:150px;">
+      <input type="text" id="mp-market" class="form-input" placeholder="Market (optional)" style="max-width:150px;">
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadMarketPrices()">Search</button>
+    </div>
+    <div id="mp-label" style="font-size:0.75rem;color:var(--color-slate-500);margin-bottom:8px;"></div>
+    <div id="mp-container">
+      <div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3><p>Choose a commodity above to view latest available mandi prices.</p></div>
+    </div>
+  </section>
+
+  <!-- WEATHER SECTION -->
+  <section id="weather-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Open-Meteo</div>
+        <h2 class="section-heading">Weather Forecast</h2>
+        <p class="section-subtext">Real weather data for your location. Source: Open-Meteo (open-meteo.com)</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="wx-district" class="form-input" placeholder="District (e.g. Nashik)" style="max-width:180px;">
+      <input type="text" id="wx-state" class="form-input" placeholder="State (e.g. Maharashtra)" style="max-width:180px;">
+      <button type="button" class="btn btn-sm" id="wx-gps-btn">Use My Current Location</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadWeather()">Get Weather</button>
+    </div>
+    <div id="wx-container">
+      <div class="empty-state"><div class="empty-state-icon">🌤️</div><h3>Enter Your Location</h3><p>Enter district and state to get current weather and 5-day forecast.</p></div>
+    </div>
+  </section>
+
+  <!-- GOVT SCHEMES SECTION -->
+  <section id="schemes-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Government of India</div>
+        <h2 class="section-heading">Government Schemes for Farmers</h2>
+        <p class="section-subtext">Curated information about central government agricultural schemes. Verify eligibility on official portals before applying.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="sch-search" class="form-input" placeholder="Search schemes…" style="max-width:240px;" oninput="klLoadSchemes()">
+    </div>
+    <div id="schemes-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading schemes…</p></div>
+    </div>
+  </section>
+
+  <!-- KNOWLEDGE SECTION -->
+  <section id="knowledge-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Ministry of Agriculture</div>
+        <h2 class="section-heading">Farming Knowledge</h2>
+        <p class="section-subtext">Practical farming guidance. All content is advisory — consult your local KVK for specific recommendations.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <select id="kn-category" class="form-select" style="max-width:200px;" onchange="klLoadKnowledge()">
+        <option value="">All Categories</option>
+        <option value="Soil">Soil</option>
+        <option value="Irrigation">Irrigation</option>
+        <option value="Pest">Pest Awareness</option>
+        <option value="Crop">Crop Planning</option>
+        <option value="Post-Harvest">Post-Harvest</option>
+        <option value="Market">Market</option>
+        <option value="Storage">Storage</option>
+        <option value="Organic">Organic Farming</option>
+      </select>
+      <input type="text" id="kn-search" class="form-input" placeholder="Search topic…" style="max-width:200px;" oninput="klLoadKnowledge()">
+    </div>
+    <div id="knowledge-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading…</p></div>
+    </div>
+  </section>
+
+  <!-- LEARNING SECTION -->
+  <section id="learning-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Doordarshan / Official Sources</div>
+        <h2 class="section-heading">Learn &amp; Video Resources</h2>
+        <p class="section-subtext">Official educational resources from government agricultural institutions. Links open external sites.</p>
+      </div>
+    </div>
+    <div style="margin-bottom:var(--space-4);">
+      <input type="text" id="ln-search" class="form-input" placeholder="Search learning topics…" style="max-width:240px;" oninput="klLoadLearning(true)">
+    </div>
+    <div id="learning-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading resources…</p></div>
+    </div>
+  </section>
+
+  <!-- HELPLINE SECTION -->
+  <section id="helpline-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Official Government Numbers</div>
+        <h2 class="section-heading">Kisan Helplines</h2>
+        <p class="section-subtext">Verified official helpline numbers only. Verify current availability before calling.</p>
+      </div>
+    </div>
+    <div id="helpline-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
+  <!-- SEEDS SECTION -->
+  <section id="seeds-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">NSC / ICAR / State Corporations</div>
+        <h2 class="section-heading">Seeds &amp; Seed Resources</h2>
+        <p class="section-subtext">Official seed organizations and quality verification guidance. KisanLink does not sell seeds.</p>
+      </div>
+    </div>
+    <div id="seeds-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
+  <!-- INLINE JS FOR SUPER-APP SECTIONS -->
+  <script>
+  // ========================================================================
+  // Sidebar section nav — show/hide sections
+  // ========================================================================
+  (function() {
+    var SUPER_SECTIONS = ['market-prices-section','weather-section','schemes-section',
+      'knowledge-section','learning-section','helpline-section','seeds-section'];
+    var body = document.querySelector('.dashboard-body');
+
+    document.querySelectorAll('.sidebar-link').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var href = link.getAttribute('href');
+        if (!href || !href.startsWith('#')) return;
+        var targetId = href.slice(1);
+        if (!SUPER_SECTIONS.includes(targetId)) {
+          SUPER_SECTIONS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+          if (body) body.style.display = '';
+          return;
+        }
+        if (body) body.style.display = 'none';
+        SUPER_SECTIONS.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = (id === targetId) ? 'block' : 'none';
+        });
+        if (targetId === 'market-prices-section') {
+          if (window.KL_Step4) { /* commodities filled on init */ }
+        }
+        if (targetId === 'schemes-section')  window.klLoadSchemes && klLoadSchemes();
+        if (targetId === 'knowledge-section') window.klLoadKnowledge && klLoadKnowledge();
+        if (targetId === 'learning-section')  window.klLoadLearning && klLoadLearning();
+        if (targetId === 'helpline-section')  window.klLoadHelplines && klLoadHelplines();
+        if (targetId === 'seeds-section')     window.klLoadSeeds && klLoadSeeds();
+      });
+    });
+  })();
+
+  // ========================================================================
+  // Market Prices
+  // ========================================================================
+  window.klLoadMarketPrices = async function() {
+    var commodity = document.getElementById('mp-commodity').value;
+    var state     = document.getElementById('mp-state').value.trim();
+    var district  = document.getElementById('mp-district').value.trim();
+    var market    = (document.getElementById('mp-market') || {}).value || '';
+    market = (market || '').trim();
+    var container = document.getElementById('mp-container');
+    var label     = document.getElementById('mp-label');
+    if (!commodity) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3></div>';
+      return;
+    }
+    container.innerHTML = '<div class="empty-state" style="padding:24px;"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:8px;">Loading prices…</p></div>';
+    try {
+      var result = null;
+      var liveErr = null;
+      if (typeof window.getLiveMarketPrices === 'function') {
+        try {
+          var live = await window.getLiveMarketPrices({ commodity, state, district, market });
+          if (live && live.success && live.records && live.records.length && live.live) {
+            result = {
+              label: live.label || "TODAY'S LIVE MANDI DATA",
+              latest_date: live.records[0].arrival_date,
+              source: live.source,
+              prices: live.records.map(function (p) {
+                return {
+                  market: p.market, district: p.district, state: p.state,
+                  min_price: p.min_price, max_price: p.max_price, modal_price: p.modal_price,
+                  date: p.arrival_date
+                };
+              }),
+              is_live: true
+            };
+          } else if (live && !live.success) {
+            liveErr = live.error || 'Live mandi feed unavailable';
+          }
+        } catch (e) {
+          liveErr = (e && e.message) || 'Live mandi service unavailable.';
+        }
+      }
+      if (!result) {
+        result = await window.getLatestMarketPrices({ commodity, state, district, market });
+        result.is_live = false;
+      }
+      var extra = '';
+      if (result.is_live) {
+        extra = 'LIVE TODAY — official government mandi feed.';
+      } else {
+        extra = (liveErr ? liveErr + ' ' : 'Live mandi feed unavailable. ') +
+          'Showing latest verified mandi data' +
+          (result.latest_date ? ' from ' + result.latest_date : '') + '.';
+      }
+      if (label) label.textContent = (result.is_live ? (result.label || "TODAY'S LIVE MANDI DATA") : (result.label || 'Latest available mandi data')) +
+        ' · ' + extra + ' Source: ' + (result.source || '');
+      if (!result.prices || result.prices.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No Records Found</h3><p>No data for ' + commodity + (state ? ', '+state : '') + '. Try a different commodity or remove filters.</p></div>';
+        return;
+      }
+      function fmtDate(iso) {
+        if (!iso) return '—';
+        var p = String(iso).slice(0, 10).split('-');
+        if (p.length === 3) return p[2] + '-' + p[1] + '-' + p[0];
+        return iso;
+      }
+      var rows = result.prices.map(function(p) {
+        var freshness = result.is_live
+          ? '<span class="badge badge-success">LIVE TODAY</span>'
+          : ('Latest available<br>' + fmtDate(p.date));
+        return '<tr><td style="padding:8px 12px;">' + commodity + '</td>' +
+          '<td style="padding:8px 12px;font-weight:600;">' + (p.market||'—') + '</td>' +
+          '<td style="padding:8px 12px;">' + (p.district||'—') + '</td>' +
+          '<td style="padding:8px 12px;">' + (p.state||'—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;">' + (p.min_price ? '₹'+Math.round(p.min_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;">' + (p.max_price ? '₹'+Math.round(p.max_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--color-accent-green)">' + (p.modal_price ? '₹'+Math.round(p.modal_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-size:0.75rem;color:var(--color-slate-500);">' + freshness + '</td></tr>';
+      }).join('');
+      container.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:var(--color-slate-50,#f8fafc);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-slate-500);"><th style="padding:8px 12px;text-align:left;">Crop</th><th style="padding:8px 12px;text-align:left;">Market</th><th style="padding:8px 12px;text-align:left;">District</th><th style="padding:8px 12px;text-align:left;">State</th><th style="padding:8px 12px;text-align:left;">Min ₹/Q</th><th style="padding:8px 12px;text-align:left;">Max ₹/Q</th><th style="padding:8px 12px;text-align:left;">Modal ₹/Q</th><th style="padding:8px 12px;text-align:left;">Freshness</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Price Data Unavailable</h3><p>' + (err.message||'Backend error') + '</p></div>';
+    }
+  };
+
+  (function() {
+    var search = document.getElementById('mp-commodity-search');
+    var select = document.getElementById('mp-commodity');
+    if (!search || !select) return;
+    search.addEventListener('input', function() {
+      var q = search.value.toLowerCase();
+      var crops = window.__klCommodities || [];
+      var current = select.value;
+      select.innerHTML = '<option value="">Select commodity…</option>';
+      crops.filter(function(c) { return !q || String(c).toLowerCase().indexOf(q) >= 0; }).forEach(function(c) {
+        var opt = document.createElement('option');
+        opt.value = c; opt.textContent = c;
+        select.appendChild(opt);
+      });
+      if (current) select.value = current;
+    });
+  })();
+
+  // ========================================================================
+  // Weather
+  // ========================================================================
+  window.klLoadWeather = async function() {
+    var district  = (document.getElementById('wx-district').value||'').trim();
+    var state     = (document.getElementById('wx-state').value||'').trim();
+    var container = document.getElementById('wx-container');
+    var gps = window.__klGps;
+    container.innerHTML = '<div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:8px;">Fetching weather…</p></div>';
+    try {
+      var opts = (gps && gps.lat != null) ? { lat: gps.lat, lon: gps.lon, district: district, state: state } : { district: district, state: state };
+      var result = await window.getWeather(opts);
+      if (!result.success) throw new Error(result.error || 'Weather unavailable');
+      var c = result.current;
+      var tip = result.farmer_tip || '';
+      var locLabel = result.location_note || [district, state].filter(Boolean).join(', ');
+      var rain0 = (result.forecast && result.forecast[0] && result.forecast[0].rain_probability_pct != null)
+        ? result.forecast[0].rain_probability_pct + '%' : '—';
+      var wxIcon = {'Clear sky':'☀️','Mainly clear':'🌤️','Partly cloudy':'⛅','Overcast':'☁️','Foggy':'🌫️','Drizzle':'🌦️','Rain':'🌧️','Rain showers':'🌦️','Thunderstorm':'⛈️'};
+      var icon = wxIcon[c.condition] || '🌡️';
+      var currentHtml = '<div style="background:var(--color-slate-50,#f8fafc);border-radius:12px;padding:20px;margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:center;gap:16px;">' +
+        '<div style="font-size:3rem;">' + icon + '</div>' +
+        '<div><div style="font-size:2rem;font-weight:700;">' + (c.temperature_c != null ? c.temperature_c+'°C' : '—') + '</div>' +
+        '<div style="font-weight:600;color:var(--color-slate-700);">' + c.condition + '</div>' +
+        '<div style="font-size:0.78rem;color:var(--color-slate-500);margin-top:4px;">' + locLabel + '</div></div>' +
+        '<div style="margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end;">' +
+        '<span style="font-size:0.8rem;">💧 Humidity: <strong>' + (c.humidity_pct != null ? c.humidity_pct+'%' : '—') + '</strong></span>' +
+        '<span style="font-size:0.8rem;">💨 Wind: <strong>' + (c.wind_kmh != null ? c.wind_kmh+' km/h' : '—') + '</strong></span>' +
+        '<span style="font-size:0.8rem;">🌧 Rain (today): <strong>' + rain0 + '</strong></span>' +
+        '</div></div>' +
+        (tip ? '<div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:6px;font-size:0.82rem;color:#166534;">🌱 ' + tip + '</div>' : '') +
+        '<div style="font-size:0.68rem;color:var(--color-slate-400);margin-top:8px;">Source: ' + result.source + (result.updated ? ' · Updated: ' + result.updated : '') + '</div>' +
+        '</div>';
+      var forecast = (result.forecast || []).map(function(d) {
+        var fi = wxIcon[d.condition] || '🌡️';
+        return '<div style="background:white;border:1px solid var(--color-slate-100);border-radius:10px;padding:14px 10px;text-align:center;min-width:110px;">' +
+          '<div style="font-size:0.7rem;color:var(--color-slate-500);font-weight:600;">' + d.date + '</div>' +
+          '<div style="font-size:1.6rem;margin:6px 0;">' + fi + '</div>' +
+          '<div style="font-size:0.78rem;font-weight:600;">' + (d.temp_max!=null?d.temp_max+'°':' ') + ' / ' + (d.temp_min!=null?d.temp_min+'°':' ') + '</div>' +
+          '<div style="font-size:0.68rem;color:#3b82f6;margin-top:4px;">' + (d.rain_probability_pct!=null?'🌧 '+d.rain_probability_pct+'%':'') + '</div>' +
+          '</div>';
+      }).join('');
+      container.innerHTML = currentHtml + (forecast ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">' + forecast + '</div>' : '');
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Weather Unavailable</h3><p>' + (err.message||'Could not connect to weather service.') + '</p></div>';
+    }
+  };
+
+  (function() {
+    var btn = document.getElementById('wx-gps-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var container = document.getElementById('wx-container');
+      if (!navigator.geolocation) {
+        if (container) container.innerHTML = '<div class="empty-state"><h3>GPS not available</h3><p>Enter district and state instead.</p></div>';
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        window.__klGps = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        window.klLoadWeather();
+      }, function() {
+        if (container) container.innerHTML = '<div class="empty-state"><h3>GPS permission was denied</h3><p>Select your district and state manually.</p></div>';
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    });
+  })();
+  // ========================================================================
+  var _schemesAll = null;
+  window.klLoadSchemes = async function() {
+    var container = document.getElementById('schemes-container');
+    var q = ((document.getElementById('sch-search') || {}).value || '').toLowerCase();
+    try {
+      if (!_schemesAll) {
+        var result = await window.getSchemes();
+        if (!result.success || !result.schemes || !result.schemes.length) throw new Error('No schemes data');
+        _schemesAll = result;
+      }
+      var schemes = (_schemesAll.schemes || []).filter(function(s) {
+        if (!q) return true;
+        return (s.name + ' ' + (s.category||'') + ' ' + (s.short_desc||'') + ' ' + (s.eligibility||'')).toLowerCase().indexOf(q) >= 0;
+      });
+      var html = '<div style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">' +
+        '⚠️ ' + (_schemesAll.note || '') + ' Source: ' + (_schemesAll.source || '') + '</div>';
+      if (!schemes.length) {
+        container.innerHTML = html + '<div class="empty-state"><h3>No matching schemes</h3></div>';
+        return;
+      }
+      html += '<div class="lot-grid">' + schemes.map(function(s) {
+        return '<div class="lot-card" style="display:flex;flex-direction:column;gap:10px;">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+          '<h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);">' + s.name + '</h3>' +
+          '<span class="badge badge-sky" style="white-space:nowrap;flex-shrink:0;">' + s.category + '</span>' +
+          '</div>' +
+          '<p style="font-size:0.82rem;color:var(--color-slate-600);">' + s.short_desc + '</p>' +
+          '<div style="font-size:0.78rem;"><strong>Main Benefit:</strong> ' + s.main_benefit + '</div>' +
+          '<div style="font-size:0.78rem;"><strong>Eligibility:</strong> ' + s.eligibility + '</div>' +
+          (s.note ? '<div style="font-size:0.7rem;color:var(--color-slate-500);font-style:italic;">' + s.note + '</div>' : '') +
+          '<a href="' + s.official_link + '" target="_blank" rel="noopener" class="btn btn-outline btn-xs" style="width:fit-content;margin-top:4px;">Official Portal ↗</a>' +
+          '</div>';
+      }).join('') + '</div>';
+      container.innerHTML = html;
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Schemes Unavailable</h3><p>' + (err.message||'Could not load schemes.') + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Knowledge
+  // ========================================================================
+  var _knowledgeAll = null;
+  window.klLoadKnowledge = async function() {
+    var container = document.getElementById('knowledge-container');
+    var category  = (document.getElementById('kn-category') || {}).value || '';
+    var q         = (document.getElementById('kn-search') || {}).value || '';
+    try {
+      if (!_knowledgeAll) {
+        container.innerHTML = '<div class="empty-state"><div class="cqa-spinner-ring" style="width:24px;height:24px;border-width:3px;"></div></div>';
+        var result = await window.getKnowledge();
+        if (!result.success) throw new Error('No knowledge data');
+        _knowledgeAll = result.knowledge || [];
+      }
+      var items = _knowledgeAll.filter(function(k) {
+        var catMatch = !category || k.category.toLowerCase().includes(category.toLowerCase());
+        var qMatch   = !q || k.title.toLowerCase().includes(q.toLowerCase()) || k.summary.toLowerCase().includes(q.toLowerCase());
+        return catMatch && qMatch;
+      });
+      if (!items.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>No Results</h3><p>Try a different search or category.</p></div>'; return; }
+      container.innerHTML = '<div class="lot-grid">' + items.map(function(k) {
+        var pts = (k.key_points || []).map(function(p) { return '<li style="margin-bottom:3px;">'+p+'</li>'; }).join('');
+        return '<div class="lot-card">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<h3 style="font-size:var(--text-sm);font-weight:var(--weight-bold);">' + k.title + '</h3>' +
+          '<span class="badge badge-sky" style="font-size:0.65rem;">' + k.category + '</span>' +
+          '</div>' +
+          '<p style="font-size:0.8rem;color:var(--color-slate-600);margin-bottom:8px;">' + k.summary + '</p>' +
+          '<ul style="font-size:0.75rem;color:var(--color-slate-700);padding-left:16px;">' + pts + '</ul>' +
+          (k.disclaimer ? '<div style="font-size:0.68rem;color:var(--color-slate-400);margin-top:8px;font-style:italic;">' + k.disclaimer + '</div>' : '') +
+          '</div>';
+      }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + (err.message||'Could not load knowledge.') + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Learning
+  // ========================================================================
+  var _learningAll = null;
+  window.klLoadLearning = async function(forceFilter) {
+    var container = document.getElementById('learning-container');
+    var q = ((document.getElementById('ln-search') || {}).value || '').toLowerCase();
+    try {
+      if (!_learningAll) {
+        var result = await window.getLearning();
+        if (!result.success || !result.resources.length) throw new Error('No resources');
+        _learningAll = result.resources;
+      }
+      var resources = _learningAll.filter(function(r) {
+        if (!q) return true;
+        return (r.title + ' ' + r.topic + ' ' + r.description).toLowerCase().indexOf(q) >= 0;
+      });
+      var typeColorFn = function(t) { return t === 'YouTube Channel' ? '#ef4444' : t === 'Web Portal' ? '#3b82f6' : '#8b5cf6'; };
+      container.innerHTML = '<div class="lot-grid">' + resources.map(function(r) {
+        var typeColor = typeColorFn(r.type);
+        return '<div class="lot-card" style="display:flex;flex-direction:column;gap:10px;">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+          '<h3 style="font-size:var(--text-sm);font-weight:var(--weight-bold);">' + r.title + '</h3>' +
+          '<span style="background:' + typeColor + '22;color:' + typeColor + ';font-size:0.65rem;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;font-weight:600;">' + r.type + '</span>' +
+          '</div>' +
+          '<div style="font-size:0.7rem;font-weight:600;color:var(--color-slate-500);">' + r.topic + '</div>' +
+          '<p style="font-size:0.8rem;color:var(--color-slate-600);">' + r.description + '</p>' +
+          '<div style="font-size:0.72rem;color:var(--color-slate-400);">Source: ' + r.source + ' · Language: ' + r.language + '</div>' +
+          '<a href="' + r.url + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="width:100%;text-align:center;margin-top:auto;">Visit Resource ↗</a>' +
+          '</div>';
+      }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Helplines
+  // ========================================================================
+  var _helplinesLoaded = false;
+  window.klLoadHelplines = async function() {
+    if (_helplinesLoaded) return;
+    var container = document.getElementById('helpline-container');
+    try {
+      var result = await window.getHelplines();
+      if (!result.success || !result.helplines.length) throw new Error('No helplines');
+      _helplinesLoaded = true;
+      container.innerHTML = '<p style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">⚠️ ' + result.note + '</p>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">' +
+        result.helplines.map(function(h) {
+          return '<div class="lot-card" style="border-left:4px solid var(--color-accent-green);">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+            '<div>' +
+            '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-slate-400);margin-bottom:4px;">' + h.category + '</div>' +
+            '<h3 style="font-size:var(--text-base);font-weight:700;">' + h.name + '</h3>' +
+            '</div>' +
+            (h.free ? '<span style="background:#f0fdf4;color:#166534;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">FREE</span>' : '') +
+            '</div>' +
+            '<div style="font-size:1.5rem;font-weight:800;font-family:monospace;color:var(--color-accent-green);margin:8px 0;">' + h.display_number + '</div>' +
+            '<a href="tel:' + h.number + '" class="btn btn-primary btn-sm" style="width:100%;text-align:center;margin-bottom:8px;">📞 Call</a>' +
+            '<p style="font-size:0.78rem;color:var(--color-slate-600);">' + h.purpose + '</p>' +
+            '<div style="font-size:0.7rem;color:var(--color-slate-400);margin-top:6px;">' +
+            (h.availability ? '🕐 '+h.availability : '') + (h.language ? ' · 🗣 '+h.language : '') +
+            '</div>' +
+            '<div style="font-size:0.65rem;color:var(--color-slate-400);margin-top:4px;">Source: ' + h.source + '</div>' +
+            '</div>';
+        }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Seeds
+  // ========================================================================
+  var _seedsLoaded = false;
+  window.klLoadSeeds = async function() {
+    if (_seedsLoaded) return;
+    var container = document.getElementById('seeds-container');
+    try {
+      var result = await window.getSeeds();
+      if (!result.success || !result.organizations.length) throw new Error('No seed data');
+      _seedsLoaded = true;
+      container.innerHTML = '<p style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">ℹ️ ' + result.note + '</p>' +
+        '<div class="lot-grid">' + result.organizations.map(function(o) {
+          var pts = (o.what_they_offer || []).map(function(p){return '<li style="margin-bottom:3px;">'+p+'</li>';}).join('');
+          return '<div class="lot-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+            '<h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);">' + o.name + '</h3>' +
+            '<span class="badge badge-success" style="font-size:0.65rem;white-space:nowrap;">' + o.type + '</span>' +
+            '</div>' +
+            '<p style="font-size:0.8rem;color:var(--color-slate-600);margin-bottom:8px;">' + o.about + '</p>' +
+            '<ul style="font-size:0.75rem;color:var(--color-slate-700);padding-left:16px;margin-bottom:8px;">' + pts + '</ul>' +
+            '<div style="font-size:0.78rem;color:var(--color-slate-600);margin-bottom:6px;"><strong>How to buy:</strong> ' + o.how_to_buy + '</div>' +
+            (o.note ? '<div style="font-size:0.68rem;color:var(--color-slate-500);font-style:italic;margin-bottom:8px;">' + o.note + '</div>' : '') +
+            (o.official_website !== 'https://farmer.gov.in' ? '<a href="' + o.official_website + '" target="_blank" rel="noopener" class="btn btn-outline btn-xs">Official Website ↗</a>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+  </script>
+
   <!-- Scripts (load order matters) -->
   <script src="../js/config.js"></script>
   <script src="../js/api.js"></script>
@@ -1346,5 +1946,51 @@
   <script src="../js/chat-assistant.js"></script>
   <!-- Step 4: Main Controller -->
   <script src="../js/step4-farmer.js"></script>
+  <!-- Auth: load actual user name dynamically -->
+  <script>
+    (function() {
+      var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+
+      function setProfileUI(name, role, district) {
+        var nameEl = document.getElementById('profile-name');
+        var locEl  = document.getElementById('profile-location');
+        var avEl   = document.getElementById('profile-avatar');
+        if (nameEl) nameEl.textContent = name || 'User';
+        if (avEl)   avEl.textContent   = (name || 'U').slice(0, 2).toUpperCase();
+        var loc = (district ? district + ' \u2022 ' : '') + (role || 'Farmer');
+        if (locEl)  locEl.textContent  = loc;
+      }
+
+      // Fast path: use cached user from localStorage immediately
+      try {
+        var cached = JSON.parse(localStorage.getItem('kisanlink_user') || 'null');
+        if (cached && cached.name) setProfileUI(cached.name, cached.role, null);
+      } catch(e) {}
+
+      // Authoritative path: fetch from backend
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch(e) {}
+      if (token) {
+        fetch(API + '/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+        })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(data) {
+          if (!data || !data.success) return;
+          var u = data.user || {};
+          var profile = data.profile || {};
+          try { localStorage.setItem('kisanlink_user', JSON.stringify(u)); } catch(e) {}
+          setProfileUI(u.name, u.role, profile.district);
+          // Update profile contact if element present
+          var contactEl = document.getElementById('profile-contact');
+          if (contactEl) contactEl.textContent = u.phone || u.email || u.username || '\u2014';
+        })
+        .catch(function() {}); // Non-blocking
+      } else {
+        // No token: show guest state (evaluator quick-access flow)
+        setProfileUI('Guest', 'Farmer', null);
+      }
+    })();
+  </script>
 </body>
 </html>

@@ -51,6 +51,8 @@ DATA_GOV_RESOURCE_ID = os.environ.get("DATA_GOV_RESOURCE_ID", "").strip()
 DATA_GOV_BASE_URL = os.environ.get(
     "DATA_GOV_BASE_URL", "https://api.data.gov.in/resource"
 ).rstrip("/")
+ROUTING_API_KEY = os.environ.get("ROUTING_API_KEY", "").strip() or os.environ.get("ORS_API_KEY", "").strip()
+OSRM_BASE_URL = os.environ.get("OSRM_BASE_URL", "https://router.project-osrm.org").rstrip("/")
 
 # ---------------------
 # Chronos Model

@@ -43,3 +43,11 @@ node_modules/
 
 # ── Byte-compiled ──
 *.pyc
+
+# Local secrets — never commit
+.env
+.env.local
+.env.*.local
+backend/*.sqlite3
+backend/*.sqlite3-shm
+backend/*.sqlite3-wal

@@ -1,0 +1,81 @@
+[
+  {
+    "id": "nsc",
+    "name": "National Seeds Corporation (NSC) Ltd.",
+    "type": "Central Government PSU",
+    "about": "India's premier government seed company, established under the Ministry of Agriculture. Produces and distributes certified seeds of field crops, vegetables, and fodder crops.",
+    "what_they_offer": [
+      "Certified quality seeds of major field crops (wheat, paddy, oilseeds, pulses, maize, cotton)",
+      "Vegetable seeds",
+      "Fodder and green manure seeds",
+      "Seed treatment chemicals"
+    ],
+    "how_to_buy": "Seeds available at NSC retail outlets, state government seed agencies, and selected dealers. Check website for dealer locator.",
+    "official_website": "https://www.indiaseeds.com",
+    "contact": "011-25536371",
+    "note": "NSC seeds are government-certified. Look for the tag and batch number on each seed packet to verify authenticity."
+  },
+  {
+    "id": "icar-seed",
+    "name": "ICAR Varietal Information",
+    "type": "Research Institution",
+    "about": "Indian Council of Agricultural Research (ICAR) develops and releases new crop varieties through its network of research institutes. Many high-yielding and disease-resistant varieties originate from ICAR research.",
+    "what_they_offer": [
+      "Research and development of new crop varieties",
+      "Information on recommended varieties for different agro-climatic zones",
+      "Breeder seed production (supplied to seed companies and state agencies)",
+      "Variety performance data"
+    ],
+    "how_to_buy": "ICAR does not directly sell seeds to farmers. Contact your local State Seed Corporation, KVK, or NSC for seed availability of ICAR-released varieties.",
+    "official_website": "https://icar.org.in",
+    "contact": "011-25848789",
+    "note": "ICAR crop variety information is publicly available. Ask your KVK which ICAR varieties are recommended for your district."
+  },
+  {
+    "id": "state-seed-corp",
+    "name": "State Seed Corporations",
+    "type": "State Government Agency",
+    "about": "Most Indian states have their own Seed Corporations or Agro-Industries Corporations that supply certified seeds suited to local agro-climatic conditions. These are often the most accessible source of certified seeds for local farmers.",
+    "what_they_offer": [
+      "Certified seeds adapted to local conditions",
+      "Often carry ICAR-recommended varieties for the state",
+      "Distribution through district and block-level offices"
+    ],
+    "how_to_buy": "Contact your District Agriculture Officer or state agriculture department for the nearest seed distribution point. Also available at fair price shops and cooperatives in many states.",
+    "official_website": "https://farmer.gov.in",
+    "contact": "Contact your State Agriculture Department or District Agriculture Officer",
+    "note": "State corporation names vary (e.g., MSSC in Maharashtra, RSSC in Rajasthan, KSSC in Karnataka). Your local agriculture office is the best starting point."
+  },
+  {
+    "id": "seednet",
+    "name": "Seednet India Portal",
+    "type": "Government Information Portal",
+    "about": "Seednet India is a central portal for seed supply chain management in India, providing information on certified seed availability, dealer networks, and seed quality standards.",
+    "what_they_offer": [
+      "Seed availability information by crop, variety, and state",
+      "Dealer and agency locator",
+      "Seed quality certification information"
+    ],
+    "how_to_buy": "Use the portal to find certified seed dealers in your area. Contact the dealer or your Agriculture Department for purchase.",
+    "official_website": "https://seednet.gov.in",
+    "contact": "Through portal",
+    "note": "Use Seednet to verify if a seed variety is certified before purchase. This helps avoid counterfeit or uncertified seeds."
+  },
+  {
+    "id": "bio-seeds",
+    "name": "Seed Quality: What to Look For",
+    "type": "Information",
+    "about": "Tips for verifying seed quality to avoid sub-standard or fake seeds. Each seed packet must have a certification tag to be classified as certified seed.",
+    "what_they_offer": [
+      "Government-certified seeds must have a coloured certification tag (blue for foundation, white for certified grade)",
+      "Certification number, lot number, and germination percentage must be on the tag",
+      "Buy from authorised dealers or government agencies only",
+      "Check expiry date on the seed packet",
+      "When in doubt, request germination test certificate from the dealer"
+    ],
+    "how_to_buy": "Purchase from authorised seed dealers, state corporations, NSC, or government supply points.",
+    "official_website": "https://seednet.gov.in",
+    "contact": "State Agriculture Department or District Agriculture Officer",
+    "note": "Using certified seeds is one of the most impactful decisions a farmer can make for yield and quality."
+  }
+]

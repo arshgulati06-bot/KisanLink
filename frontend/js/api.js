@@ -251,3 +251,256 @@ window.assessCropQuality                 = assessCropQuality;
 window.calculateExpectedNetRealisation   = calculateExpectedNetRealisation;
 // Legacy aliases (for any existing code that calls old names)
 window.getBuyerDemand                    = getBuyerDemands;
+
+/* =========================================================================
+   AUTH + PERSISTENCE API (new endpoints)
+   ========================================================================= */
+
+/**
+ * 10. Auth — Register a new account.
+ * @param {Object} data — { name, phone, password, role, district, state, ... }
+ * @returns {Promise<Object>} — { success, token, user }
+ */
+async function registerUser(data) {
+  const res = await window.apiClient.post('/auth/register', data);
+  if (res.data && res.data.token) {
+    window.apiClient.setAuthToken(res.data.token);
+    try { localStorage.setItem('kisanlink_user', JSON.stringify(res.data.user)); } catch(e) {}
+  }
+  return res.data;
+}
+
+/**
+ * 11. Auth — Login with username + password.
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<Object>} — { success, token, user }
+ */
+async function loginUser(username, password) {
+  const res = await window.apiClient.post('/auth/login', { username, password });
+  if (res.data && res.data.token) {
+    window.apiClient.setAuthToken(res.data.token);
+    try { localStorage.setItem('kisanlink_user', JSON.stringify(res.data.user)); } catch(e) {}
+  }
+  return res.data;
+}
+
+/**
+ * 12. Auth — Get current user (requires token).
+ * @returns {Promise<Object>} — { success, user, profile, role }
+ */
+async function getCurrentUser() {
+  const res = await window.apiClient.get('/auth/me');
+  return res.data;
+}
+
+/**
+ * 13. Auth — Clear session token.
+ */
+function logoutUser() {
+  window.apiClient.setAuthToken(null);
+  try { localStorage.removeItem('kisanlink_user'); } catch(e) {}
+}
+
+/**
+ * 14. Lots — Create a sale lot (farmer auth required).
+ * @param {Object} data — { commodity, quantity_qtl, grade, district, state, ... }
+ */
+async function createLot(data) {
+  const res = await window.apiClient.post('/lots', data);
+  return res.data;
+}
+
+/**
+ * 15. Lots — Get current farmer's lots.
+ */
+async function getMyLots() {
+  const res = await window.apiClient.get('/lots/my');
+  return res.data;
+}
+
+/**
+ * 16. Lots — Get all available lots (public, optionally filter by commodity).
+ * @param {string} commodity — optional
+ */
+async function getAvailableLots(commodity = '') {
+  const params = commodity ? '?commodity=' + encodeURIComponent(commodity) : '';
+  const res = await window.apiClient.get('/lots' + params);
+  return res.data;
+}
+
+/**
+ * 17. Buyer Requirements — Post a demand (buyer auth required).
+ */
+async function createBuyerRequirement(data) {
+  const res = await window.apiClient.post('/buyer-requirements', data);
+  return res.data;
+}
+
+/**
+ * 18. Buyer Requirements — Get all open requirements (public).
+ */
+async function getOpenRequirements(commodity = '') {
+  const params = commodity ? '?commodity=' + encodeURIComponent(commodity) : '';
+  const res = await window.apiClient.get('/buyer-requirements' + params);
+  return res.data;
+}
+
+/**
+ * 19. My transactions.
+ */
+async function getMyTransactions() {
+  const res = await window.apiClient.get('/transactions/my');
+  return res.data;
+}
+
+/* =========================================================================
+   FARMER SUPER-APP APIS (new routes)
+   ========================================================================= */
+
+/**
+ * 20. Weather — via Open-Meteo (free, no API key).
+ * @param {Object} opts — { district, state } OR { lat, lon }
+ */
+async function getWeather(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.lat)      params.set('lat',      opts.lat);
+  if (opts.lon)      params.set('lon',      opts.lon);
+  if (opts.district) params.set('district', opts.district);
+  if (opts.state)    params.set('state',    opts.state);
+  const res = await window.apiClient.get('/weather?' + params.toString(), { timeout: 12000 });
+  return res.data;
+}
+
+/**
+ * 21. Government Schemes
+ * @param {Object} opts — { category, scope }
+ */
+async function getSchemes(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.category) params.set('category', opts.category);
+  if (opts.scope)    params.set('scope',    opts.scope);
+  const res = await window.apiClient.get('/schemes?' + params.toString());
+  return res.data;
+}
+
+/**
+ * 22. Farming Knowledge
+ * @param {Object} opts — { category, q }
+ */
+async function getKnowledge(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.category) params.set('category', opts.category);
+  if (opts.q)        params.set('q',        opts.q);
+  const res = await window.apiClient.get('/knowledge?' + params.toString());
+  return res.data;
+}
+
+/**
+ * 23. Learning Resources
+ * @param {Object} opts — { topic }
+ */
+async function getLearning(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.topic) params.set('topic', opts.topic);
+  const res = await window.apiClient.get('/learning?' + params.toString());
+  return res.data;
+}
+
+/**
+ * 24. Helplines
+ * @param {Object} opts — { category }
+ */
+async function getHelplines(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.category) params.set('category', opts.category);
+  const res = await window.apiClient.get('/helplines?' + params.toString());
+  return res.data;
+}
+
+/**
+ * 25. Seeds / Seed Organizations
+ */
+async function getSeeds() {
+  const res = await window.apiClient.get('/seeds');
+  return res.data;
+}
+
+/**
+ * 26. Latest Market Prices — real mandi data, honest date labeling.
+ * @param {Object} opts — { commodity (required), state, district, market, limit }
+ */
+async function getLatestMarketPrices(opts = {}) {
+  if (!opts.commodity) throw new Error('commodity is required');
+  const params = new URLSearchParams({ commodity: opts.commodity });
+  if (opts.state)    params.set('state',    opts.state);
+  if (opts.district) params.set('district', opts.district);
+  if (opts.market)   params.set('market',   opts.market);
+  if (opts.limit)    params.set('limit',    opts.limit);
+  const res = await window.apiClient.get('/market-prices/latest?' + params.toString());
+  return res.data;
+}
+
+async function getSellNowPlan(opts = {}) {
+  const body = {
+    commodity: opts.commodity,
+    state: opts.state,
+    district: opts.district,
+    market: opts.market || '',
+    quantity_qtl: opts.quantity_qtl || 10,
+  };
+  if (opts.lat != null && opts.lon != null) {
+    body.lat = opts.lat;
+    body.lon = opts.lon;
+  }
+  const res = await window.apiClient.post('/sell-now', body);
+  return res.data;
+}
+
+async function getLiveMarketPrices(opts = {}) {
+  const params = new URLSearchParams();
+  if (opts.commodity) params.set('commodity', opts.commodity);
+  if (opts.state) params.set('state', opts.state);
+  if (opts.district) params.set('district', opts.district);
+  if (opts.market) params.set('market', opts.market);
+  if (opts.limit) params.set('limit', opts.limit);
+  const res = await window.apiClient.get('/market-prices/live?' + params.toString());
+  return res.data;
+}
+
+async function reverseGeocode(lat, lon) {
+  const res = await window.apiClient.get(
+    '/location/reverse?lat=' + encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)
+  );
+  return res.data;
+}
+
+async function getRoute(origin, destination) {
+  const res = await window.apiClient.post('/route', { origin, destination });
+  return res.data;
+}
+
+// Global exports — auth + persistence
+window.registerUser          = registerUser;
+window.loginUser             = loginUser;
+window.getCurrentUser        = getCurrentUser;
+window.logoutUser            = logoutUser;
+window.createLot             = createLot;
+window.getMyLots             = getMyLots;
+window.getAvailableLots      = getAvailableLots;
+window.createBuyerRequirement = createBuyerRequirement;
+window.getOpenRequirements   = getOpenRequirements;
+window.getMyTransactions     = getMyTransactions;
+
+// Global exports — Farmer Super-App
+window.getWeather            = getWeather;
+window.getSchemes            = getSchemes;
+window.getKnowledge          = getKnowledge;
+window.getLearning           = getLearning;
+window.getHelplines          = getHelplines;
+window.getSeeds              = getSeeds;
+window.getLatestMarketPrices = getLatestMarketPrices;
+window.getLiveMarketPrices = getLiveMarketPrices;
+window.getSellNowPlan        = getSellNowPlan;
+window.reverseGeocode        = reverseGeocode;
+window.getRoute              = getRoute;

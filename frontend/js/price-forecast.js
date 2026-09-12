@@ -163,13 +163,30 @@ var KL_PriceForecast = (function () {
     var controller = new AbortController();
     requestState.cascadeController = controller;
     _fetchJSON('/api/commodities', controller.signal).then(function (crops) {
-      _populateSelect(IDS.cropSelect, crops, '-- Select Commodity --');
+      window.__klCommodities = Array.isArray(crops) ? crops : [];
+      _populateSelect(IDS.cropSelect, window.__klCommodities, '-- Select Commodity --');
+      _wireCropSearch();
     }).catch(function (err) {
       if (err.name === 'AbortError') return;
       console.error('[PriceForecast] Failed to load commodities:', err);
       _populateSelect(IDS.cropSelect, [], 'Backend unavailable — start server');
     }).finally(function () {
       if (requestState.cascadeController === controller) requestState.cascadeController = null;
+    });
+  }
+
+  function _wireCropSearch() {
+    var search = document.getElementById('pf-crop-search');
+    var select = document.getElementById(IDS.cropSelect);
+    if (!search || !select || search.dataset.wired) return;
+    search.dataset.wired = '1';
+    search.addEventListener('input', function () {
+      var q = search.value.toLowerCase();
+      var crops = window.__klCommodities || [];
+      var current = select.value;
+      var filtered = crops.filter(function (c) { return !q || String(c).toLowerCase().indexOf(q) >= 0; });
+      _populateSelect(IDS.cropSelect, filtered, '-- Select Commodity --');
+      if (current) select.value = current;
     });
   }
 
@@ -358,6 +375,9 @@ var KL_PriceForecast = (function () {
       if (data.n_winsorized && data.n_winsorized > 0) {
         lines += '<br><span style="color:var(--color-slate-400);font-size:0.68rem;">' + data.n_winsorized + ' extreme value(s) corrected (data quality).</span>';
       }
+      if (data.forecast_sanity && data.forecast_sanity.applied) {
+        lines += '<br><span class="badge">FORECAST ADJUSTED</span> <span style="color:#9F1239;font-size:0.72rem;">Model forecast was outside the recent market range, so the latest validated market value is being used. Unit: INR/quintal.</span>';
+      }
       dataEl.innerHTML = lines;
     }
 
@@ -383,7 +403,9 @@ var KL_PriceForecast = (function () {
       }).join('');
 
       tableEl.innerHTML = header + rows +
-        '<div style="font-size:0.65rem;color:var(--color-slate-400);margin-top:4px;">P10 / P50 / P90 from Chronos sample trajectories. Not a live tick.</div>';
+        '<div style="font-size:0.65rem;color:var(--color-slate-400);margin-top:4px;">P10 / P50 / P90 are model outputs (INR/quintal), not live mandi quotes.' +
+        (data.forecast_sanity && data.forecast_sanity.applied ? ' Displayed path uses the latest validated modal after scale check.' : '') +
+        '</div>';
     }
 
     // Sale-window recommendation

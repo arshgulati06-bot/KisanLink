@@ -1,0 +1,128 @@
+[
+  {
+    "id": "soil-testing",
+    "title": "Soil Testing: Why and How",
+    "category": "Soil",
+    "summary": "Regular soil testing helps you understand what nutrients your land has and what it lacks. This prevents over-use of fertilisers and saves money.",
+    "key_points": [
+      "Test soil once every 2 years minimum",
+      "Collect samples from multiple spots in the field",
+      "Test for pH, nitrogen (N), phosphorus (P), potassium (K), and micronutrients",
+      "Use results to apply the right fertilisers in the right amounts",
+      "Soil Health Card scheme provides free testing through government"
+    ],
+    "source": "ICAR / Ministry of Agriculture",
+    "disclaimer": "Recommendations based on soil tests are advisory. Consult a local agronomist for specific guidance."
+  },
+  {
+    "id": "drip-irrigation",
+    "title": "Drip Irrigation: Water-Saving Approach",
+    "category": "Irrigation",
+    "summary": "Drip irrigation delivers water directly to the root zone, reducing water use by up to 50% compared to flood irrigation while maintaining or improving crop yield.",
+    "key_points": [
+      "Suitable for vegetables, fruits, sugarcane, cotton, and orchard crops",
+      "Reduces water consumption significantly",
+      "Reduces weed growth as only root zone is wetted",
+      "Drip fertigation allows nutrients to be applied with water",
+      "Government subsidy available through PMKSY (Pradhan Mantri Krishi Sinchayee Yojana)"
+    ],
+    "source": "ICAR / Ministry of Agriculture",
+    "disclaimer": "Drip system design should be done by a qualified agronomist or irrigation engineer for your specific field."
+  },
+  {
+    "id": "ipm",
+    "title": "Integrated Pest Management (IPM) Basics",
+    "category": "Pest Awareness",
+    "summary": "IPM is a sustainable approach to managing pests by combining biological, cultural, and chemical methods to minimise economic, health, and environmental risks.",
+    "key_points": [
+      "Scout fields regularly to identify pests before they cause major damage",
+      "Use resistant crop varieties where available",
+      "Biological control: encourage natural predators like ladybirds and spiders",
+      "Cultural practices: crop rotation, proper spacing, timely sowing",
+      "Use chemical pesticides only as a last resort, follow label instructions strictly",
+      "Never mix pesticides unless specifically recommended"
+    ],
+    "source": "ICAR / Directorate of Plant Protection, Quarantine & Storage",
+    "disclaimer": "Pesticide application should follow label instructions. Consult Krishi Vigyan Kendra for identification of specific pests and diseases."
+  },
+  {
+    "id": "post-harvest",
+    "title": "Post-Harvest Handling to Reduce Losses",
+    "category": "Post-Harvest",
+    "summary": "Approximately 20-30% of fresh produce is lost post-harvest in India due to improper handling, storage, and transportation. Simple practices can significantly reduce these losses.",
+    "key_points": [
+      "Harvest at proper maturity — not too early, not too late",
+      "Handle produce gently to prevent bruising",
+      "Clean and sort produce before storage",
+      "Pre-cool vegetables and fruits if possible before transport",
+      "Use clean, ventilated containers for transport",
+      "Store in cool, dry, clean conditions",
+      "Do not store near chemicals or pesticides"
+    ],
+    "source": "ICAR / National Horticulture Board",
+    "disclaimer": "Specific handling requirements vary by crop. Consult APMC or Krishi Vigyan Kendra for crop-specific advice."
+  },
+  {
+    "id": "crop-rotation",
+    "title": "Crop Rotation for Soil Health",
+    "category": "Crop Planning",
+    "summary": "Growing different crops in sequence on the same field improves soil health, reduces pest buildup, and can reduce fertiliser needs.",
+    "key_points": [
+      "Alternate between legume crops (dal, groundnut) and cereals",
+      "Legumes fix nitrogen in soil, reducing need for nitrogen fertiliser",
+      "Breaks pest and disease cycles that target specific crops",
+      "Improves soil structure over time",
+      "Plan rotations based on local climate and market demand"
+    ],
+    "source": "ICAR / Ministry of Agriculture & Farmers Welfare",
+    "disclaimer": "Optimal rotation depends on your local soil, climate, and available irrigation. Seek local agronomist advice."
+  },
+  {
+    "id": "market-prep",
+    "title": "Preparing Your Produce for Market",
+    "category": "Market",
+    "summary": "How you present your produce at the mandi affects the price you receive. Grading, cleaning, and proper packaging improve market price significantly.",
+    "key_points": [
+      "Sort and grade produce by size, color, and quality before taking to market",
+      "Remove damaged, rotted, or off-spec produce to avoid dragging down average grade",
+      "Clean produce (remove soil, leaves) — cleaner lots fetch higher prices",
+      "Use standardised bags/boxes where possible",
+      "Know the current mandi price before you go — do not accept first quote blindly",
+      "e-NAM registration allows you to get competitive bids from multiple buyers"
+    ],
+    "source": "NAFED / National Horticulture Board / Ministry of Agriculture",
+    "disclaimer": "Market prices vary by day, mandi, and quality. Verify prices through KisanLink or direct mandi inquiry."
+  },
+  {
+    "id": "storage-basics",
+    "title": "On-Farm Storage Basics",
+    "category": "Storage",
+    "summary": "Proper storage allows farmers to wait for better market prices and avoid distress selling immediately after harvest when prices are typically lowest.",
+    "key_points": [
+      "Store grains at less than 12-14% moisture content to prevent fungal growth",
+      "Use hermetic (airtight) storage bags to reduce pest damage in grains",
+      "Keep storage area clean, dry, and pest-free",
+      "Warehouse receipts from registered warehouses allow loans against stored produce",
+      "Check Negotiable Warehouse Receipt (NWR) scheme at WDRA (wdra.gov.in)",
+      "Never store near pesticides or chemicals"
+    ],
+    "source": "Warehousing Development and Regulatory Authority (WDRA) / Ministry of Agriculture",
+    "disclaimer": "Storage conditions vary by crop. For large volumes, consult a cold chain or warehouse specialist."
+  },
+  {
+    "id": "organic-basics",
+    "title": "Introduction to Organic Farming",
+    "category": "Organic Farming",
+    "summary": "Organic farming relies on natural inputs and avoids synthetic pesticides and fertilisers. It can fetch premium prices but requires certification for market claims.",
+    "key_points": [
+      "Uses compost, vermicompost, and natural manures instead of synthetic fertilisers",
+      "Uses biological pest control and crop rotation instead of synthetic pesticides",
+      "Certification required to sell as 'organic' — contact APEDA or state agriculture dept",
+      "Transition period: 2-3 years from conventional to certified organic",
+      "PGS-India (Participatory Guarantee System) is a simpler certification for small farmers",
+      "Check APEDA for organic export opportunities"
+    ],
+    "source": "APEDA / ICAR / Ministry of Agriculture",
+    "disclaimer": "Organic certification requirements are specific and legally binding. Do not claim 'organic' without proper certification."
+  }
+]

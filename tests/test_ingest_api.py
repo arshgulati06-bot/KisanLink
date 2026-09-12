@@ -414,3 +414,126 @@ class TestBackendEndpoints:
     def test_ingest_rejects_empty(self, client):
         r = client.post("/api/ingest/update", json={"records": []})
         assert r.status_code == 400
+
+    def test_latest_market_prices_use_canonical_columns(self, client):
+        r = client.get("/api/market-prices/latest?commodity=Tomato&state=Maharashtra")
+        body = r.get_json()
+        assert r.status_code == 200
+        assert body["prices"]
+        assert body["prices"][0]["modal_price"] is not None
+        assert body["prices"][0]["modal_price"] > 0
+        assert body["is_live_today"] in (True, False)
+        assert "Latest" in body["label"] or "Today" in body["label"]
+
+    def test_sell_now_ranks_by_net_not_sticker_price(self, client):
+        r = client.post("/api/sell-now", json={
+            "commodity": "Tomato",
+            "state": "Maharashtra",
+            "district": "Nashik",
+            "quantity_qtl": 10,
+        })
+        body = r.get_json()
+        assert r.status_code == 200
+        assert body["success"] is True
+        rec = body["recommended"]
+        assert rec["market"] == body["markets"][0]["market"]
+        assert "transport_cost" in rec
+        assert rec["latest_price"] < 20000
+        assert rec.get("distance_estimated") in (True, False)
+        assert "transport_cost" in rec
+        assert rec["net_realisation"] <= rec.get("gross_value", rec.get("gross_sale_value", rec["net_realisation"]))
+
+    def test_live_prices_unconfigured_is_honest(self, client):
+        r = client.get("/api/market-prices/live?commodity=Tomato&state=Maharashtra")
+        body = r.get_json()
+        assert r.status_code == 200
+        assert body["success"] is False
+        assert body["live"] is False
+        assert body.get("is_live") is False
+        assert "DATA_GOV" in (body.get("error") or "")
+        assert body.get("records") == []
+
+    def test_reverse_invalid_coords(self, client):
+        r = client.get("/api/location/reverse?lat=99&lon=200")
+        assert r.status_code == 400
+        assert r.get_json()["success"] is False
+
+    def test_route_invalid_coords(self, client):
+        r = client.post("/api/route", json={"origin": {"lat": "x", "lon": 1}, "destination": {"lat": 2, "lon": 3}})
+        assert r.status_code == 400
+
+    def test_route_falls_back_to_estimate_in_tests(self, client):
+        r = client.post("/api/route", json={
+            "origin": {"lat": 20.011, "lon": 73.790},
+            "destination": {"lat": 19.997, "lon": 73.790},
+        })
+        body = r.get_json()
+        assert r.status_code == 200
+        assert body["success"] is True
+        assert body["estimated"] is True
+        assert body["source"] == "haversine"
+        assert body["distance_km"] > 0
+
+    def test_sell_now_rejects_invalid_gps(self, client):
+        r = client.post("/api/sell-now", json={
+            "commodity": "Tomato",
+            "state": "Maharashtra",
+            "district": "Nashik",
+            "quantity_qtl": 10,
+            "lat": 91,
+            "lon": 73,
+        })
+        assert r.status_code == 400
+
+    def test_sell_now_unknown_commodity(self, client):
+        r = client.post("/api/sell-now", json={
+            "commodity": "NotARealCropXYZ",
+            "state": "Maharashtra",
+            "district": "Nashik",
+            "quantity_qtl": 10,
+        })
+        assert r.status_code == 422
+
+    def test_sell_now_with_gps_uses_estimate_when_routing_disabled(self, client):
+        r = client.post("/api/sell-now", json={
+            "commodity": "Tomato",
+            "state": "Maharashtra",
+            "district": "Nashik",
+            "quantity_qtl": 10,
+            "lat": 20.011,
+            "lon": 73.790,
+        })
+        body = r.get_json()
+        assert r.status_code == 200
+        assert body["origin_gps_used"] is True
+        rec = body["recommended"]
+        assert rec["distance_estimated"] is True
+        assert "Road routing unavailable" in (body.get("distance_disclaimer") or "")
+
+    def test_weather_requires_location(self, client):
+        r = client.get("/api/weather")
+        assert r.status_code == 400
+        assert r.get_json()["success"] is False
+
+
+class TestForecastSanity:
+    def test_exploded_path_falls_back_to_last_price(self):
+        from ml.price_sanity import sanitize_forecast
+        recent = np.array([1500.0] * 30)
+        low = np.full(7, 90000.0)
+        med = np.full(7, 97631.0)
+        high = np.full(7, 120000.0)
+        out = sanitize_forecast(low, med, high, recent)
+        assert out["applied"] is True
+        assert np.allclose(out["median"], 1500.0)
+        assert np.all(out["low"] <= out["median"])
+        assert np.all(out["median"] <= out["high"])
+
+    def test_in_scale_forecast_preserved(self):
+        from ml.price_sanity import sanitize_forecast
+        recent = np.array([1500.0 + i for i in range(30)])
+        med = np.array([1600.0] * 7)
+        low = med - 40
+        high = med + 40
+        out = sanitize_forecast(low, med, high, recent)
+        assert np.allclose(out["median"], med, atol=1.0)

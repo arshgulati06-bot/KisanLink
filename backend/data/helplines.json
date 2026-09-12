@@ -1,0 +1,86 @@
+[
+  {
+    "id": "kisan-call-centre",
+    "name": "Kisan Call Centre (KCC)",
+    "number": "1800-180-1551",
+    "display_number": "1800-180-1551",
+    "purpose": "Free agricultural advisory helpline. Get expert advice on farming, crop diseases, soil, and schemes.",
+    "availability": "6 AM to 10 PM (all 7 days)",
+    "language": "Available in 22 local languages",
+    "free": true,
+    "category": "Agricultural Advisory",
+    "source": "Ministry of Agriculture & Farmers Welfare, Government of India"
+  },
+  {
+    "id": "pm-kisan-helpline",
+    "name": "PM-KISAN Helpline",
+    "number": "155261",
+    "display_number": "155261",
+    "purpose": "For queries about PM-KISAN benefit status, registration, corrections, and payment issues.",
+    "availability": "Monday to Friday, 9 AM to 5 PM",
+    "language": "Hindi and English",
+    "free": true,
+    "category": "Scheme Helpline",
+    "source": "PM-KISAN / Ministry of Agriculture & Farmers Welfare"
+  },
+  {
+    "id": "pmfby-helpline",
+    "name": "PMFBY Crop Insurance Helpline",
+    "number": "1800-200-7710",
+    "display_number": "1800-200-7710",
+    "purpose": "For crop insurance queries, claim status, and grievances under PMFBY.",
+    "availability": "Monday to Saturday, 9 AM to 6 PM",
+    "language": "Hindi and English",
+    "free": true,
+    "category": "Crop Insurance",
+    "source": "Ministry of Agriculture & Farmers Welfare, Government of India"
+  },
+  {
+    "id": "nabard-helpline",
+    "name": "NABARD Helpline",
+    "number": "1800-26-27025",
+    "display_number": "1800-26-27025",
+    "purpose": "For queries about rural credit, KCC (Kisan Credit Card), and NABARD schemes.",
+    "availability": "Monday to Friday, 9 AM to 5 PM",
+    "language": "Hindi and English",
+    "free": true,
+    "category": "Credit & Finance",
+    "source": "National Bank for Agriculture and Rural Development (NABARD)"
+  },
+  {
+    "id": "icar-helpline",
+    "name": "ICAR (Indian Council of Agricultural Research)",
+    "number": "011-25848789",
+    "display_number": "011-25848789",
+    "purpose": "Agricultural research, crop variety, and technology information.",
+    "availability": "Monday to Friday, office hours",
+    "language": "Hindi and English",
+    "free": false,
+    "category": "Agricultural Research",
+    "source": "Indian Council of Agricultural Research (ICAR)"
+  },
+  {
+    "id": "nsc-helpline",
+    "name": "National Seeds Corporation (NSC)",
+    "number": "011-25536371",
+    "display_number": "011-25536371",
+    "purpose": "For certified seed availability, seed quality complaints, and dealer information.",
+    "availability": "Monday to Friday, office hours",
+    "language": "Hindi and English",
+    "free": false,
+    "category": "Seeds",
+    "source": "National Seeds Corporation Ltd."
+  },
+  {
+    "id": "kisaan-sarathi",
+    "name": "Kisaan Sarathi (mKisaan Portal)",
+    "number": "1800-180-1551",
+    "display_number": "SMS: 51969 or 7738299899",
+    "purpose": "Mobile advisory service — SMS crop advisories, weather, and market prices in local language.",
+    "availability": "SMS service (24x7)",
+    "language": "Multiple Indian languages",
+    "free": true,
+    "category": "Digital Advisory",
+    "source": "Ministry of Agriculture & Farmers Welfare, Government of India"
+  }
+]

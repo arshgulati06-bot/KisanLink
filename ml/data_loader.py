@@ -746,11 +746,16 @@ def prepare_context(market_df):
         min_records=config.MIN_RECORDS,
     )
 
+    from .price_sanity import drop_inconsistent_scale
+    prices, dates, n_scale_dropped = drop_inconsistent_scale(
+        prices, dates, min_keep=config.MIN_RECORDS,
+    )
+
     # ------------------------------------------------------------------
     # Step 3: Conservative winsorization
     # ------------------------------------------------------------------
     prices_clean = _winsorize_prices(prices, k=config.OUTLIER_IQR_K)
-    n_winsorized = int(np.sum(prices_clean != prices))
+    n_winsorized = int(np.sum(prices_clean != prices)) + int(n_scale_dropped)
 
     # ------------------------------------------------------------------
     # Step 4: Context window

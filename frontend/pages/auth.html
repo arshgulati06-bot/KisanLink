@@ -75,6 +75,162 @@
       border-color: var(--color-primary-600);
       background-color: var(--color-primary-100);
     }
+
+    /* Auth form styles */
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin: var(--space-5) 0;
+      color: var(--color-slate-400);
+      font-size: var(--text-xs);
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      border-top: 1px solid var(--color-slate-200);
+    }
+
+    .auth-tabs {
+      display: flex;
+      border-bottom: 2px solid var(--color-slate-200);
+      margin-bottom: var(--space-5);
+    }
+    .auth-tab {
+      flex: 1;
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      text-align: center;
+      cursor: pointer;
+      color: var(--color-slate-500);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+      background: none;
+      border-left: none;
+      border-right: none;
+      border-top: none;
+    }
+    .auth-tab.active {
+      color: var(--color-primary-700);
+      border-bottom-color: var(--color-primary-600);
+    }
+    .auth-tab:hover:not(.active) {
+      color: var(--color-slate-700);
+      background: var(--color-slate-50);
+    }
+
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+
+    .form-group {
+      margin-bottom: var(--space-4);
+    }
+    .form-label {
+      display: block;
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--color-slate-700);
+      margin-bottom: var(--space-2);
+    }
+    .form-input {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--color-slate-300);
+      border-radius: var(--radius-lg);
+      font-size: var(--text-sm);
+      color: var(--color-slate-800);
+      background: #fff;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--color-primary-500);
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3);
+    }
+
+    .auth-error {
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: var(--radius-lg);
+      color: #DC2626;
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
+      display: none;
+    }
+    .auth-error.visible { display: block; }
+
+    .auth-success {
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: var(--radius-lg);
+      color: #065F46;
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
+      display: none;
+    }
+    .auth-success.visible { display: block; }
+
+    .btn-auth {
+      width: 100%;
+      padding: var(--space-3) var(--space-5);
+      background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-700) 100%);
+      color: white;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: var(--space-2);
+    }
+    .btn-auth:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-auth:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .role-select-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+    }
+    .role-option {
+      border: 2px solid var(--color-slate-200);
+      border-radius: var(--radius-lg);
+      padding: var(--space-3);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .role-option.selected {
+      border-color: var(--color-primary-600);
+      background: var(--color-primary-50);
+    }
+    .role-option input { display: none; }
+    .role-option-label {
+      font-size: var(--text-sm);
+      font-weight: var(--weight-semibold);
+      color: var(--color-slate-700);
+    }
+    .role-option.selected .role-option-label { color: var(--color-primary-700); }
+
+    .logged-in-banner {
+      background: #ECFDF5;
+      border: 1px solid #A7F3D0;
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+      margin-bottom: var(--space-4);
+      display: none;
+    }
+    .logged-in-banner.visible { display: block; }
   </style>
 </head>
 
@@ -91,61 +247,98 @@
           </div>
           <span>Kisan<span class="text-emerald">Link</span></span>
         </a>
-        <span class="brand-badge">SIH 2026 Demonstration Portal</span>
-        <h1 style="font-size: var(--text-2xl); font-weight: var(--weight-bold); margin-top: var(--space-3);">Choose Your
-          Portal</h1>
-        <p style="font-size: var(--text-xs); color: var(--color-slate-600);">Select your operational role to launch the
-          prototype dashboard</p>
+        <span class="brand-badge">SIH 2026 Agricultural Platform</span>
+        <h1 style="font-size: var(--text-2xl); font-weight: var(--weight-bold); margin-top: var(--space-3);">Access Portal</h1>
+        <p style="font-size: var(--text-xs); color: var(--color-slate-600);">Register or sign in to save your data persistently</p>
       </div>
 
-      <div class="role-grid-auth">
-        <!-- Farmer Role -->
-        <a href="farmer.html" class="role-auth-btn active">
-          <div class="brand-icon-wrapper" style="width: 44px; height: 44px;">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z" />
-            </svg>
-          </div>
-          <h3 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Farmer / Producer</h3>
-          <p style="font-size: 0.7rem; color: var(--color-slate-500);">Sell lots, compare mandi prices & get buyer
-            offers</p>
-        </a>
-
-        <!-- Buyer Role -->
-        <a href="buyer.html" class="role-auth-btn">
-          <div class="brand-icon-wrapper"
-            style="width: 44px; height: 44px; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-            </svg>
-          </div>
-          <h3 style="font-size: var(--text-sm); font-weight: var(--weight-bold);">Verified Buyer</h3>
-          <p style="font-size: 0.7rem; color: var(--color-slate-500);">Post demands, match supply & send digital offers
-          </p>
-        </a>
+      <!-- Already logged-in banner -->
+      <div class="logged-in-banner" id="loggedInBanner">
+        <div style="font-size: var(--text-sm); font-weight: var(--weight-semibold); color: #065F46; margin-bottom: var(--space-2);">
+          ✓ Signed in as <span id="loggedInName"></span> (<span id="loggedInRole"></span>)
+        </div>
+        <div style="display: flex; gap: var(--space-3);">
+          <a href="farmer.html" class="btn btn-primary btn-sm" id="goDashboardBtn" style="flex: 1; justify-content: center;">Go to Dashboard →</a>
+          <button onclick="handleLogout()" class="btn btn-secondary btn-sm" style="flex: 0 0 auto;">Sign Out</button>
+        </div>
       </div>
 
-      <!-- Quick Demo Access Banner -->
-      <div
-        style="background-color: var(--color-primary-50); border: 1px solid var(--color-primary-200); border-radius: var(--radius-lg); padding: var(--space-4); margin-bottom: var(--space-6);">
-        <div class="flex items-center gap-2" style="margin-bottom: var(--space-2);">
-          <span class="badge badge-demo">SIH Evaluator Quick Access</span>
+
+      <!-- Auth Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Create Account</button>
+      </div>
+
+      <!-- Login Form -->
+      <div class="auth-form active" id="formLogin">
+        <div class="auth-error" id="loginError"></div>
+        <div class="auth-success" id="loginSuccess"></div>
+
+        <div class="form-group">
+          <label class="form-label" for="loginUsername">Username</label>
+          <input class="form-input" type="text" id="loginUsername" placeholder="e.g. arsh123" autocomplete="username">
         </div>
-        <div class="flex flex-col gap-2">
-          <a href="farmer.html" class="btn btn-primary btn-sm" style="width: 100%; justify-content: space-between;">
-            <span>⚡ Launch as Farmer (Ramesh Patil • Nashik)</span>
-            <span>→</span>
-          </a>
-          <a href="buyer.html" class="btn btn-secondary btn-sm" style="width: 100%; justify-content: space-between;">
-            <span>⚡ Launch as Buyer (Sahyadri Agro • Pune)</span>
-            <span>→</span>
-          </a>
+        <div class="form-group">
+          <label class="form-label" for="loginPassword">Password</label>
+          <input class="form-input" type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
         </div>
+        <button class="btn-auth" id="btnLogin" onclick="handleLogin()">Sign In</button>
+      </div>
+
+      <!-- Register Form -->
+      <div class="auth-form" id="formRegister">
+        <div class="auth-error" id="registerError"></div>
+        <div class="auth-success" id="registerSuccess"></div>
+
+        <div class="form-group">
+          <label class="form-label">I am a</label>
+          <div class="role-select-row">
+            <label class="role-option selected" id="roleFarmer">
+              <input type="radio" name="regRole" value="FARMER" checked>
+              <div style="font-size: 1.2rem; margin-bottom: 4px;">🌾</div>
+              <div class="role-option-label">Farmer / FPO</div>
+            </label>
+            <label class="role-option" id="roleBuyer">
+              <input type="radio" name="regRole" value="BUYER">
+              <div style="font-size: 1.2rem; margin-bottom: 4px;">🏭</div>
+              <div class="role-option-label">Buyer / Processor</div>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="regName">Full Name</label>
+            <input class="form-input" type="text" id="regName" placeholder="e.g. Arsh Gulati" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regUsername">Username <span style="font-weight:400;color:var(--color-slate-400)">(unique, no spaces)</span></label>
+            <input class="form-input" type="text" id="regUsername" placeholder="e.g. arsh123" autocomplete="username">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="regDistrict">District <span style="font-weight:400;color:var(--color-slate-400)">(optional)</span></label>
+            <input class="form-input" type="text" id="regDistrict" placeholder="Nashik">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regState">State <span style="font-weight:400;color:var(--color-slate-400)">(optional)</span></label>
+            <input class="form-input" type="text" id="regState" placeholder="Maharashtra" value="Maharashtra">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="regPassword">Password <span style="font-weight:400; color: var(--color-slate-400);">(min 4 characters)</span></label>
+          <input class="form-input" type="password" id="regPassword" placeholder="Create a password" autocomplete="new-password">
+        </div>
+
+        <button class="btn-auth" id="btnRegister" onclick="handleRegister()">Create Account</button>
       </div>
 
       <!-- 13-Language Selector -->
-      <div style="display: flex; justify-content: center; margin-bottom: var(--space-4);">
+      <div style="display: flex; justify-content: center; margin-top: var(--space-5);">
         <div class="kl-lang-dropdown-wrap">
           <select class="kl-lang-select" aria-label="Select preferred language" data-lang-select>
             <option value="en">English (English)</option>
@@ -165,7 +358,7 @@
         </div>
       </div>
 
-      <div class="text-center" style="font-size: var(--text-xs); color: var(--color-slate-500);">
+      <div class="text-center" style="font-size: var(--text-xs); color: var(--color-slate-500); margin-top: var(--space-4);">
         <a href="../index.html" style="color: var(--color-primary-700); font-weight: var(--weight-semibold);">← Back to Landing Page</a>
       </div>
     </div>
@@ -175,11 +368,217 @@
   <script src="../js/api.js"></script>
   <script src="../js/i18n.js"></script>
   <script>
+    const API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+
+    // ----------------------------------------------------------------
+    // Tab switching
+    // ----------------------------------------------------------------
+    function switchTab(tab) {
+      document.getElementById('formLogin').classList.toggle('active', tab === 'login');
+      document.getElementById('formRegister').classList.toggle('active', tab === 'register');
+      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+      clearMessages();
+    }
+
+    function clearMessages() {
+      ['loginError','loginSuccess','registerError','registerSuccess'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.className = el.className.replace(' visible',''); el.textContent = ''; }
+      });
+    }
+
+    function showMsg(id, text) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = text;
+      if (!el.classList.contains('visible')) el.classList.add('visible');
+    }
+
+    // ----------------------------------------------------------------
+    // Check if already logged in
+    // ----------------------------------------------------------------
+    function checkLoggedIn() {
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch(e) {}
+      if (!token) return;
+
+      fetch(API_BASE + '/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data && data.success && data.user) {
+          showLoggedInBanner(data.user, data.role);
+        }
+      })
+      .catch(function() {}); // Silently ignore if backend not available
+    }
+
+    function showLoggedInBanner(user, role) {
+      var banner = document.getElementById('loggedInBanner');
+      banner.classList.add('visible');
+      document.getElementById('loggedInName').textContent = user.name || 'User';
+      document.getElementById('loggedInRole').textContent = (role || user.role || '').toLowerCase();
+      var dashBtn = document.getElementById('goDashboardBtn');
+      dashBtn.href = (role || user.role || '').toUpperCase() === 'BUYER' ? 'buyer.html' : 'farmer.html';
+    }
+
+    // ----------------------------------------------------------------
+    // Role selection
+    // ----------------------------------------------------------------
+    document.querySelectorAll('input[name="regRole"]').forEach(function(radio) {
+      radio.addEventListener('change', function() {
+        document.getElementById('roleFarmer').classList.toggle('selected', this.value === 'FARMER');
+        document.getElementById('roleBuyer').classList.toggle('selected', this.value === 'BUYER');
+      });
+    });
+
+    // ----------------------------------------------------------------
+    // Login
+    // ----------------------------------------------------------------
+    function handleLogin() {
+      clearMessages();
+      var username = (document.getElementById('loginUsername').value || '').trim();
+      var password = (document.getElementById('loginPassword').value || '').trim();
+
+      if (!username || !password) {
+        showMsg('loginError', 'Please enter your username and password.');
+        return;
+      }
+
+      var btn = document.getElementById('btnLogin');
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+
+      fetch(API_BASE + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ username: username, password: password })
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+        if (!res.ok || !res.data.success) {
+          showMsg('loginError', (res.data && res.data.error) || 'Login failed. Check your credentials.');
+          return;
+        }
+        try { localStorage.setItem('kisanlink_auth_token', res.data.token); } catch(e) {}
+        try { localStorage.setItem('kisanlink_user', JSON.stringify(res.data.user)); } catch(e) {}
+
+        showMsg('loginSuccess', 'Signed in! Redirecting…');
+        var role = (res.data.user && res.data.user.role) || 'FARMER';
+        setTimeout(function() {
+          window.location.href = role === 'BUYER' ? 'buyer.html' : 'farmer.html';
+        }, 800);
+      })
+      .catch(function(err) {
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+        showMsg('loginError', 'Cannot connect to KisanLink server. Make sure python backend/app.py is running.');
+      });
+    }
+
+    // ----------------------------------------------------------------
+    // Register
+    // ----------------------------------------------------------------
+    function handleRegister() {
+      clearMessages();
+      var roleEl = document.querySelector('input[name="regRole"]:checked');
+      var role = roleEl ? roleEl.value : 'FARMER';
+      var name = (document.getElementById('regName').value || '').trim();
+      var username = (document.getElementById('regUsername').value || '').trim();
+      var district = (document.getElementById('regDistrict').value || '').trim();
+      var state = (document.getElementById('regState').value || '').trim() || 'Maharashtra';
+      var password = (document.getElementById('regPassword').value || '').trim();
+
+      if (!name || !username || !password) {
+        showMsg('registerError', 'Full name, username, and password are required.');
+        return;
+      }
+      if (/\s/.test(username)) {
+        showMsg('registerError', 'Username cannot contain spaces.');
+        return;
+      }
+      if (password.length < 4) {
+        showMsg('registerError', 'Password must be at least 4 characters.');
+        return;
+      }
+
+      var btn = document.getElementById('btnRegister');
+      btn.disabled = true;
+      btn.textContent = 'Creating account…';
+
+      var body = { name: name, username: username, password: password, role: role, district: district, state: state };
+      if (role === 'BUYER') { body.business_name = name; }
+
+      fetch(API_BASE + '/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d, status: r.status }; }); })
+      .then(function(res) {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        if (!res.ok || !res.data.success) {
+          var msg = (res.data && res.data.error) || 'Registration failed.';
+          if (res.status === 409) msg = (res.data && res.data.error) || 'That username is already taken.';
+          showMsg('registerError', msg);
+          return;
+        }
+        try { localStorage.setItem('kisanlink_auth_token', res.data.token); } catch(e) {}
+        try { localStorage.setItem('kisanlink_user', JSON.stringify(res.data.user)); } catch(e) {}
+
+        showMsg('registerSuccess', 'Account created! Redirecting to dashboard…');
+        var userRole = (res.data.user && res.data.user.role) || role;
+        setTimeout(function() {
+          window.location.href = userRole === 'BUYER' ? 'buyer.html' : 'farmer.html';
+        }, 900);
+      })
+      .catch(function() {
+        btn.disabled = false;
+        btn.textContent = 'Create Account';
+        showMsg('registerError', 'Cannot connect to KisanLink server. Make sure python backend/app.py is running.');
+      });
+    }
+
+    // ----------------------------------------------------------------
+    // Logout
+    // ----------------------------------------------------------------
+    function handleLogout() {
+      try { localStorage.removeItem('kisanlink_auth_token'); } catch(e) {}
+      try { localStorage.removeItem('kisanlink_user'); } catch(e) {}
+      document.getElementById('loggedInBanner').classList.remove('visible');
+    }
+
+    // ----------------------------------------------------------------
+    // Enter key support
+    // ----------------------------------------------------------------
+    document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') handleLogin();
+    });
+    document.getElementById('loginUsername').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') handleLogin();
+    });
+    document.getElementById('regPassword').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') handleRegister();
+    });
+
+    // ----------------------------------------------------------------
+    // Language selector
+    // ----------------------------------------------------------------
     document.querySelectorAll('[data-lang-select]').forEach(function(sel) {
       sel.addEventListener('change', function() {
         if (window.KL_I18n) window.KL_I18n.setLocale(sel.value);
       });
     });
+
+    // ----------------------------------------------------------------
+    // Init
+    // ----------------------------------------------------------------
+    checkLoggedIn();
   </script>
 </body>
 

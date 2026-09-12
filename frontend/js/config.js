@@ -39,25 +39,25 @@ const CONFIG = {
   INITIAL_DATA: {
     FARMER_PROFILE: {
       id: 'FARMER_001',
-      name: 'Ramesh Patil',
+      name: '',
       type: 'Individual Farmer / Producer',
-      location: 'Dindori Taluka, Nashik District, Maharashtra',
+      location: 'Nashik District, Maharashtra',
       apmcZone: 'Nashik APMC',
-      landHolding: '4.5 Acres',
-      phone: '+91 98220 XXXXX',
-      verified: true
+      landHolding: '',
+      phone: '',
+      verified: false
     },
 
     BUYER_PROFILE: {
-      id: 'BUYER_001',
-      name: 'Sahyadri Agro Processors Ltd.',
-      type: 'Food Processor',
-      location: 'Sanaswadi Industrial Zone, Pune, Maharashtra',
-      procurementZone: 'Western Maharashtra Hub',
-      contactPerson: 'Vikram Joshi (Procurement Head)',
-      phone: '+91 98450 XXXXX',
-      trustStatus: 'Platform-Reviewed Processor',
-      reliabilityScore: '95%'
+      id: '',
+      name: '',
+      type: 'Buyer',
+      location: '',
+      procurementZone: '',
+      contactPerson: '',
+      phone: '',
+      trustStatus: '',
+      reliabilityScore: ''
     },
 
     LOTS: [],
