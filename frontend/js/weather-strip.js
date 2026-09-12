@@ -109,7 +109,7 @@
     status('');
   }
 
-  function failed(message) {
+  function failed(message, reason) {
     set('wx-strip-temp', '—');
     set('wx-strip-cond', 'Weather unavailable');
     var ico = el('wx-strip-icon');
@@ -118,7 +118,9 @@
       .forEach(function (id) { set(id, '—'); });
     var wrap = el('wx-strip-days'); if (wrap) wrap.hidden = true;
     var tip = el('wx-strip-tip'); if (tip) tip.hidden = true;
-    status(message || 'Live weather could not be fetched right now. Everything else still works.', true);
+    status((message || 'Live weather could not be fetched right now.') +
+           (reason ? ' [' + reason + ']' : '') +
+           ' Everything else on this page still works.', true);
     var gps = el('wx-strip-gps');
     if (gps && !el('wx-strip-retry')) {
       var retry = document.createElement('button');
@@ -128,13 +130,20 @@
       retry.textContent = 'Retry';
       retry.addEventListener('click', function () {
         retry.remove();
-        load(LAST_QUERY || accountLocation() || {});
+        // Re-resolve rather than replaying the query that just failed: the
+        // profile may have arrived since, or GPS may now be available. An
+        // empty query used to be stored and replayed forever, so one bad
+        // first attempt poisoned every later retry.
+        bestLocation().then(function (where) {
+          if (where) { load(where, false, true); return; }
+          status('Set your district in your profile, or tap "Use my location".', true);
+        });
       });
       gps.parentNode.insertBefore(retry, gps);
     }
   }
 
-  function load(opts, isRetry) {
+  function load(opts, isRetry, noAutoRetry) {
     if (typeof window.getWeather !== 'function') { failed('Weather module not loaded.'); return; }
     set('wx-strip-cond', 'Loading weather…');
     var ico = el('wx-strip-icon');
@@ -143,22 +152,59 @@
 
     window.getWeather(opts || {}).then(function (data) {
       if (!data || !data.success) {
-        if (!isRetry) { setTimeout(function () { load(opts, true); }, 1200); return; }
-        failed((data && data.error) || 'Live weather is unavailable right now.');
+        if (!isRetry && !noAutoRetry) {
+          setTimeout(function () { load(opts, true); }, 1200); return;
+        }
+        // Show what the server actually reported — a timeout, a DNS failure
+        // and a blocked firewall need different actions from the operator.
+        failed((data && data.error) || 'Live weather is unavailable right now.',
+               data && data.reason);
         return;
       }
       render(data);
-    }).catch(function () {
-      if (!isRetry) { setTimeout(function () { load(opts, true); }, 1200); return; }
+    }).catch(function (err) {
+      if (!isRetry && !noAutoRetry) {
+        setTimeout(function () { load(opts, true); }, 1200); return;
+      }
       // Never surface the generic API timeout copy here — it mentions the ML
       // forecast, which has nothing to do with weather.
-      failed('Weather is taking too long to load. Tap "Use my location" or try again shortly.');
+      var aborted = err && (err.name === 'AbortError' || /abort|timeout/i.test(String(err.message || '')));
+      failed(aborted
+        ? 'The weather request timed out before the server answered. This is ' +
+          'usually a slow network on this machine — press Retry.'
+        : 'Could not reach the KisanLink server for weather. Check that the ' +
+          'backend is running, then press Retry.',
+        aborted ? 'client_timeout' : 'server_unreachable');
     });
-    // Remember the last query so the retry button can repeat it.
-    LAST_QUERY = opts || {};
+    // Remember the last USABLE query only. Storing {} meant the retry button
+    // replayed a request that could never succeed.
+    if (hasLocation(opts)) LAST_QUERY = opts;
   }
 
   var LAST_QUERY = null;
+
+  /** A query is only usable if it carries coordinates or a place name. */
+  function hasLocation(o) {
+    if (!o) return false;
+    if (o.lat != null && o.lon != null) return true;
+    return !!(o.district || o.state);
+  }
+
+  /**
+   * The best location available right now, in order of precision.
+   * Auto-load and Retry both go through this, so they cannot diverge.
+   * @returns {Promise<Object|null>}
+   */
+  function bestLocation() {
+    if (window.__klGps && window.__klGps.lat != null) {
+      return Promise.resolve({ lat: window.__klGps.lat, lon: window.__klGps.lon });
+    }
+    var cached = accountLocation();
+    if (hasLocation(cached)) return Promise.resolve(cached);
+    return fetchAccountLocation().then(function (where) {
+      return hasLocation(where) ? where : null;
+    });
+  }
 
   /** Location from the signed-in account — no browser permission needed. */
   function accountLocation() {
@@ -230,32 +276,30 @@
     // Deliberately does NOT ask for GPS here.
     var loaded = false;
     function tryLoad(where) {
-      if (loaded || !where) return;
+      if (loaded || !hasLocation(where)) return;
       loaded = true;
       load(where);
     }
 
-    tryLoad(accountLocation());
+    // Auto-load and Retry resolve the location the same way, so the two paths
+    // can never diverge — "works when I click, not on load" was exactly that.
+    bestLocation().then(function (where) {
+      if (where) { tryLoad(where); return; }
+      if (loaded) return;
+      set('wx-strip-cond', 'Choose a location');
+      var ico = el('wx-strip-icon');
+      if (ico) ico.textContent = '📍';
+      status('Set your district in your profile, or tap "Use my location".');
+    });
 
-    // /auth/me resolves after first paint; take the district as soon as it lands.
+    // /auth/me may resolve after first paint; take the district as soon as it
+    // lands, in case the cached user had none.
     document.addEventListener('kl:profileReady', function (e) {
       var d = e && e.detail;
       if (d && (d.district || d.state)) {
         tryLoad({ district: d.district || '', state: d.state || '' });
       }
     });
-
-    // Ask the API directly instead of waiting on another script.
-    if (!loaded) {
-      fetchAccountLocation().then(function (where) {
-        if (where) { tryLoad(where); return; }
-        if (loaded) return;
-        set('wx-strip-cond', 'Choose a location');
-        var ico = el('wx-strip-icon');
-        if (ico) ico.textContent = '📍';
-        status('Set your district in your profile, or tap "Use my location".');
-      });
-    }
   }
 
   if (document.readyState === 'loading') {

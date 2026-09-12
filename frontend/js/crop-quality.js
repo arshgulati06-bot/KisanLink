@@ -65,7 +65,8 @@ var CQA = {
     cameraActive:  false,
     imageCaptured: false,
     selectedCrop:  '',
-    assessedGrade: null
+    assessedGrade: null,
+    assessedCondition: null
   },
 
   ACCEPTED_TYPES: ['image/jpeg', 'image/png'],
@@ -525,7 +526,11 @@ function _bindPipelineConnector() {
         }
         return;
       }
-      applyQualityToDecisionPipeline(CQA.state.selectedCrop, CQA.state.assessedGrade);
+      applyQualityToDecisionPipeline(
+        CQA.state.selectedCrop,
+        CQA.state.assessedCondition && CQA.state.assessedCondition !== CQA.state.assessedGrade
+          ? CQA.state.assessedGrade + ' · ' + CQA.state.assessedCondition
+          : CQA.state.assessedGrade);
     });
   }
 }
@@ -617,8 +622,35 @@ function _showResultState(result) {
     var cls = letter === 'A' ? 'cqa-grade-a' : letter === 'B' ? 'cqa-grade-b'
             : letter === 'C' ? 'cqa-grade-c' : 'cqa-grade-b';
     var shown = isGrade ? ('Grade ' + letter) : pretty;
-    gradeEl.innerHTML = '<span class="cqa-grade-badge ' + cls + '">' + _escapeHtml(shown) + '</span>';
-    CQA.state.assessedGrade = shown;
+
+    // Show BOTH: the marketplace grade the farmer will actually list under,
+    // and the condition the model really predicted. The grade is derived from
+    // the condition (ml/quality_inference.CONDITION_GRADE) — the condition is
+    // never adjusted to suit the grade.
+    var mg = result.qualityGrade;
+    if (mg) {
+      var mgCls = mg === 'Grade A' ? 'cqa-grade-a'
+                : mg === 'Grade B' ? 'cqa-grade-b' : 'cqa-grade-c';
+      gradeEl.innerHTML =
+        '<span class="cqa-grade-badge ' + mgCls + '">' + _escapeHtml(mg) + '</span>' +
+        '<div class="cqa-condition-line">Condition: <strong>' +
+          _escapeHtml(shown) + '</strong>' +
+        (result.gradeLowConfidence
+          ? ' <span class="cqa-grade-caveat">(low confidence — check the photo)</span>'
+          : '') + '</div>' +
+        (result.gradeBasis
+          ? '<div class="cqa-grade-basis">' + _escapeHtml(result.gradeBasis) +
+            ' Indicative only — you can change it in Create Sale Lot.</div>'
+          : '');
+      // The sale pipeline wants the marketplace grade; the condition rides
+      // alongside it for display.
+      CQA.state.assessedGrade = mg;
+      CQA.state.assessedCondition = shown;
+    } else {
+      gradeEl.innerHTML = '<span class="cqa-grade-badge ' + cls + '">' + _escapeHtml(shown) + '</span>';
+      CQA.state.assessedGrade = shown;
+      CQA.state.assessedCondition = shown;
+    }
   } else if (gradeEl) {
     gradeEl.innerHTML = '<span class="cqa-placeholder-dash">&mdash;</span>';
   }

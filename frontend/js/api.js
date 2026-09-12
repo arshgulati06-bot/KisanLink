@@ -290,7 +290,14 @@ async function assessCropQuality(image, crop = '') {
     // These checkpoints predict a physical condition class, not a market
     // grade. `resultType` lets the UI say so instead of printing "Grade X".
     resultType: data.result_type || 'condition',
+    // `grade` stays the model's own condition class — existing callers depend
+    // on it. The marketplace A/B/C grade derived from it is separate, so the
+    // UI can show both without one being mistaken for the other.
     grade: data.label,
+    condition: data.label,
+    qualityGrade: data.quality_grade || null,
+    gradeBasis: data.grade_basis || '',
+    gradeLowConfidence: !!data.grade_is_low_confidence,
     confidence: data.confidence,
     indicators: (data.distribution || []).map(function (d) {
       return { name: d.label, value: Math.round(d.probability * 100) + '%' };

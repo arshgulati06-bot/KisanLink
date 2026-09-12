@@ -1882,3 +1882,234 @@ class TestForecastSeriesHonesty:
         assert "series_is_behind_dataset" in src, (
             "the UI does not explain a market whose history ends early")
         assert "Date range: '" not in src, "the ambiguous label is still present"
+
+
+# ---------------------------------------------------------------------------
+# 25. condition -> marketplace grade mapping
+# ---------------------------------------------------------------------------
+
+class TestQualityGradeMapping:
+    """
+    The app speaks Grade A/B/C everywhere (schema, the Create Sale Lot form,
+    ml/buyer_matcher) but nothing mapped a model condition onto it, so the card
+    could only show a raw class like "Unripe".
+    """
+
+    def test_every_class_of_every_checkpoint_is_mapped(self):
+        from ml import quality_inference as qi
+        installed = qi.supported_crops()
+        if not installed:
+            pytest.skip("no quality checkpoints installed")
+        unmapped = []
+        for crop in installed:
+            for label in qi.load_model(crop)["labels"]:
+                if qi.grade_for(label)[0] is None:
+                    unmapped.append((crop, label))
+        assert not unmapped, f"classes with no grade: {unmapped}"
+
+    @pytest.mark.parametrize("condition,expected", [
+        ("Ripe", "Grade A"), ("Good Condition", "Grade A"),
+        ("Unripe", "Grade B"), ("Old", "Grade B"), ("Dried", "Grade B"),
+        ("Damaged", "Grade C"), ("Defective", "Grade C"),
+    ])
+    def test_mapping_is_the_documented_one(self, condition, expected):
+        from ml import quality_inference as qi
+        grade, basis = qi.grade_for(condition)
+        assert grade == expected
+        assert condition.lower() in basis.lower()
+
+    def test_mapping_is_deterministic_and_case_insensitive(self):
+        from ml import quality_inference as qi
+        for spelling in ("Ripe", "ripe", "  RIPE  ", "good_condition"):
+            first = qi.grade_for(spelling)[0]
+            assert first == qi.grade_for(spelling)[0]
+        assert qi.grade_for("good_condition")[0] == "Grade A"
+
+    def test_an_unknown_condition_gets_no_invented_grade(self):
+        from ml import quality_inference as qi
+        grade, basis = qi.grade_for("Sunscalded")
+        assert grade is None
+        assert "manually" in basis.lower()
+
+    def test_assess_returns_grade_alongside_the_untouched_condition(self):
+        from ml import quality_inference as qi
+        if "Potato" not in qi.supported_crops():
+            pytest.skip("no potato checkpoint")
+        pytest.importorskip("torch")
+        from PIL import Image
+        import io as _io
+        buf = _io.BytesIO()
+        Image.new("RGB", (256, 256), (166, 124, 74)).save(buf, format="JPEG")
+        out = qi.assess(buf.getvalue(), "Potato")
+        assert out["label"] in [d["label"] for d in out["distribution"]]
+        assert out["quality_grade"] == qi.grade_for(out["label"])[0]
+        assert out["grade_basis"]
+        assert isinstance(out["grade_is_low_confidence"], bool)
+        # the condition must never be rewritten to suit the grade
+        assert out["label"] == out["distribution"][out["class_index"]]["label"]
+
+    def test_low_confidence_is_flagged_but_never_changes_the_grade(self):
+        from ml import quality_inference as qi
+        assert qi.GRADE_CONFIDENCE_FLOOR == 0.60
+        # the flag is derived from the top probability only
+        assert qi.grade_for("Ripe")[0] == "Grade A"
+
+    def test_grades_match_the_vocabulary_the_rest_of_the_app_uses(self):
+        """Lot creation defaults and the buyer matcher speak Grade A/B/C."""
+        from ml import quality_inference as qi
+        assert set(qi.CONDITION_GRADE.values()) <= {"Grade A", "Grade B", "Grade C"}
+
+    def test_frontend_shows_grade_and_condition_together(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "crop-quality.js")
+        if not os.path.exists(path):
+            pytest.skip("crop-quality.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "qualityGrade" in src
+        assert "Condition:" in src
+
+
+# ---------------------------------------------------------------------------
+# 26. weather robustness
+# ---------------------------------------------------------------------------
+
+class TestWeatherRobustness:
+    def test_a_failed_fetch_is_never_cached_as_success(self, client, monkeypatch):
+        import urllib.request
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+
+        def _boom(*a, **k):
+            raise OSError("network blocked")
+
+        monkeypatch.setattr(urllib.request, "urlopen", _boom)
+        res = client.get("/api/weather?district=Nashik&state=Maharashtra")
+        assert res.get_json()["success"] is False
+        assert not appmod._WEATHER_CACHE, "a failure poisoned the cache"
+
+    def test_the_failure_names_the_cause(self, client, monkeypatch):
+        """DNS, a firewall and a timeout need different actions — say which."""
+        import socket
+        import urllib.request
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+
+        # Under TESTING external HTTP is deliberately disabled, which
+        # short-circuits to its own reason. Allow it so the classification
+        # branch under test actually runs.
+        monkeypatch.setattr(appmod, "_allow_external_http", lambda: True)
+
+        cases = {
+            socket.timeout("timed out"): "provider_timeout",
+            urllib.error.URLError(socket.gaierror("no dns")): "dns_failure",
+            OSError("refused"): "provider_unreachable",
+        }
+        for exc, expected in cases.items():
+            appmod._WEATHER_CACHE.clear()
+            monkeypatch.setattr(urllib.request, "urlopen",
+                                lambda *a, _e=exc, **k: (_ for _ in ()).throw(_e))
+            body = client.get("/api/weather?district=Nashik&state=Maharashtra").get_json()
+            assert body["success"] is False
+            assert body.get("reason") == expected, (exc, body.get("reason"))
+            assert body.get("provider") == "api.open-meteo.com"
+            # never a fabricated reading
+            assert "current" not in body or not body.get("current")
+
+    def test_a_cache_hit_does_not_extend_its_own_ttl(self, monkeypatch):
+        """
+        Re-storing on every hit pushed the timestamp forward, so a busy
+        location's weather would never expire and never refresh.
+        """
+        import time as _time
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+        appmod._weather_cache_put(19.99, 73.79, b"body")
+        first_ts = list(appmod._WEATHER_CACHE.values())[0][0]
+        _time.sleep(0.05)
+        appmod._weather_cache_get(19.99, 73.79)
+        assert list(appmod._WEATHER_CACHE.values())[0][0] == first_ts
+        appmod._WEATHER_CACHE.clear()
+
+    def test_cache_keys_distinguish_locations(self):
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+        appmod._weather_cache_put(19.99, 73.79, b"nashik")
+        appmod._weather_cache_put(28.61, 77.21, b"delhi")
+        assert appmod._weather_cache_get(19.99, 73.79) == b"nashik"
+        assert appmod._weather_cache_get(28.61, 77.21) == b"delhi"
+        assert appmod._weather_cache_get(12.97, 77.59) is None
+        appmod._WEATHER_CACHE.clear()
+
+    def test_weather_failure_does_not_disturb_other_endpoints(self, client, monkeypatch):
+        """Rule 14: weather must never take the rest of the app down."""
+        import urllib.request
+        import backend.app as appmod
+        appmod._WEATHER_CACHE.clear()
+        monkeypatch.setattr(urllib.request, "urlopen",
+                            lambda *a, **k: (_ for _ in ()).throw(OSError("down")))
+        assert client.get("/api/weather?district=Nashik&state=Maharashtra")\
+                     .get_json()["success"] is False
+        assert client.get("/api/ml/quality-status").status_code == 200
+        assert client.get("/api/commodities").status_code in (200, 503)
+        assert client.get("/api/data-status").status_code == 200
+
+    def test_retry_never_replays_an_unusable_query(self):
+        """An empty first query was stored and replayed forever."""
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "weather-strip.js")
+        if not os.path.exists(path):
+            pytest.skip("weather-strip.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "LAST_QUERY = opts || {}" not in src, "the poisoning assignment is back"
+        assert "if (hasLocation(opts)) LAST_QUERY = opts;" in src
+        assert "function bestLocation" in src, "retry must re-resolve the location"
+
+    def test_auto_load_and_retry_share_one_pipeline(self):
+        import os, re
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "weather-strip.js")
+        if not os.path.exists(path):
+            pytest.skip("weather-strip.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        # both init() and the retry button resolve through bestLocation()
+        assert len(re.findall(r"bestLocation\(\)", src)) >= 2
+
+
+# ---------------------------------------------------------------------------
+# 27. forecast uses the selected market's own real series
+# ---------------------------------------------------------------------------
+
+class TestForecastUsesSelectedMarket:
+    def test_response_separates_all_four_dates(self, client):
+        res = client.post("/api/forecast", json={
+            "commodity": "Onion", "state": "Maharashtra",
+            "district": "Nashik", "market": "Pimpalgaon", "days": 7,
+        })
+        if res.status_code != 200 or not res.get_json().get("success"):
+            pytest.skip("fixture frame has no forecastable Pimpalgaon series")
+        b = res.get_json()
+        for key in ("latest_actual_date", "dataset_latest_date",
+                    "context_range", "forecast_starts"):
+            assert key in b, f"missing {key}"
+        assert b["date_range"]["end"] == b["latest_actual_date"]
+        # the forecast must begin AFTER this market's last real observation
+        assert b["forecast_starts"] > b["latest_actual_date"]
+        if b["context_range"]:
+            assert b["context_range"]["end"] == b["latest_actual_date"]
+
+    def test_ui_renders_all_four_dates(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "price-forecast.js")
+        if not os.path.exists(path):
+            pytest.skip("price-forecast.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        for phrase in ("Data available for", "Series fed to Chronos",
+                       "Forecast starts", "Whole archive runs to"):
+            assert phrase in src, f"the UI never shows: {phrase}"

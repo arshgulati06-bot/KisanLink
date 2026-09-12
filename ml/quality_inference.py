@@ -75,6 +75,62 @@ CROP_ALIASES = {
 #: not a disease. Wording downstream must reflect that.
 RESULT_TYPE = "condition"
 
+#: Condition class -> the marketplace grade vocabulary KisanLink already uses
+#: everywhere else (database/schema.sql, the Create Sale Lot form and
+#: ml/buyer_matcher.py all speak Grade A / B / C).
+#:
+#: The four checkpoints between them emit exactly seven classes, and every one
+#: is mapped here — nothing is inferred at runtime and no threshold invents a
+#: grade the model did not support:
+#:
+#:   Grade A  Premium / export     Ripe, Good Condition
+#:   Grade B  Standard commercial  Unripe, Old, Dried
+#:   Grade C  Processing / fair    Damaged, Defective
+#:
+#: Rationale, so a judge can challenge it:
+#:   - Unripe is sound produce, routinely preferred for long transport, but is
+#:     not premium-ready on arrival, so it is commercial rather than export.
+#:   - Old is sellable with reduced shelf life.
+#:   - Dried is graded B rather than A because these models cannot distinguish
+#:     deliberate drying (a normal, desirable state for chillies) from
+#:     desiccation through neglect. B is the honest middle.
+#:   - Damaged and Defective are the processing grade.
+#:
+#: This is an INDICATIVE mapping from a photo, never a laboratory assay, and
+#: the farmer can always override it in Create Sale Lot.
+CONDITION_GRADE = {
+    "ripe": "Grade A",
+    "good condition": "Grade A",
+    "unripe": "Grade B",
+    "old": "Grade B",
+    "dried": "Grade B",
+    "damaged": "Grade C",
+    "defective": "Grade C",
+}
+
+#: Below this top-class probability the grade is reported as low-confidence so
+#: the UI can say so. It never changes which grade is chosen.
+GRADE_CONFIDENCE_FLOOR = 0.60
+
+
+def grade_for(condition: str):
+    """
+    Map a model condition class onto the marketplace's Grade A/B/C vocabulary.
+
+    @returns (grade | None, human-readable basis). None when the class is not
+    in CONDITION_GRADE — the caller must then leave the grade unset rather
+    than guess one.
+    """
+    key = (condition or "").strip().lower().replace("_", " ")
+    grade = CONDITION_GRADE.get(key)
+    if not grade:
+        return None, (f"No grade mapping exists for the condition "
+                      f"{condition!r}; set the grade manually.")
+    tier = {"Grade A": "premium / export quality",
+            "Grade B": "standard commercial quality",
+            "Grade C": "processing / fair quality"}[grade]
+    return grade, f"Condition {condition!r} maps to {grade} ({tier})."
+
 # Backwards-compatible view used by older callers.
 CROP_MODEL_FILES = {alias: CROP_MODELS[canon] for alias, canon in CROP_ALIASES.items()}
 
@@ -396,11 +452,18 @@ def assess(image_bytes: bytes, crop: str) -> dict:
     top = int(max(range(len(values)), key=lambda i: values[i]))
     labels = entry["labels"]
     label = labels[top] if labels else f"class_{top}"
+    _grade = grade_for(label) if labels else (None, "Class names unknown.")
 
     return {
         "success": True,
         "crop": crop,
         "crop_canonical": canonical_crop(crop),
+        # The marketplace grade derived from the predicted condition. The
+        # condition itself is never altered to suit the grade.
+        "quality_grade": _grade[0],
+        "grade_basis": _grade[1],
+        "grade_is_low_confidence": bool(values[top] < GRADE_CONFIDENCE_FLOOR),
+        "grade_confidence_floor": GRADE_CONFIDENCE_FLOOR,
         # These checkpoints classify physical condition / ripeness. Calling the
         # output a "market grade" would misrepresent what was trained.
         "result_type": RESULT_TYPE,

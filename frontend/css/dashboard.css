@@ -1243,6 +1243,25 @@
   flex-shrink: 0;
 }
 
+/* Condition + basis shown under the marketplace grade badge. */
+.cqa-condition-line {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-slate-700);
+}
+
+.cqa-grade-caveat {
+  color: #D97706;
+  font-weight: 600;
+}
+
+.cqa-grade-basis {
+  margin-top: 2px;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  color: var(--color-slate-500);
+}
+
 /* Class probability shown beside each label in the model's distribution. */
 .cqa-indicator-value {
   margin-left: auto;

@@ -388,7 +388,20 @@ var KL_PriceForecast = (function () {
           ? '<br>Data available for ' + where + ': ' +
             _esc(data.date_range.start) + ' – <strong>' + _esc(data.date_range.end) + '</strong>'
           : '') +
-        (data.context_length ? '<br>Forecast context: ' + data.context_length + ' observations' : '') +
+        (data.context_length
+          ? '<br>Series fed to Chronos: <strong>' + data.context_length + '</strong> observations' +
+            (data.context_range
+              ? ' (' + _esc(data.context_range.start) + ' – ' + _esc(data.context_range.end) + ')'
+              : '')
+          : '') +
+        (data.forecast_starts
+          ? '<br>Forecast starts: <strong>' + _esc(data.forecast_starts) +
+            '</strong> (the day after this market&rsquo;s last observation)'
+          : '') +
+        (data.dataset_latest_date
+          ? '<br><span style="color:var(--color-slate-400);">Whole archive runs to ' +
+            _esc(data.dataset_latest_date) + '</span>'
+          : '') +
         (data.confidence ? '<br>Confidence: <strong>' + _esc(data.confidence.label) + '</strong>' : '');
 
       // When this market's history ends earlier than the archive as a whole,

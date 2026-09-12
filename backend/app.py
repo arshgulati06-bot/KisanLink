@@ -784,6 +784,13 @@ def register_routes(app):
                     < str((_store().get("ingestion_meta") or {}).get("latest_date_in_dataset"))
             ),
             "context_length": ctx["context_length"],
+            # The window actually fed to Chronos, which is the tail of the
+            # selected series and can be shorter than the series itself.
+            "context_range": {
+                "start": str(ctx["recent_dates"].min().date()),
+                "end": str(ctx["recent_dates"].max().date()),
+            } if len(ctx.get("recent_dates", [])) else None,
+            "forecast_starts": (forecast_list[0]["date"] if forecast_list else None),
             "gap_info": ctx.get("gap_info"),
             "n_winsorized": ctx.get("n_winsorized", 0),
             "outlier_handling": {
@@ -1924,7 +1931,8 @@ def register_routes(app):
             # abort and made the dashboard's automatic weather load look broken
             # while the request was still legitimately in flight.
             _wx_raw = _weather_cache_get(lat, lon)
-            if _wx_raw is None:
+            _served_from_cache = _wx_raw is not None
+            if not _served_from_cache:
                 for _attempt in range(2):
                     try:
                         with urllib.request.urlopen(wx_url, timeout=6) as _r:
@@ -1935,6 +1943,11 @@ def register_routes(app):
                             raise
                         print(f"[weather] upstream attempt 1 failed ({_exc}); retrying")
                         time.sleep(0.8)
+                # Only a freshly fetched body is stored. Re-putting a cache hit
+                # would push its timestamp forward on every request, so a busy
+                # location's weather would never expire and never refresh.
+                # A failed fetch raises before reaching here, so failures are
+                # never cached as if they had succeeded.
                 _weather_cache_put(lat, lon, _wx_raw)
             with _WxBytes(_wx_raw) as resp:
                 wx = _json.loads(resp.read())
@@ -2027,14 +2040,40 @@ def register_routes(app):
         except Exception as exc:
             # Log the cause server-side; never hand raw exception text (which can
             # carry internal paths or library details) to the browser.
-            print(f"[weather] upstream failed: {exc}")
+            print(f"[weather] upstream failed: {exc.__class__.__name__}: {exc}")
+            # Name the failure class so the operator can tell at a glance
+            # whether this is DNS, a firewall, a timeout or the provider being
+            # down. The exception text itself is never forwarded — it can carry
+            # internal paths — only a fixed description chosen from its type.
+            import socket as _socket
+            if isinstance(exc, _socket.timeout) or "timed out" in str(exc).lower():
+                reason, detail = "provider_timeout", (
+                    "The weather provider (open-meteo.com) did not answer in time. "
+                    "This is usually a slow or filtered network connection.")
+            elif isinstance(exc, urllib.error.HTTPError):
+                reason, detail = "provider_http_error", (
+                    f"The weather provider returned HTTP {exc.code}.")
+            elif isinstance(exc, urllib.error.URLError) and isinstance(
+                    getattr(exc, "reason", None), _socket.gaierror):
+                reason, detail = "dns_failure", (
+                    "open-meteo.com could not be resolved. Check DNS or the "
+                    "network connection on this machine.")
+            elif isinstance(exc, (urllib.error.URLError, OSError)):
+                reason, detail = "provider_unreachable", (
+                    "Could not connect to the weather provider "
+                    "(api.open-meteo.com). A firewall or proxy may be blocking it.")
+            else:
+                reason, detail = "provider_failed", (
+                    "The weather provider could not be read.")
             return jsonify({
                 "success": False,
+                "reason": ("external_http_disabled"
+                           if not _allow_external_http() else reason),
+                "provider": "api.open-meteo.com",
                 "error": (
                     "Weather is unavailable because this server has outbound "
                     "internet disabled."
-                    if not _allow_external_http() else
-                    "Weather data temporarily unavailable. Please try again."
+                    if not _allow_external_http() else detail
                 ),
                 "location": {"lat": lat, "lon": lon, "district": district, "state": state},
             }), 503
