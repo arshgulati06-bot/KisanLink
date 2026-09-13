@@ -2501,3 +2501,164 @@ class TestLiveMandiDiagnostics:
         # the LIVE branch must be gated on the feed's own flag
         assert "live.live" in src, "LIVE is no longer gated on the feed's flag"
         assert "result.is_live" in src
+
+
+# ---------------------------------------------------------------------------
+# 32. memory-safe archive loading
+# ---------------------------------------------------------------------------
+
+class TestMemorySafeArchiveLoad:
+    """
+    Startup died with "Error tokenizing data. C error: out of memory" on a full
+    archive. Causes: read_csv(low_memory=False) pulling every column and the
+    whole file in at once; six text columns held as Python string objects; four
+    more full-width lowercase copies added on top; and one pd.concat holding
+    every input plus the copy at the same time.
+    """
+
+    def test_csv_reader_declares_columns_and_dtypes(self):
+        """low_memory=False is what forced whole-file dtype inference."""
+        import ast
+        import inspect
+        from ml import data_loader as dl
+
+        src = inspect.getsource(dl._load_arrival)
+        # Strip the docstring, which legitimately names the old bug.
+        tree = ast.parse(src.lstrip())
+        fn = tree.body[0]
+        if (fn.body and isinstance(fn.body[0], ast.Expr)
+                and isinstance(fn.body[0].value, ast.Constant)):
+            fn.body = fn.body[1:]
+        code = ast.unparse(fn)
+        assert "low_memory=False" not in code, "the memory-hungry read is back"
+        for needed in ("usecols", "chunksize", "dtype"):
+            assert needed in code, f"_load_arrival no longer uses {needed}"
+
+    def test_only_the_needed_columns_are_read(self):
+        from ml import data_loader as dl, config as cfg
+        assert cfg.COL_MODAL_PRICE in dl._WANTED_COLUMNS
+        assert "Commodity_Code" not in dl._WANTED_COLUMNS
+
+    def test_shrink_categorises_text_whatever_dtype_pandas_used(self):
+        """
+        Only checking for "object" silently skipped five of the six text
+        columns — the ones that actually dominate memory.
+        """
+        from ml import data_loader as dl, config as cfg
+        for dtype in ("object", "string"):
+            df = pd.DataFrame({
+                cfg.COL_STATE: pd.Series(["Punjab"] * 100, dtype=dtype),
+                cfg.COL_MARKET: pd.Series(["Ahmedgarh"] * 100, dtype=dtype),
+                cfg.COL_MODAL_PRICE: pd.Series([1700.0] * 100, dtype="float64"),
+            })
+            out = dl._shrink(df)
+            assert str(out[cfg.COL_STATE].dtype) == "category", dtype
+            assert str(out[cfg.COL_MARKET].dtype) == "category", dtype
+            assert str(out[cfg.COL_MODAL_PRICE].dtype) == "float32"
+
+    def test_categorising_actually_saves_memory_and_keeps_values(self):
+        from ml import data_loader as dl, config as cfg
+        n = 50000
+        df = pd.DataFrame({
+            cfg.COL_STATE: ["Maharashtra"] * n,
+            cfg.COL_DISTRICT: ["Nashik"] * n,
+            cfg.COL_MARKET: ["Pimpalgaon"] * n,
+            cfg.COL_COMMODITY: ["Onion"] * n,
+            cfg.COL_MODAL_PRICE: [1700.0] * n,
+        })
+        before = df.memory_usage(deep=True).sum()
+        out = dl._shrink(df.copy())
+        after = out.memory_usage(deep=True).sum()
+        assert after < before / 4, f"no real saving: {before} -> {after}"
+        assert list(out[cfg.COL_MARKET].astype(str).unique()) == ["Pimpalgaon"]
+
+    def test_filter_columns_are_categorical_and_still_match(self):
+        """These four lowercase copies were plain strings — hundreds of MB."""
+        from ml import data_loader as dl, config as cfg
+        df = pd.DataFrame({
+            cfg.COL_COMMODITY: pd.Categorical(["Onion", "ONION", "Tomato"]),
+            cfg.COL_STATE: pd.Categorical(["Maharashtra"] * 3),
+            cfg.COL_DISTRICT: pd.Categorical(["Nashik"] * 3),
+            cfg.COL_MARKET: pd.Categorical(["Pimpalgaon"] * 3),
+        })
+        out = dl._add_filter_columns(df)
+        assert str(out["_commodity_l"].dtype) == "category"
+        # spellings that differ only in case must collapse to one lookup value
+        assert (out["_commodity_l"] == "onion").sum() == 2
+        assert (out["_commodity_l"] == "tomato").sum() == 1
+
+    def test_cache_write_is_atomic(self):
+        """A crash mid-write must not leave a half pickle that looks valid."""
+        import inspect
+        from ml import data_loader as dl
+        src = inspect.getsource(dl._write_cache)
+        assert "os.replace" in src, "cache write is not atomic"
+        assert ".tmp" in src
+
+    def test_concat_releases_each_source(self):
+        import inspect
+        from ml import data_loader as dl
+        src = inspect.getsource(dl.load_combined_data)
+        assert "pd.concat(frames, ignore_index=True)" not in src, \
+            "the all-at-once concat is back"
+        assert "frames[i] = None" in src
+
+    def test_market_groupbys_pass_observed_true(self):
+        """
+        With a categorical market column the default iterates every market in
+        the archive, not the ones present in the slice.
+        """
+        import os, re
+        path = os.path.join(os.path.dirname(__file__), "..", "backend", "app.py")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        for m in re.finditer(r"groupby\(ml_config\.COL_MARKET([^)]*)\)", src):
+            assert "observed=True" in m.group(1), \
+                "a market groupby would iterate unused categories"
+
+
+# ---------------------------------------------------------------------------
+# 33. an archive that fails to load must say so, not look empty
+# ---------------------------------------------------------------------------
+
+class TestArchiveFailureIsHonest:
+    def _app_with_error(self, message="out of memory"):
+        import backend.app as appmod
+        application = appmod.create_app(load_real_data=False, load_chronos=False)
+        application.config["TESTING"] = True
+        store = application.extensions["kisanlink"]
+        store["data_pending"] = False
+        store["data_error"] = message
+        return application
+
+    def test_failed_archive_returns_503_with_a_reason(self):
+        app_ = self._app_with_error()
+        res = app_.test_client().get("/api/commodities")
+        assert res.status_code == 503
+        body = res.get_json()
+        assert body["reason"] == "archive_load_failed"
+        assert body["success"] is False
+
+    def test_failure_is_distinct_from_still_loading(self):
+        import backend.app as appmod
+        application = appmod.create_app(load_real_data=False, load_chronos=False)
+        application.config["TESTING"] = True
+        application.extensions["kisanlink"]["data_pending"] = True
+        body = application.test_client().get("/api/commodities").get_json()
+        assert body["reason"] == "data_warming_up"
+
+    def test_data_status_reports_the_failure(self):
+        app_ = self._app_with_error("the archive did not fit in memory")
+        body = app_.test_client().get("/api/data-status").get_json()
+        assert body["ready"] is False
+        assert body["failed"] is True
+        assert "memory" in (body["error"] or "")
+
+    def test_features_that_do_not_need_the_archive_still_work(self):
+        """A dead archive must not take quality, weather or auth down."""
+        app_ = self._app_with_error()
+        c = app_.test_client()
+        assert c.get("/api/ml/quality-status").status_code == 200
+        assert c.get("/api/data-status").status_code == 200
+        res = c.post("/api/assistant/message", json={"message": "help", "lang": "en"})
+        assert res.status_code == 200

@@ -95,6 +95,15 @@ class DataWarmingUp(Exception):
     """Raised when an endpoint needs the mandi archive and it is still loading."""
 
 
+class DataUnavailable(Exception):
+    """
+    Raised when the mandi archive failed to load outright.
+
+    Distinct from DataWarmingUp: waiting will not help, and the caller must
+    not mistake the situation for "no market data exists".
+    """
+
+
 def _df():
     """
     The combined mandi dataframe.
@@ -106,9 +115,12 @@ def _df():
     """
     store = _store()
     df = store.get("df")
-    if df is None:
-        raise DataWarmingUp()
-    if store.get("data_pending") and (df is None or df.empty):
+    if df is not None and not df.empty:
+        return df
+    # A failed load must not read as an empty market: say it failed and why.
+    if store.get("data_error"):
+        raise DataUnavailable(store["data_error"])
+    if df is None or store.get("data_pending"):
         raise DataWarmingUp()
     return df
 
@@ -509,11 +521,21 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
             "success": True,
             "ready": ready,
             "loading": pending and not ready,
+            "failed": bool(store.get("data_error")) and not ready,
+            "error": store.get("data_error") if not ready else None,
             "records": 0 if df is None else len(df),
         }
         if ready:
             body["commodities"] = int(df[ml_config.COL_COMMODITY].nunique())
         return jsonify(body), 200
+
+    @app.errorhandler(DataUnavailable)
+    def _archive_failed(exc):
+        return jsonify({
+            "success": False,
+            "reason": "archive_load_failed",
+            "error": str(exc) or "The mandi archive could not be loaded.",
+        }), 503
 
     @app.errorhandler(DataWarmingUp)
     def _warming(_e):
@@ -554,8 +576,17 @@ def start_background_data_load(app):
             store["ingestion_meta"] = meta
             print(f"[KisanLink API] Mandi archive ready: {len(df):,} records, "
                   f"{df[ml_config.COL_COMMODITY].nunique()} commodities.")
+        except MemoryError as exc:
+            store["data_error"] = (
+                "The mandi archive did not fit in memory on this machine. "
+                "Market pages are unavailable; everything else still works.")
+            print(f"[KisanLink API] Background archive load FAILED (out of memory): {exc}")
         except Exception as exc:
-            print(f"[KisanLink API] Background archive load FAILED: {exc}")
+            store["data_error"] = (
+                f"The mandi archive could not be loaded ({exc.__class__.__name__}). "
+                "Market pages are unavailable; everything else still works.")
+            print(f"[KisanLink API] Background archive load FAILED: "
+                  f"{exc.__class__.__name__}: {exc}")
         finally:
             store["data_pending"] = False
 
@@ -1034,7 +1065,10 @@ def register_routes(app):
             )
 
         markets_list = []
-        for mkt_name, grp in sub.groupby(ml_config.COL_MARKET):
+        # observed=True: the market column is categorical (it carries every
+        # market in the archive), so the default would iterate thousands of
+        # empty groups for markets absent from this slice.
+        for mkt_name, grp in sub.groupby(ml_config.COL_MARKET, observed=True):
             grp_sorted = grp.sort_values(ml_config.COL_DATE)
             n_records = len(grp_sorted)
             n_unique_dates = grp_sorted[ml_config.COL_DATE].nunique()
@@ -1135,7 +1169,10 @@ def register_routes(app):
                     origin_src = geo.get("source")
 
         candidates = []
-        for mkt_name, grp in sub.groupby(ml_config.COL_MARKET):
+        # observed=True: the market column is categorical (it carries every
+        # market in the archive), so the default would iterate thousands of
+        # empty groups for markets absent from this slice.
+        for mkt_name, grp in sub.groupby(ml_config.COL_MARKET, observed=True):
             grp_sorted = grp.sort_values(ml_config.COL_DATE)
             latest_date = grp_sorted[ml_config.COL_DATE].max()
             dest_district = str(grp_sorted[ml_config.COL_DISTRICT].mode().iloc[0])

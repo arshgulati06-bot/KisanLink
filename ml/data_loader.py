@@ -31,6 +31,7 @@ Market name normalization:
   existing fuzzy resolver will match it to "Pimpalgaon" in the combined data.
 """
 
+import gc
 import hashlib
 import os
 import re
@@ -99,19 +100,52 @@ def invalidate_combined_cache():
             pass
 
 
-def _add_filter_columns(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    df["_commodity_l"] = df[config.COL_COMMODITY].astype(str).str.lower()
-    df["_state_l"] = df[config.COL_STATE].astype(str).str.lower()
-    df["_district_l"] = df[config.COL_DISTRICT].astype(str).str.lower()
-    df["_market_l"] = df[config.COL_MARKET].astype(str).str.lower()
+def _add_filter_columns(df: pd.DataFrame, inplace: bool = False) -> pd.DataFrame:
+    """
+    Add the lowercase lookup columns the filters match on.
+
+    These are categorical, like their sources. As plain strings they were four
+    full-width text columns over millions of rows — on the full archive that
+    was several hundred MB of pure duplication, on top of the columns they
+    were derived from.
+
+    Lowercasing a categorical maps the CATEGORIES, not the values, so this is
+    also far cheaper to compute than `.astype(str).str.lower()` per row.
+    """
+    if not inplace:
+        df = df.copy()
+    for src, dest in ((config.COL_COMMODITY, "_commodity_l"),
+                      (config.COL_STATE, "_state_l"),
+                      (config.COL_DISTRICT, "_district_l"),
+                      (config.COL_MARKET, "_market_l")):
+        col = df[src]
+        if str(col.dtype) == "category":
+            # rename_categories cannot be used here: "Onion" and "ONION" both
+            # lowercase to "onion" and pandas rejects duplicate categories.
+            # Remap the CODES onto a de-duplicated lowercase category index,
+            # which merges those spellings correctly and touches only the
+            # category list rather than every row.
+            lowered = pd.Index(col.cat.categories.astype(str).str.lower())
+            uniques = pd.Index(lowered.unique())
+            remap = {old_i: uniques.get_loc(name)
+                     for old_i, name in enumerate(lowered)}
+            codes = pd.Series(col.cat.codes, index=df.index).map(
+                lambda c: remap.get(c, -1)).astype("int32")
+            df[dest] = pd.Categorical.from_codes(codes, categories=uniques)
+        else:
+            df[dest] = col.astype(str).str.lower().astype("category")
     return df
 
 
 def _write_cache(df: pd.DataFrame, sig: str) -> None:
     try:
         os.makedirs(config.CACHE_DIR, exist_ok=True)
-        df.to_pickle(config.COMBINED_CACHE_PATH)
+        # Write to a temp file and rename, so a crash or an out-of-disk part
+        # way through never leaves a half-written pickle that later loads as
+        # a valid-looking cache. os.replace is atomic on Windows and POSIX.
+        tmp = config.COMBINED_CACHE_PATH + ".tmp"
+        df.to_pickle(tmp)
+        os.replace(tmp, config.COMBINED_CACHE_PATH)
         with open(config.COMBINED_CACHE_SIG, "w", encoding="utf-8") as f:
             f.write(sig)
     except (OSError, MemoryError):
@@ -227,27 +261,89 @@ def _load_agriculture(path: str) -> pd.DataFrame:
     return df[keep]
 
 
+#: Columns the pipeline actually uses. Anything else in the source (e.g.
+#: Commodity_Code) is never read, so it costs no memory.
+_WANTED_COLUMNS = (
+    config.COL_STATE, config.COL_DISTRICT, config.COL_MARKET,
+    config.COL_COMMODITY, config.COL_VARIETY, config.COL_GRADE,
+    config.COL_MIN_PRICE, config.COL_MAX_PRICE, config.COL_MODAL_PRICE,
+)
+
+#: Prices as float32 rather than float64: half the memory, and mandi prices
+#: never need 15 significant digits.
+_PRICE_DTYPES = {
+    config.COL_MIN_PRICE: "float32",
+    config.COL_MAX_PRICE: "float32",
+    config.COL_MODAL_PRICE: "float32",
+}
+
+#: Low-cardinality text. A few thousand distinct market names repeated across
+#: millions of rows cost ~1 byte each as a category, versus a full Python
+#: string object per row.
+_CATEGORICAL = (
+    config.COL_STATE, config.COL_DISTRICT, config.COL_MARKET,
+    config.COL_COMMODITY, config.COL_VARIETY, config.COL_GRADE,
+)
+
+#: Rows per chunk when streaming a CSV. Big enough to stay fast, small enough
+#: that no single chunk is a memory event.
+CSV_CHUNK_ROWS = int(os.environ.get("KISANLINK_CSV_CHUNK_ROWS", "250000") or 250000)
+
+
+def _shrink(df: pd.DataFrame) -> pd.DataFrame:
+    """Convert repeated text to categories and prices to float32, in place."""
+    for col in _CATEGORICAL:
+        if col not in df.columns:
+            continue
+        # pandas may hand these back as object OR as the newer "str"/"string"
+        # extension dtype depending on version and reader. Checking only for
+        # "object" silently skipped five of the six text columns, which are
+        # the ones that actually dominate memory.
+        kind = str(df[col].dtype)
+        if kind in ("object", "str", "string", "string[python]", "string[pyarrow]"):
+            df[col] = df[col].astype("category")
+    for col, dtype in _PRICE_DTYPES.items():
+        if col in df.columns and str(df[col].dtype) != dtype:
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype(dtype)
+    return df
+
+
 def _load_arrival(path: str) -> pd.DataFrame:
     """
-    Load a 2022.csv or 2026.csv (Arrival_Date schema) and rename its
-    columns to the canonical schema.  Drops Commodity_Code.
+    Load a 2022.csv / 2026.csv (Arrival_Date schema) into the canonical schema.
+
+    Streamed in chunks with an explicit column list and dtypes. The previous
+    implementation used ``pd.read_csv(path, low_memory=False)``, which reads
+    every column — Commodity_Code included — and holds the whole file in
+    memory at once to infer dtypes. On a full archive that is what produced
+    "Error tokenizing data. C error: out of memory" during startup.
     """
-    df = pd.read_csv(path, low_memory=False)
-    df.columns = df.columns.str.strip()
+    header = pd.read_csv(path, nrows=0)
+    header.columns = header.columns.str.strip()
+    available = set(header.columns)
 
-    df = df.rename(columns={
-        "Arrival_Date": config.COL_DATE,
-    })
+    date_col = "Arrival_Date" if "Arrival_Date" in available else (
+        config.COL_DATE if config.COL_DATE in available else None)
+    usecols = [c for c in _WANTED_COLUMNS if c in available]
+    if date_col:
+        usecols.append(date_col)
 
-    # Keep only canonical columns that exist
-    keep = [c for c in [
-        config.COL_STATE, config.COL_DISTRICT, config.COL_MARKET,
-        config.COL_COMMODITY, config.COL_VARIETY, config.COL_GRADE,
-        config.COL_DATE, config.COL_MIN_PRICE,
-        config.COL_MAX_PRICE, config.COL_MODAL_PRICE,
-    ] if c in df.columns]
+    dtypes = {c: "string" for c in _CATEGORICAL if c in available}
+    dtypes.update({c: "float32" for c in _PRICE_DTYPES if c in available})
 
-    return df[keep]
+    parts = []
+    for chunk in pd.read_csv(path, usecols=usecols, dtype=dtypes,
+                             chunksize=CSV_CHUNK_ROWS):
+        chunk.columns = chunk.columns.str.strip()
+        if date_col and date_col != config.COL_DATE:
+            chunk = chunk.rename(columns={date_col: config.COL_DATE})
+        parts.append(_shrink(chunk))
+
+    if not parts:
+        return pd.DataFrame(columns=list(_WANTED_COLUMNS) + [config.COL_DATE])
+    df = pd.concat(parts, ignore_index=True, copy=False)
+    parts.clear()
+    return _shrink(df)
 
 
 def _load_arrival_excel(path: str) -> pd.DataFrame:
@@ -260,8 +356,19 @@ def _load_arrival_excel(path: str) -> pd.DataFrame:
     Commodity_Code column that is dropped, so the same canonical mapping as
     `_load_arrival` applies. Verified against all three files.
     """
-    df = pd.read_excel(path, engine="openpyxl")
+    # Only the canonical columns are read; Commodity_Code never enters memory.
+    header = pd.read_excel(path, engine="openpyxl", nrows=0)
+    header.columns = header.columns.str.strip()
+    available = set(header.columns)
+    date_col = "Arrival_Date" if "Arrival_Date" in available else config.COL_DATE
+    usecols = [c for c in _WANTED_COLUMNS if c in available]
+    if date_col in available:
+        usecols.append(date_col)
+
+    df = pd.read_excel(path, engine="openpyxl",
+                       usecols=usecols if usecols else None)
     df.columns = df.columns.str.strip()
+    df = _shrink(df)
 
     df = df.rename(columns={
         "Arrival_Date": config.COL_DATE,
@@ -357,7 +464,16 @@ def load_combined_data(use_cache: bool = True) -> pd.DataFrame:
     if skipped:
         print(f"[data_loader] not present (skipped): {', '.join(skipped)}")
 
-    combined = pd.concat(frames, ignore_index=True)
+    # Fold sources in one at a time and drop each reference as we go. A single
+    # pd.concat over every frame holds the inputs AND the copy simultaneously,
+    # which doubled peak memory at exactly the worst moment.
+    combined = frames[0]
+    for i in range(1, len(frames)):
+        combined = pd.concat([combined, frames[i]], ignore_index=True, copy=False)
+        frames[i] = None
+    frames.clear()
+    gc.collect()
+    combined = _shrink(combined)
 
     ingested = load_ingested_frame()
     if ingested is not None and not ingested.empty:
@@ -370,7 +486,7 @@ def load_combined_data(use_cache: bool = True) -> pd.DataFrame:
 
     # Sort chronologically
     combined = combined.sort_values(config.COL_DATE).reset_index(drop=True)
-    combined = _add_filter_columns(combined)
+    combined = _add_filter_columns(combined, inplace=True)
 
     if use_cache:
         _write_cache(combined, sig)
