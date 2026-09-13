@@ -341,6 +341,26 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
         },
     }
 
+    @app.route("/api/market-prices/diagnostics", methods=["GET"])
+    def market_prices_diagnostics():
+        """
+        Report exactly why live mandi pricing is or is not available.
+
+        Makes one real call to data.gov.in and distinguishes key-missing,
+        auth-failed, unreachable, no-rows and no-row-for-today — cases the old
+        "Official API configured" message conflated into one.
+        """
+        from services.mandi_live import diagnose
+        out = diagnose(
+            commodity=request.args.get("commodity", "").strip(),
+            state=request.args.get("state", "").strip(),
+            district=request.args.get("district", "").strip(),
+            market=request.args.get("market", "").strip(),
+        )
+        out["success"] = out.get("status") not in {
+            "key_missing", "auth_failed", "http_error", "unreachable", "bad_payload"}
+        return jsonify(out), 200
+
     @app.route("/api/assistant/message", methods=["POST"])
     def assistant_message():
         """

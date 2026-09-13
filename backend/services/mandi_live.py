@@ -151,6 +151,11 @@ def fetch_live_prices(
         "success": True,
         "configured": True,
         "live": live,
+        # Standard contract: the frontend must key off this, never off the
+        # mere presence of an API key.
+        "status": "live" if live else "fallback",
+        "is_live": live,
+        "data_date": (records[0]["arrival_date"] if records else None),
         "records": records,
         "count": len(records),
         "fetched_at": fetched_at,
@@ -191,3 +196,167 @@ def _fail(fetched_at: str, error: str, configured: bool) -> dict:
         "source": "data.gov.in",
         "error": error,
     }
+
+
+# =============================================================================
+# Diagnostics
+# =============================================================================
+
+def diagnose(commodity: str = "", state: str = "", district: str = "",
+             market: str = "", limit: int = 200) -> dict:
+    """
+    Make one real call to data.gov.in and report exactly what happened.
+
+    "Official API configured" only ever meant "the key string is not empty",
+    which is why the dashboard could claim the feed was configured while every
+    price shown was historical. This distinguishes the cases that were being
+    conflated:
+
+      key_missing            DATA_GOV_API_KEY (or resource id) is not set
+      auth_failed            key present, the API rejected it (401/403)
+      http_error             the API answered with another error status
+      unreachable            no answer at all (DNS, firewall, timeout)
+      bad_payload            answered, but not in the shape we expect
+      no_records             authenticated, but zero rows for these filters
+      no_current_record      rows returned, none dated today
+      live                   rows returned and at least one is dated today
+
+    Nothing here is cached and nothing is fabricated; the counts come from the
+    response body.
+    """
+    out = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "api_key_present": bool(config.DATA_GOV_API_KEY),
+        "resource_id_present": bool(config.DATA_GOV_RESOURCE_ID),
+        "filters": {"commodity": commodity, "state": state,
+                    "district": district, "market": market},
+        "today": date.today().isoformat(),
+    }
+
+    if not configured():
+        missing = []
+        if not config.DATA_GOV_API_KEY:
+            missing.append("DATA_GOV_API_KEY")
+        if not config.DATA_GOV_RESOURCE_ID:
+            missing.append("DATA_GOV_RESOURCE_ID")
+        out.update({
+            "status": "key_missing",
+            "message": " and ".join(missing) + " is missing. Set it in .env "
+                       "(ml/config.py loads that at import) and restart the server.",
+        })
+        return out
+
+    params = {
+        "api-key": config.DATA_GOV_API_KEY,
+        "format": "json",
+        "limit": str(max(1, min(int(limit or 200), 1000))),
+        "offset": "0",
+    }
+    for key, value in (("commodity", commodity), ("state", state),
+                       ("district", district), ("market", market)):
+        if value:
+            params[f"filters[{key}]"] = value
+
+    url = f"{config.DATA_GOV_BASE_URL}/{config.DATA_GOV_RESOURCE_ID}?{urllib.parse.urlencode(params)}"
+    # The key is a credential: report the URL with it redacted, never raw.
+    out["request_url"] = url.replace(str(config.DATA_GOV_API_KEY), "***REDACTED***")
+
+    try:
+        req = urllib.request.Request(url, headers={
+            "Accept": "application/json",
+            "User-Agent": "KisanLink/1.0 (agricultural decision support)",
+        })
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            out["http_status"] = resp.status
+            raw = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        out["http_status"] = exc.code
+        if exc.code in (401, 403):
+            out.update({
+                "status": "auth_failed",
+                "message": ("DATA_GOV_API_KEY present but official API "
+                            f"authentication failed (HTTP {exc.code}). The key "
+                            "is set but rejected — check it is the data.gov.in "
+                            "key for this resource and has not expired."),
+            })
+        else:
+            out.update({
+                "status": "http_error",
+                "message": f"The official API answered HTTP {exc.code}.",
+            })
+        return out
+    except Exception as exc:
+        out.update({
+            "status": "unreachable",
+            "message": ("Could not reach data.gov.in "
+                        f"({exc.__class__.__name__}). Check this machine's "
+                        "network, DNS or proxy."),
+        })
+        return out
+
+    # Distinguish "the response carried no records key" (a payload we do not
+    # understand) from "records: []" (understood, simply empty).
+    has_key = isinstance(raw, dict) and ("records" in raw or "data" in raw)
+    rows = (raw.get("records") if isinstance(raw, dict) else None)
+    if rows is None and isinstance(raw, dict):
+        rows = raw.get("data")
+    if not has_key or not isinstance(rows, list):
+        out.update({"status": "bad_payload",
+                    "message": ("The official API answered, but not in the shape "
+                                "we expect (no 'records' list). The resource id "
+                                "may point at a different dataset."),
+                    "payload_keys": sorted(list(raw.keys()))[:12]
+                                    if isinstance(raw, dict) else []})
+        return out
+
+    out["records_returned"] = len(rows)
+    out["total_reported_by_api"] = raw.get("total")
+    out["field_names"] = sorted(list(rows[0].keys()))[:20] if rows else []
+
+    if not rows:
+        out.update({
+            "status": "no_records",
+            "message": ("Official API reachable and authenticated, but it "
+                        "returned no rows for these filters. Try removing the "
+                        "district/market filter — spellings must match the "
+                        "portal's own."),
+        })
+        return out
+
+    # How many survive OUR normalisation, and how many are actually today's?
+    today = date.today().isoformat()
+    parsed, rejected, dates = 0, 0, []
+    for rec in rows:
+        if not isinstance(rec, dict):
+            continue
+        row, reason = normalize_record(rec)
+        if row is None:
+            rejected += 1
+            continue
+        parsed += 1
+        d = row["Date"]
+        dates.append(str(d.date()) if hasattr(d, "date") else str(d)[:10])
+
+    out["records_parsed"] = parsed
+    out["records_rejected_by_validation"] = rejected
+    out["distinct_dates"] = sorted(set(dates), reverse=True)[:10]
+    out["newest_date_returned"] = max(dates) if dates else None
+    out["records_dated_today"] = sum(1 for d in dates if d == today)
+
+    if out["records_dated_today"]:
+        out.update({
+            "status": "live",
+            "message": (f"Official API returned {out['records_dated_today']} "
+                        f"record(s) dated today ({today}). Live pricing is available."),
+        })
+    else:
+        out.update({
+            "status": "no_current_record",
+            "message": ("Official API reachable and authenticated, but no "
+                        "current record exists for this exact crop/market/filter. "
+                        f"Newest row returned is dated {out['newest_date_returned']}. "
+                        "AGMARKNET publishes with a lag, so this is normal early "
+                        "in the day — the dashboard correctly shows LATEST "
+                        "AVAILABLE rather than LIVE."),
+        })
+    return out

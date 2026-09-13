@@ -2363,3 +2363,141 @@ class TestInferencePipelineIsSound:
         assert 'round(values[top], 4)' in src, "confidence is no longer the raw max"
         for bad in ("* 1.", "+ 0.1", "max(0.9", "min(1.0, values"):
             assert bad not in src, f"confidence looks massaged: {bad}"
+
+
+# ---------------------------------------------------------------------------
+# 31. live mandi diagnostics — the cases that were being conflated
+# ---------------------------------------------------------------------------
+
+class TestLiveMandiDiagnostics:
+    """
+    "Official API configured" only ever meant the key string was non-empty, so
+    the dashboard could claim the feed was configured while every price shown
+    was historical. These cover the distinct causes.
+    """
+
+    TODAY = None
+
+    def _row(self, day):
+        return {"state": "Punjab", "district": "Sangrur", "market": "Ahmedgarh",
+                "commodity": "Tomato", "arrival_date": day.strftime("%d/%m/%Y"),
+                "min_price": "2600", "max_price": "3100", "modal_price": "2850"}
+
+    def _stub(self, rows):
+        class _R:
+            status = 200
+            def read(_s): return json.dumps({"records": rows}).encode()
+            def __enter__(_s): return _s
+            def __exit__(_s, *a): return False
+        return lambda *a, **k: _R()
+
+    def _diagnose(self, monkeypatch, urlopen, key="k", res="r"):
+        import services.mandi_live as ml
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", key)
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", res)
+        if urlopen is not None:
+            monkeypatch.setattr(ml.urllib.request, "urlopen", urlopen)
+        return ml.diagnose(commodity="Tomato")
+
+    def test_missing_key_is_reported_as_such(self, monkeypatch):
+        out = self._diagnose(monkeypatch, None, key="", res="")
+        assert out["status"] == "key_missing"
+        assert "DATA_GOV_API_KEY" in out["message"]
+
+    def test_todays_row_reports_live(self, monkeypatch):
+        import datetime
+        today = datetime.date.today()
+        out = self._diagnose(monkeypatch, self._stub([self._row(today)]))
+        assert out["status"] == "live"
+        assert out["records_dated_today"] == 1
+
+    def test_only_older_rows_is_not_live_and_says_why(self, monkeypatch):
+        import datetime
+        old = datetime.date.today() - datetime.timedelta(days=3)
+        out = self._diagnose(monkeypatch, self._stub([self._row(old)]))
+        assert out["status"] == "no_current_record"
+        assert out["records_dated_today"] == 0
+        assert out["newest_date_returned"] == old.isoformat()
+        assert "no current record" in out["message"].lower()
+
+    def test_zero_rows_is_distinct_from_no_current_record(self, monkeypatch):
+        out = self._diagnose(monkeypatch, self._stub([]))
+        assert out["status"] == "no_records"
+
+    def test_a_rejected_key_is_reported_as_auth_failure(self, monkeypatch):
+        import services.mandi_live as ml
+
+        def _401(*a, **k):
+            raise ml.urllib.error.HTTPError("u", 401, "Unauthorized", {}, None)
+
+        out = self._diagnose(monkeypatch, _401)
+        assert out["status"] == "auth_failed"
+        assert "authentication failed" in out["message"].lower()
+
+    def test_network_failure_is_not_confused_with_a_bad_key(self, monkeypatch):
+        out = self._diagnose(monkeypatch,
+                             lambda *a, **k: (_ for _ in ()).throw(OSError("no route")))
+        assert out["status"] == "unreachable"
+
+    def test_an_unexpected_payload_is_flagged(self, monkeypatch):
+        class _Bad:
+            status = 200
+            def read(_s): return b'{"message":"something else"}'
+            def __enter__(_s): return _s
+            def __exit__(_s, *a): return False
+        out = self._diagnose(monkeypatch, lambda *a, **k: _Bad())
+        assert out["status"] == "bad_payload"
+
+    def test_the_api_key_is_never_echoed_back(self, monkeypatch):
+        import datetime
+        out = self._diagnose(monkeypatch,
+                             self._stub([self._row(datetime.date.today())]),
+                             key="SUPERSECRET123")
+        assert "SUPERSECRET123" not in json.dumps(out)
+        assert "REDACTED" in out["request_url"]
+
+    def test_endpoint_is_reachable_and_shaped(self, client):
+        body = client.get("/api/market-prices/diagnostics?commodity=Tomato").get_json()
+        for key in ("status", "message", "api_key_present", "today"):
+            assert key in body
+
+    def test_live_feed_carries_the_status_contract(self, monkeypatch):
+        """The frontend must key off status/is_live, never off key presence."""
+        import datetime
+        import services.mandi_live as ml
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+        monkeypatch.setattr(ml.urllib.request, "urlopen",
+                            self._stub([self._row(datetime.date.today())]))
+        out = ml.fetch_live_prices(commodity="Tomato")
+        assert out["status"] == "live" and out["is_live"] is True
+        assert out["data_date"] == datetime.date.today().isoformat()
+
+        monkeypatch.setattr(ml, "_CACHE", {})
+        old = datetime.date.today() - datetime.timedelta(days=2)
+        monkeypatch.setattr(ml.urllib.request, "urlopen", self._stub([self._row(old)]))
+        out2 = ml.fetch_live_prices(commodity="Tomato")
+        assert out2["status"] == "fallback" and out2["is_live"] is False
+
+    def test_ui_no_longer_claims_the_api_is_configured_as_if_working(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "step4-farmer.js")
+        if not os.path.exists(path):
+            pytest.skip("step4-farmer.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "'Official API configured.'" not in src
+
+    def test_the_market_price_ui_only_labels_live_when_the_feed_says_so(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "pages", "farmer.html")
+        if not os.path.exists(path):
+            pytest.skip("farmer.html not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        # the LIVE branch must be gated on the feed's own flag
+        assert "live.live" in src, "LIVE is no longer gated on the feed's flag"
+        assert "result.is_live" in src

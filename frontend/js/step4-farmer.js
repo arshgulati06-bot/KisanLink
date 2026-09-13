@@ -84,7 +84,13 @@ var KL_Step4 = (function () {
     if (!window.getIngestStatus) return;
     window.getIngestStatus().then(function (d) {
       var latest = d.latest_date_in_dataset || 'unknown';
-      var live = d.live_api_connected ? 'Official API configured.' : 'Official live API is not configured.';
+      // "configured" only ever meant the key string was non-empty, which read
+      // as though live pricing were working while every figure shown was
+      // historical. Say what it actually means, and point at the check that
+      // proves whether the feed really answers.
+      var live = d.live_api_connected
+        ? 'Official API key is set — whether today\u2019s rows exist is shown per price below.'
+        : 'Official live API is not configured; prices come from the local archive.';
       if (el) {
         el.textContent = 'Dataset latest date: ' + latest + ' · ' +
           (d.total_records || 0).toLocaleString('en-IN') + ' records · ' + live;
