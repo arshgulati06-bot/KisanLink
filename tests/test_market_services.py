@@ -2755,3 +2755,147 @@ class TestLiveMandiBoard:
         body = client.get("/api/market-prices/live?commodity=Onion").get_json()
         assert body.get("is_live") in (False, None)
         assert not body.get("success") or not body.get("live")
+
+
+# ---------------------------------------------------------------------------
+# 35. live prices reaching the board
+# ---------------------------------------------------------------------------
+
+class TestLivePricesReachTheUI:
+    """
+    With a working key the feed returns today's rows; these cover the contract
+    the board renders from, and the invariant that a green LIVE badge is
+    impossible without the feed itself saying so.
+    """
+
+    def _row(self, day, **kw):
+        r = {"state": "Delhi", "district": "Delhi", "market": "Azadpur",
+             "commodity": "Tomato", "variety": "Deshi", "grade": "FAQ",
+             "arrival_date": day.strftime("%d/%m/%Y"),
+             "min_price": "2400", "max_price": "3100", "modal_price": "2850"}
+        r.update(kw)
+        return r
+
+    def _stub(self, rows):
+        class _R:
+            status = 200
+            def read(_s): return json.dumps({"records": rows}).encode()
+            def __enter__(_s): return _s
+            def __exit__(_s, *a): return False
+        return lambda *a, **k: _R()
+
+    def _live(self, monkeypatch, rows, **kw):
+        import services.mandi_live as ml
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+        monkeypatch.setattr(ml.urllib.request, "urlopen", self._stub(rows))
+        return ml.fetch_live_prices(commodity="Tomato", **kw)
+
+    def test_todays_row_yields_a_live_verdict(self, monkeypatch):
+        import datetime
+        today = datetime.date.today()
+        out = self._live(monkeypatch, [self._row(today)])
+        assert out["is_live"] is True and out["status"] == "live"
+        assert out["data_date"] == today.isoformat()
+        assert out["records"][0]["is_today"] is True
+
+    def test_the_record_carries_everything_the_card_shows(self, monkeypatch):
+        import datetime
+        out = self._live(monkeypatch, [self._row(datetime.date.today())])
+        rec = out["records"][0]
+        for field in ("commodity", "market", "district", "state", "variety",
+                      "grade", "min_price", "modal_price", "max_price",
+                      "arrival_date", "is_today", "source"):
+            assert field in rec, f"the card cannot render without {field}"
+        assert rec["variety"] == "Deshi" and rec["grade"] == "FAQ"
+        assert rec["min_price"] == 2400 and rec["modal_price"] == 2850
+        assert rec["max_price"] == 3100
+
+    def test_yesterdays_row_can_never_be_live(self, monkeypatch):
+        import datetime
+        old = datetime.date.today() - datetime.timedelta(days=1)
+        out = self._live(monkeypatch, [self._row(old)])
+        assert out["is_live"] is False and out["status"] == "fallback"
+        assert out["label"] == "LATEST AVAILABLE MANDI DATA"
+
+    def test_filters_narrow_the_live_result(self, monkeypatch):
+        """The board's state/district/market pickers ride these filters."""
+        import datetime
+        today = datetime.date.today()
+        rows = [self._row(today),
+                self._row(today, state="Maharashtra", district="Nashik",
+                          market="Pimpalgaon", modal_price="2350")]
+        seen = {}
+
+        class _R:
+            status = 200
+            def read(_s): return json.dumps({"records": rows}).encode()
+            def __enter__(_s): return _s
+            def __exit__(_s, *a): return False
+
+        def _capture(req, *a, **k):
+            seen["url"] = req.full_url if hasattr(req, "full_url") else str(req)
+            return _R()
+
+        import services.mandi_live as ml
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "k")
+        monkeypatch.setattr(config, "DATA_GOV_RESOURCE_ID", "r")
+        monkeypatch.setattr(ml, "_CACHE", {})
+        monkeypatch.setattr(ml.urllib.request, "urlopen", _capture)
+        ml.fetch_live_prices(commodity="Tomato", state="Maharashtra",
+                             district="Nashik", market="Pimpalgaon")
+        for field in ("commodity", "state", "district", "market"):
+            assert f"filters%5B{field}%5D" in seen["url"], f"{field} filter not sent"
+
+    def test_the_board_reads_the_feeds_verdict_not_the_key(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "live-mandi.js")
+        with open(path, encoding="utf-8") as fh:
+            js = fh.read()
+        assert "res.is_live" in js
+        assert "DATA_GOV" not in js, "the frontend must not reason about the key"
+
+    def test_no_frontend_file_names_the_api_key_variable(self):
+        """A key value must never reach the browser, and nor need its name."""
+        import glob, os
+        root = os.path.join(os.path.dirname(__file__), "..", "frontend")
+        hits = []
+        for path in glob.glob(os.path.join(root, "**", "*.js"), recursive=True) + \
+                    glob.glob(os.path.join(root, "**", "*.html"), recursive=True):
+            with open(path, encoding="utf-8") as fh:
+                if "DATA_GOV_API_KEY" in fh.read():
+                    hits.append(os.path.basename(path))
+        assert not hits, f"frontend files referencing the key: {hits}"
+
+    def test_district_and_market_lookups_send_the_commodity(self):
+        """
+        /api/districts is scoped by commodity AND state; sending state alone
+        400s and left the picker permanently disabled.
+        """
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "live-mandi.js")
+        with open(path, encoding="utf-8") as fh:
+            js = fh.read()
+        d = js[js.index("/districts?"):js.index("/districts?") + 120]
+        m = js[js.index("/markets?"):js.index("/markets?") + 120]
+        assert "commodity=" in d, "district lookup omits the commodity"
+        assert "commodity=" in m, "market lookup omits the commodity"
+
+    def test_archive_still_serves_the_forecast_series(self, client):
+        """
+        The live feed supplies today's price only. Chronos must keep using the
+        archive time series — live rows must never become history.
+        """
+        res = client.post("/api/forecast", json={
+            "commodity": "Onion", "state": "Maharashtra",
+            "district": "Nashik", "market": "Pimpalgaon", "days": 7,
+        })
+        if res.status_code != 200 or not res.get_json().get("success"):
+            pytest.skip("fixture frame has no forecastable series")
+        body = res.get_json()
+        assert body["historical_records"] > 1
+        assert body["date_range"]["start"] < body["date_range"]["end"]
+        assert body["forecast_starts"] > body["latest_actual_date"]

@@ -97,25 +97,45 @@
     if (!body) return;
     body.innerHTML = '<div class="lmp-grid">' + rows.slice(0, MAX_CARDS).map(function (r) {
       var age = daysOld(r.date);
-      var stamp = isLive
-        ? '<span class="lmp-tag lmp-tag--live">LIVE · today</span>'
+      var tag = isLive
+        ? '<span class="lmp-tag lmp-tag--live"><span class="lmp-dot"></span>LIVE · TODAY</span>'
         : '<span class="lmp-tag lmp-tag--latest">LATEST · ' + esc(niceDate(r.date)) +
-          (age != null && age > 0 ? ' · ' + age + 'd old' : '') + '</span>';
-      var range = (r.min_price != null && r.max_price != null)
-        ? '<div class="lmp-range"><span>Min ' + inr(r.min_price) + '</span>' +
-          '<span>Max ' + inr(r.max_price) + '</span></div>'
-        : '';
+          (age != null && age > 0 ? ' · ' + age + 'd' : '') + '</span>';
+
+      var sub = [r.variety, r.grade].filter(function (v) {
+        return v && String(v).toLowerCase() !== 'nan';
+      }).map(esc).join(' · ');
+
+      // Modal is the hero; min and max flank it as quieter context.
+      var band =
+        '<div class="lmp-band">' +
+          '<div class="lmp-band-cell lmp-band-cell--min">' +
+            '<span class="lmp-band-label">Min</span>' +
+            '<span class="lmp-band-value">' + inr(r.min_price) + '</span></div>' +
+          '<div class="lmp-band-cell lmp-band-cell--max">' +
+            '<span class="lmp-band-label">Max</span>' +
+            '<span class="lmp-band-value">' + inr(r.max_price) + '</span></div>' +
+        '</div>';
+
       return '<article class="lmp-card' + (isLive ? ' lmp-card--live' : '') + '">' +
         '<header class="lmp-card-head">' +
-          '<h3>' + esc(r.commodity || '—') + '</h3>' + stamp +
+          '<div>' +
+            '<h3>' + esc(r.commodity || '—') + '</h3>' +
+            (sub ? '<p class="lmp-sub">' + sub + '</p>' : '') +
+          '</div>' + tag +
         '</header>' +
-        '<div class="lmp-price">' + inr(r.modal_price) +
-          '<span class="lmp-unit">/quintal</span></div>' +
-        range +
+        '<div class="lmp-hero">' +
+          '<div class="lmp-price">' + inr(r.modal_price) +
+            '<span class="lmp-unit">/quintal</span></div>' +
+          '<div class="lmp-hero-label">Modal price</div>' +
+        '</div>' +
+        ((r.min_price != null && r.max_price != null) ? band : '') +
         '<footer class="lmp-where">' +
           '<span class="lmp-market">' + esc(r.market || '—') + '</span>' +
           '<span class="lmp-loc">' +
             esc([r.district, r.state].filter(Boolean).join(', ') || '—') + '</span>' +
+          '<span class="lmp-src">' +
+            (isLive ? 'Official Data.gov.in' : 'Local mandi archive') + '</span>' +
         '</footer>' +
       '</article>';
     }).join('') + '</div>';
@@ -124,8 +144,64 @@
   function selection() {
     return {
       commodity: (el('lmp-crop') || {}).value || '',
-      state: (el('lmp-state') || {}).value || ''
+      state: (el('lmp-state') || {}).value || '',
+      district: (el('lmp-district') || {}).value || '',
+      market: (el('lmp-market') || {}).value || ''
     };
+  }
+
+  /** Fill a dependent picker from an endpoint, keeping the current choice. */
+  function fillDependent(id, url, allLabel) {
+    var sel = el(id);
+    if (!sel) return Promise.resolve();
+    var keep = sel.value;
+    sel.disabled = true;
+    return fetch(url).then(function (r) { return r.ok ? r.json() : []; })
+      .then(function (list) {
+        var arr = Array.isArray(list) ? list : [];
+        sel.innerHTML = '<option value="">' + allLabel + '</option>' +
+          arr.map(function (v) {
+            return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+          }).join('');
+        if (keep && arr.indexOf(keep) >= 0) sel.value = keep;
+        sel.disabled = arr.length === 0;
+      }).catch(function () {
+        sel.innerHTML = '<option value="">' + allLabel + '</option>';
+        sel.disabled = true;
+      });
+  }
+
+  /** State -> district -> market, each narrowing the next. */
+  function refreshDependents(changed) {
+    var base = (window.apiClient && window.apiClient.baseUrl) || '/api';
+    var sel = selection();
+    var chain = Promise.resolve();
+    if (changed === 'state' || changed === 'init') {
+      var d = el('lmp-district'); if (d && changed === 'state') d.value = '';
+      var m0 = el('lmp-market'); if (m0 && changed === 'state') m0.value = '';
+      chain = chain.then(function () {
+        // /api/districts is scoped by commodity AND state — sending state
+        // alone returns a 400 and left the picker permanently disabled.
+        return (sel.state && sel.commodity)
+          ? fillDependent('lmp-district',
+              base + '/districts?commodity=' + encodeURIComponent(sel.commodity) +
+              '&state=' + encodeURIComponent(sel.state),
+              'All districts')
+          : fillDependent('lmp-district', 'data:application/json,[]', 'All districts');
+      });
+    }
+    if (changed === 'state' || changed === 'district' || changed === 'init') {
+      chain = chain.then(function () {
+        var cur = selection();
+        return (cur.state && cur.district && cur.commodity)
+          ? fillDependent('lmp-market',
+              base + '/markets?commodity=' + encodeURIComponent(cur.commodity) +
+              '&state=' + encodeURIComponent(cur.state) +
+              '&district=' + encodeURIComponent(cur.district), 'All markets')
+          : fillDependent('lmp-market', 'data:application/json,[]', 'All markets');
+      });
+    }
+    return chain;
   }
 
   function withTimeout(promise) {
@@ -174,7 +250,8 @@
         renderCards(res.records.map(function (r) {
           return {
             commodity: r.commodity, market: r.market, district: r.district,
-            state: r.state, min_price: r.min_price, max_price: r.max_price,
+            state: r.state, variety: r.variety, grade: r.grade,
+            min_price: r.min_price, max_price: r.max_price,
             modal_price: r.modal_price, date: r.arrival_date
           };
         }), true);
@@ -216,8 +293,9 @@
       renderCards(rows.map(function (r) {
         return {
           commodity: r.commodity || sel.commodity, market: r.market,
-          district: r.district, state: r.state, min_price: r.min_price,
-          max_price: r.max_price, modal_price: r.modal_price, date: r.date
+          district: r.district, state: r.state, variety: r.variety,
+          grade: r.grade, min_price: r.min_price, max_price: r.max_price,
+          modal_price: r.modal_price, date: r.date
         };
       }), false);
     }).catch(function (e) {
@@ -288,10 +366,19 @@
 
   function init() {
     if (!el('lmp')) return;
-    ['lmp-crop', 'lmp-state'].forEach(function (id) {
-      var e = el(id);
-      if (e) e.addEventListener('change', load);
-    });
+    var t = null;
+    function debounced(changed) {
+      return function () {
+        clearTimeout(t);
+        t = setTimeout(function () {
+          refreshDependents(changed).then(load);
+        }, 150);
+      };
+    }
+    var e1 = el('lmp-crop');   if (e1) e1.addEventListener('change', debounced('state'));
+    var e2 = el('lmp-state');  if (e2) e2.addEventListener('change', debounced('state'));
+    var e3 = el('lmp-district'); if (e3) e3.addEventListener('change', debounced('district'));
+    var e4 = el('lmp-market'); if (e4) e4.addEventListener('change', debounced('market'));
     var r = el('lmp-refresh');
     if (r) r.addEventListener('click', function () { load(); });
     fillPickers();

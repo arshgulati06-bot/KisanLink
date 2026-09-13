@@ -314,7 +314,10 @@
         <section id="lmp" class="lmp" aria-labelledby="lmp-heading">
           <header class="lmp-head">
             <div class="lmp-title">
-              <h2 id="lmp-heading">Mandi Prices</h2>
+              <div>
+                <h2 id="lmp-heading">Mandi Prices</h2>
+                <p class="lmp-kicker">Official market rates · Data.gov.in / AGMARKNET</p>
+              </div>
               <span id="lmp-status" class="lmp-pill lmp-pill--loading">
                 <span class="lmp-dot" aria-hidden="true"></span>
                 <span id="lmp-status-text">Checking…</span>
@@ -328,6 +331,14 @@
               <label class="lmp-field">
                 <span>State</span>
                 <select id="lmp-state" class="form-input"><option value="">All states</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>District</span>
+                <select id="lmp-district" class="form-input" disabled><option value="">All districts</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>Market</span>
+                <select id="lmp-market" class="form-input" disabled><option value="">All markets</option></select>
               </label>
               <button type="button" id="lmp-refresh" class="btn btn-outline btn-sm">Refresh</button>
             </div>

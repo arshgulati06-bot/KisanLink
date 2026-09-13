@@ -106,10 +106,10 @@ var KL_Step4 = (function () {
         if (d.dev_fixture) {
           warn.innerHTML =
             '<span class="kl-data-banner-icon" aria-hidden="true">⚠️</span>' +
-            '<span><strong>Sample data — not real mandi prices.</strong>' +
+            '<span><strong>Sample data — not real mandi prices.</strong> ' +
             'This server is running on the synthetic development fixture because no ' +
-            'historical mandi CSVs were found in <code>ml/data/</code> and no ' +
-            '<code>DATA_GOV_API_KEY</code> is configured. Every price, market, and ' +
+            'historical mandi archive was found in <code>ml/data/</code> and the ' +
+            'official live feed is not connected. Every price, market and ' +
             'net-realisation figure below is generated for demonstration only.</span>';
           warn.hidden = false;
         } else {

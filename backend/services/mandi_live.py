@@ -134,6 +134,10 @@ def fetch_live_prices(
             "state": row.get("State", ""),
             "district": row.get("District", ""),
             "market": row.get("Market", ""),
+            # The portal publishes these and farmers price on them, so they
+            # travel with the record rather than being dropped.
+            "variety": row.get("Variety", "") or "",
+            "grade": row.get("Grade", "") or "",
             "arrival_date": arrival,
             "min_price": _opt_float(row.get("Min_Price")),
             "max_price": _opt_float(row.get("Max_Price")),

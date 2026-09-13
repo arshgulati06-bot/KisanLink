@@ -3053,3 +3053,93 @@
   .lmp-grid { grid-template-columns: 1fr; }
   .lmp-price { font-size: 1.45rem; }
 }
+
+/* --- live mandi: premium card interior ----------------------------------- */
+.lmp-kicker {
+  margin: 1px 0 0;
+  font-size: .66rem;
+  color: var(--color-slate-500, #64748b);
+  font-weight: 500;
+}
+
+.lmp-sub {
+  margin: 1px 0 0;
+  font-size: .64rem;
+  color: var(--color-slate-500, #64748b);
+}
+
+.lmp-tag--live .lmp-dot { width: 5px; height: 5px; margin-right: 1px; }
+
+/* Modal price is the hero; min/max are quieter context beneath it. */
+.lmp-hero { margin: 2px 0 4px; }
+.lmp-hero-label {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--color-slate-400, #94a3b8);
+  margin-top: -2px;
+}
+
+.lmp-band {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.lmp-band-cell {
+  border-radius: 8px;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border: 1px solid transparent;
+}
+/* Cool accent for the floor, positive accent for the ceiling. */
+.lmp-band-cell--min { background: #F0F9FF; border-color: #E0F2FE; }
+.lmp-band-cell--max { background: #F0FDF4; border-color: #DCFCE7; }
+
+.lmp-band-label {
+  font-size: .56rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--color-slate-500, #64748b);
+}
+.lmp-band-cell--min .lmp-band-label { color: #0369A1; }
+.lmp-band-cell--max .lmp-band-label { color: #15803D; }
+
+.lmp-band-value {
+  font-size: .8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-slate-800, #1e293b);
+}
+
+.lmp-src {
+  font-size: .6rem;
+  color: var(--color-slate-400, #94a3b8);
+  margin-top: 1px;
+}
+
+.lmp-card {
+  transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.lmp-card:hover {
+  border-color: var(--color-slate-300, #cbd5e1);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, .06);
+}
+.lmp-card--live:hover { border-color: #4ADE80; }
+@media (prefers-reduced-motion: reduce) {
+  .lmp-card { transition: none; }
+}
+
+.lmp-field .form-input:disabled {
+  background: var(--color-slate-50, #f8fafc);
+  color: var(--color-slate-400, #94a3b8);
+  cursor: not-allowed;
+}
+
+@media (max-width: 900px) {
+  .lmp-actions { flex-wrap: wrap; }
+  .lmp-field { flex: 1 1 140px; }
+}
