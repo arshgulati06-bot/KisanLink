@@ -341,6 +341,137 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
         },
     }
 
+    @app.route("/api/assistant/message", methods=["POST"])
+    def assistant_message():
+        """
+        Answer a farmer's question from KisanLink's own data.
+
+        No LLM is configured for this project. Rather than ship a placeholder
+        that says "not connected", this resolves a bounded set of real intents
+        against the loaded mandi archive, the quality models and the signed-in
+        farmer's lots and offers. Every figure returned is one the dashboard
+        could show; nothing is generated.
+
+        Understands English, Devanagari Hindi and Roman Hindi, and replies in
+        the caller's selected language (English and Hindi are hand-written;
+        other locales fall back to English rather than being machine-mangled).
+        """
+        from services import assistant as asst
+
+        data = request.get_json(silent=True) or {}
+        message = str(data.get("message") or "").strip()
+        if not message:
+            return _public_error("Send a question in 'message'.", 400)
+        if len(message) > 1000:
+            message = message[:1000]
+
+        lang = str(data.get("lang") or "").strip().lower()[:5] or asst.detect_language(message)
+        intent = asst.detect_intent(message)
+        crop = asst.detect_crop(message)
+        answer, used = _assistant_answer(intent, crop, lang, data)
+        return jsonify({
+            "success": True,
+            "reply": answer,
+            "intent": intent,
+            "crop": crop,
+            "lang": lang if lang in asst.SUPPORTED_REPLY_LANGS else "en",
+            "detected_lang": asst.detect_language(message),
+            # Named so the UI can be explicit that this is not a general AI.
+            "engine": "kisanlink-rules",
+            "data_used": used,
+        }), 200
+
+    def _assistant_user_id():
+        """
+        The signed-in farmer, or None. The assistant is usable signed out, so
+        a missing or invalid token is not an error here — it simply means the
+        personal answers (lots, offers) fall back to their generic guidance.
+        """
+        try:
+            _auth.load_current_user()
+        except Exception:
+            return None
+        return _auth.get_current_user_id()
+
+    def _assistant_answer(intent, crop, lang, payload):
+        """Resolve one intent against real data. @returns (reply, sources)."""
+        from services import assistant as asst
+        import datetime as _dt
+
+        if intent == "price":
+            if not crop:
+                return asst.reply_for("no_crop", lang), []
+            try:
+                df = _df()
+            except DataWarmingUp:
+                return (asst.reply_for("unknown", lang), [])
+            rows = df[df["_commodity_l"] == crop.lower()]
+            if rows.empty:
+                return asst.reply_for("price_none", lang, crop=crop), []
+            rows = rows.sort_values(ml_config.COL_DATE)
+            last = rows.iloc[-1]
+            when = pd.to_datetime(last[ml_config.COL_DATE]).date()
+            age = (_dt.date.today() - when).days
+            fresh = (asst.FRESHNESS[lang if lang in ("en", "hi") else "en"]
+                     ["live" if age <= 0 else "old"].format(days=age))
+            return (asst.reply_for(
+                "price", lang, crop=crop,
+                price=float(last[ml_config.COL_MODAL_PRICE]),
+                market=str(last[ml_config.COL_MARKET]),
+                district=str(last[ml_config.COL_DISTRICT]),
+                date=when.isoformat(), freshness=fresh),
+                ["mandi archive"])
+
+        if intent == "quality":
+            q = payload.get("quality") or {}
+            if q.get("grade") and q.get("condition"):
+                caveat = ""
+                if q.get("low_confidence"):
+                    caveat = (" Confidence is low — check the photo."
+                              if lang != "hi" else
+                              " विश्वास कम है — फ़ोटो दोबारा जाँचें।")
+                return (asst.reply_for(
+                    "quality", lang, crop=q.get("crop") or "your crop",
+                    grade=q["grade"], condition=q["condition"],
+                    confidence=float(q.get("confidence") or 0) * 100,
+                    caveat=caveat), ["crop-quality model"])
+            from ml import quality_inference as qi
+            return (asst.reply_for("quality_none", lang,
+                                   crops=", ".join(qi.supported_crops())), [])
+
+        if intent == "lots":
+            uid = _assistant_user_id()
+            lots = []
+            if uid:
+                try:
+                    lots = _lot_repo.get_lots_by_farmer(uid)
+                except Exception:
+                    lots = []
+            if not lots:
+                return asst.reply_for("lots_none", lang), []
+            top = lots[0]
+            detail = (f"{top.get('commodity')} · {top.get('quantity_qtl')} QTL · "
+                      f"₹{top.get('expected_price')}/QTL")
+            return asst.reply_for("lots", lang, n=len(lots), detail=detail), ["sale lots"]
+
+        if intent == "buyers":
+            uid = _assistant_user_id()
+            offers = []
+            if uid:
+                try:
+                    offers = _lot_repo.get_offers_for_seller(uid)
+                except Exception:
+                    offers = []
+            if not offers:
+                return asst.reply_for("buyers_none", lang), []
+            top = offers[0]
+            detail = (f"{top.get('buyer_name') or 'a buyer'} · "
+                      f"{top.get('commodity')} · ₹{top.get('price_per_qtl')}/QTL "
+                      f"({top.get('status')})")
+            return asst.reply_for("buyers", lang, n=len(offers), detail=detail), ["offers"]
+
+        return asst.reply_for(intent if intent in asst.REPLIES else "unknown", lang), []
+
     @app.route("/api/data-status", methods=["GET"])
     def data_status():
         """

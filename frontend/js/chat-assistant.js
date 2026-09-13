@@ -274,7 +274,15 @@ var KL_Chat = (function () {
       _synth.cancel(); // Stop any currently playing speech
       var cleanText = text.replace(/<[^>]*>/g, '').replace(/[•—]/g, ' ');
       var utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.lang = (window.KL_I18n && window.KL_I18n.getSpeechLocale) ? window.KL_I18n.getSpeechLocale() : 'en-IN';
+      // Speak in the language the reply was actually WRITTEN in. Only English
+      // and Hindi have hand-written replies; other locales fall back to
+      // English text, and reading English aloud with a Tamil voice is worse
+      // than reading it with an English one.
+      var uiLang = (window.KL_I18n && window.KL_I18n.getSpeechLocale)
+        ? window.KL_I18n.getSpeechLocale() : 'en-IN';
+      utterance.lang = LAST_REPLY_LANG === 'hi' ? 'hi-IN'
+                     : LAST_REPLY_LANG === 'en' ? 'en-IN'
+                     : uiLang;
       utterance.rate = 0.95;
       _synth.speak(utterance);
     } catch (e) {
@@ -286,28 +294,71 @@ var KL_Chat = (function () {
      INTEGRATION BOUNDARY — sendAssistantMessage(message)
      ════════════════════════════════════════════════════════════════════════ */
   function sendAssistantMessage(message) {
-    /* No AI model is wired to this widget, and there is no /api/assistant/message
-       endpoint. Rather than simulate one, say so immediately and point at the
-       parts of the dashboard that DO answer the question with real data.
-       The 900 ms "thinking" pause that used to sit here only made an
-       unanswered question look like it was being worked on. */
+    /* Real endpoint. /api/assistant/message resolves the question against
+       KisanLink's own data — the loaded mandi archive, the crop-quality
+       models, the signed-in farmer's lots and offers. It understands English,
+       Devanagari Hindi and Roman Hindi, and answers in the selected language.
+       No LLM is configured for this project, and the reply says so if asked;
+       nothing is generated or guessed. */
     var locale = (window.KL_I18n && window.KL_I18n.getLocale) ? window.KL_I18n.getLocale() : 'en';
 
-    var responses = {
-      en: 'This assistant has no AI model connected, so it cannot answer "' + message +
-          '". For real answers use the dashboard itself: Price Outlook for the ' +
-          'Chronos forecast, Market Prices for mandi rates, Sell Now for net ' +
-          'realisation, and Crop Quality for a photo condition check.',
-      hi: 'इस सहायक से कोई AI मॉडल जुड़ा नहीं है, इसलिए यह "' + message +
-          '" का उत्तर नहीं दे सकता। असली जानकारी के लिए डैशबोर्ड देखें: ' +
-          'पूर्वानुमान, मंडी भाव, अभी बेचें, और फसल गुणवत्ता।',
-      mr: 'या सहाय्यकाला कोणतेही AI मॉडेल जोडलेले नाही, त्यामुळे तो "' + message +
-          '" चे उत्तर देऊ शकत नाही. खरी माहिती डॅशबोर्डवर पहा: ' +
-          'दर अंदाज, मंडी भाव, आत्ता विका, आणि पीक गुणवत्ता.'
-    };
+    // Hand the assistant whatever the dashboard already knows, so "meri
+    // quality kaisi hai" can answer from the photo check just performed.
+    var q = (window.CQA && window.CQA.state) || {};
+    var quality = q.assessedGrade ? {
+      crop: q.selectedCrop || '',
+      grade: q.assessedGrade,
+      condition: q.assessedCondition || '',
+      confidence: q.assessedConfidence != null ? q.assessedConfidence : null,
+      low_confidence: !!q.assessedLowConfidence
+    } : null;
 
-    return Promise.resolve(responses[locale] || responses.en);
+    var headers = { 'Content-Type': 'application/json' };
+    try {
+      var tok = localStorage.getItem('kisanlink_auth_token');
+      if (tok) headers['Authorization'] = 'Bearer ' + tok;
+    } catch (e) {}
+
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, 20000);
+
+    return fetch(_apiBase() + '/assistant/message', {
+      method: 'POST', headers: headers, signal: controller.signal,
+      body: JSON.stringify({ message: message, lang: locale, quality: quality })
+    }).then(function (res) {
+      clearTimeout(timer);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (!data || !data.success || !data.reply) {
+        throw new Error((data && data.error) || 'empty reply');
+      }
+      LAST_REPLY_LANG = data.lang || locale;
+      return data.reply;
+    }).catch(function (err) {
+      clearTimeout(timer);
+      // Say what actually went wrong instead of pretending to be unbuilt.
+      var aborted = err && err.name === 'AbortError';
+      if (locale === 'hi') {
+        return aborted
+          ? 'उत्तर आने में बहुत समय लग गया। कृपया दोबारा पूछें।'
+          : 'सहायक सेवा से संपर्क नहीं हो सका। जाँचें कि बैकएंड चल रहा है, फिर दोबारा पूछें।';
+      }
+      return aborted
+        ? 'That took too long to answer. Please ask again.'
+        : 'Could not reach the assistant service. Check that the backend is running, then ask again.';
+    });
   }
+
+  function _apiBase() {
+    if (window.apiClient && window.apiClient.baseUrl) return window.apiClient.baseUrl;
+    var base = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+    return base.replace(/\/$/, '');
+  }
+
+  /** BCP-47 tag of the language the last reply was written in (for speech). */
+  var LAST_REPLY_LANG = 'en';
+
 
   /* ── Submit Handler ──────────────────────────────────────────────────── */
   function _submitMessage(text) {

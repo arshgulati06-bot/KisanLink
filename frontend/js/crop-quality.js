@@ -66,7 +66,9 @@ var CQA = {
     imageCaptured: false,
     selectedCrop:  '',
     assessedGrade: null,
-    assessedCondition: null
+    assessedCondition: null,
+    assessedConfidence: null,
+    assessedLowConfidence: false
   },
 
   ACCEPTED_TYPES: ['image/jpeg', 'image/png'],
@@ -646,6 +648,8 @@ function _showResultState(result) {
       // alongside it for display.
       CQA.state.assessedGrade = mg;
       CQA.state.assessedCondition = shown;
+      CQA.state.assessedConfidence = result.confidence;
+      CQA.state.assessedLowConfidence = !!result.gradeLowConfidence;
     } else {
       gradeEl.innerHTML = '<span class="cqa-grade-badge ' + cls + '">' + _escapeHtml(shown) + '</span>';
       CQA.state.assessedGrade = shown;

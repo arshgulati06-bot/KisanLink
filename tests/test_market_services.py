@@ -2113,3 +2113,253 @@ class TestForecastUsesSelectedMarket:
         for phrase in ("Data available for", "Series fed to Chronos",
                        "Forecast starts", "Whole archive runs to"):
             assert phrase in src, f"the UI never shows: {phrase}"
+
+
+# ---------------------------------------------------------------------------
+# 28. assistant: real answers, Hindi/Hinglish, no placeholder
+# ---------------------------------------------------------------------------
+
+class TestAssistant:
+    """
+    The widget used to reply "Assistant backend not connected. Responses are
+    placeholder only." after a fake 900ms pause. There is now a real endpoint
+    answering from the loaded archive, the quality models and the farmer's own
+    lots and offers.
+    """
+
+    @pytest.mark.parametrize("text,intent", [
+        ("bhai tomato ka bhav kya hai?", "price"),
+        ("mere tamatar ka kya bhaav hai?", "price"),
+        ("\u092e\u0947\u0930\u0947 \u091f\u092e\u093e\u091f\u0930 \u0915\u093e \u092d\u093e\u0935 \u0915\u094d\u092f\u093e \u0939\u0948", "price"),
+        ("mujhe kahan bechna chahiye?", "best_market"),
+        ("best mandi kaunsi hai?", "best_market"),
+        ("sell now karu?", "sell_or_wait"),
+        ("kab bechu?", "sell_or_wait"),
+        ("forecast kya bol raha hai?", "forecast"),
+        ("mera crop kaisa hai?", "quality"),
+        ("grade kya hai?", "quality"),
+        ("mere buyers kaun hain?", "buyers"),
+        ("what is the weather", "weather"),
+    ])
+    def test_intents_from_english_hindi_and_hinglish(self, text, intent):
+        from services import assistant as asst
+        assert asst.detect_intent(text) == intent
+
+    @pytest.mark.parametrize("text,crop", [
+        ("tomato ka bhav", "Tomato"), ("tamatar ka rate", "Tomato"),
+        ("\u091f\u092e\u093e\u091f\u0930", "Tomato"),
+        ("pyaz kaisa hai", "Onion"), ("aloo ka daam", "Potato"),
+        ("gehu ka bhav", "Wheat"), ("nothing here", None),
+    ])
+    def test_crop_extraction(self, text, crop):
+        from services import assistant as asst
+        assert asst.detect_crop(text) == crop
+
+    def test_language_detection(self):
+        from services import assistant as asst
+        assert asst.detect_language("\u092e\u0947\u0930\u0947 \u091f\u092e\u093e\u091f\u0930") == "hi"
+        assert asst.detect_language("bhai mera tamatar kaisa hai") == "hi"
+        assert asst.detect_language("what is the price of tomato") == "en"
+
+    def test_endpoint_answers_a_price_question_from_real_data(self, client):
+        res = client.post("/api/assistant/message",
+                          json={"message": "onion ka bhav kya hai", "lang": "en"})
+        assert res.status_code == 200
+        body = res.get_json()
+        assert body["success"] is True
+        assert body["intent"] == "price"
+        assert body["crop"] == "Onion"
+        assert body["engine"] == "kisanlink-rules"
+        # never the old placeholder
+        assert "placeholder" not in body["reply"].lower()
+        assert "not connected" not in body["reply"].lower()
+
+    def test_reply_language_follows_the_selection(self, client):
+        import re
+        hi = client.post("/api/assistant/message",
+                         json={"message": "help", "lang": "hi"}).get_json()
+        en = client.post("/api/assistant/message",
+                         json={"message": "help", "lang": "en"}).get_json()
+        assert re.search(r"[\u0900-\u097F]", hi["reply"]), "Hindi selection did not yield Devanagari"
+        assert not re.search(r"[\u0900-\u097F]", en["reply"])
+
+    def test_an_unsupported_locale_falls_back_to_english_not_gibberish(self, client):
+        import re
+        body = client.post("/api/assistant/message",
+                           json={"message": "help", "lang": "ta"}).get_json()
+        assert body["lang"] == "en"
+        assert not re.search(r"[\u0900-\u097F]", body["reply"])
+
+    def test_quality_question_uses_the_dashboard_state(self, client):
+        body = client.post("/api/assistant/message", json={
+            "message": "meri quality kaisi hai", "lang": "en",
+            "quality": {"crop": "Tomato", "grade": "Grade C",
+                        "condition": "Damaged", "confidence": 0.6782,
+                        "low_confidence": False},
+        }).get_json()
+        assert "Grade C" in body["reply"]
+        assert "Damaged" in body["reply"]
+        assert "68" in body["reply"]
+
+    def test_low_confidence_is_passed_on_to_the_farmer(self, client):
+        body = client.post("/api/assistant/message", json={
+            "message": "grade kya hai", "lang": "en",
+            "quality": {"crop": "Chile Pepper", "grade": "Grade B",
+                        "condition": "Dried", "confidence": 0.29,
+                        "low_confidence": True},
+        }).get_json()
+        assert "low" in body["reply"].lower()
+
+    def test_without_a_quality_check_it_says_so_and_names_the_trained_crops(self, client):
+        from ml import quality_inference as qi
+        body = client.post("/api/assistant/message",
+                           json={"message": "quality kya hai", "lang": "en"}).get_json()
+        assert "not run" in body["reply"].lower() or "photo" in body["reply"].lower()
+        if qi.supported_crops():
+            assert qi.supported_crops()[0] in body["reply"]
+
+    def test_an_unknown_crop_is_not_answered_with_an_invented_price(self, client):
+        body = client.post("/api/assistant/message",
+                           json={"message": "dragonfruit ka bhav", "lang": "en"}).get_json()
+        assert "\u20b9" not in body["reply"], "a price was invented for an unmatched crop"
+
+    def test_empty_message_is_rejected(self, client):
+        res = client.post("/api/assistant/message", json={"message": "   "})
+        assert res.status_code == 400
+
+    def test_a_very_long_message_does_not_break_it(self, client):
+        res = client.post("/api/assistant/message",
+                          json={"message": "tomato ka bhav " * 500})
+        assert res.status_code == 200
+
+    def test_frontend_no_longer_ships_the_placeholder(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "chat-assistant.js")
+        if not os.path.exists(path):
+            pytest.skip("chat-assistant.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "not yet connected to a live AI model" not in src
+        assert "/assistant/message" in src, "the widget does not call the real endpoint"
+        assert "AbortController" in src, "the assistant call is unbounded"
+
+
+# ---------------------------------------------------------------------------
+# 29. Sell Now carries the photo assessment into the lot
+# ---------------------------------------------------------------------------
+
+class TestSellNowPrefill:
+    def test_the_assessed_grade_is_prefilled_not_defaulted(self):
+        """
+        The lot published as "Grade A" no matter what the model said, so the
+        buyer saw a grade nobody had assessed.
+        """
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "step4-farmer.js")
+        if not os.path.exists(path):
+            pytest.skip("step4-farmer.js not present")
+        with open(path, encoding="utf-8") as fh:
+            src = fh.read()
+        assert "assessedGrade" in src, "the photo grade never reaches the lot form"
+        assert "lot-grade" in src
+        assert "assessedCondition" in src
+
+    def test_a_lot_can_be_published_with_each_grade(self, client, auth_headers):
+        """Whatever the model concludes must be publishable end to end."""
+        for grade in ("Grade A", "Grade B", "Grade C"):
+            res = client.post("/api/lots", headers=auth_headers, json={
+                "commodity": "Tomato", "quantity_qtl": 12,
+                "location": "Nashik, Maharashtra", "price_per_qtl": 2400,
+                "grade": grade,
+            })
+            assert res.status_code == 201, res.get_json()
+            assert res.get_json()["lot"]["grade"] == grade
+
+
+# ---------------------------------------------------------------------------
+# 30. inference-pipeline invariants behind the reported confidence
+# ---------------------------------------------------------------------------
+
+class TestInferencePipelineIsSound:
+    """
+    Guards the things that would silently corrupt confidence if they regressed.
+    Investigated because reported confidence looked low: the pipeline turned
+    out to be correct, so the number is real and must not be massaged.
+    """
+
+    def _entry(self):
+        from ml import quality_inference as qi
+        if "Tomato" not in qi.supported_crops():
+            pytest.skip("no tomato checkpoint")
+        pytest.importorskip("torch")
+        return qi, qi.load_model("Tomato")
+
+    def test_model_is_in_eval_mode(self):
+        """Train-mode BatchNorm/Dropout would make every prediction noise."""
+        import torch
+        _qi, entry = self._entry()
+        net = entry["model"]
+        assert net.training is False
+        assert not [m for m in net.modules()
+                    if isinstance(m, (torch.nn.BatchNorm2d, torch.nn.Dropout)) and m.training]
+
+    def test_class_count_matches_the_classifier_head(self):
+        _qi, entry = self._entry()
+        assert entry["model"].classifier[3].out_features == len(entry["labels"])
+        assert entry["label_source"].startswith("checkpoint")
+
+    def test_transform_is_resize_crop_totensor_normalize_in_that_order(self):
+        qi, entry = self._entry()
+        chain = [type(t).__name__ for t in qi._transform(entry["preprocess"]).transforms]
+        assert chain == ["Resize", "CenterCrop", "ToTensor", "Normalize"]
+
+    def test_tensor_shape_and_channel_order(self):
+        import io as _io
+        from PIL import Image
+        qi, entry = self._entry()
+        buf = _io.BytesIO()
+        Image.new("RGB", (300, 300), (200, 30, 30)).save(buf, format="JPEG")
+        img = Image.open(_io.BytesIO(buf.getvalue())).convert("RGB")
+        x = qi._transform(entry["preprocess"])(img).unsqueeze(0)
+        assert tuple(x.shape) == (1, 3, 224, 224)
+        # a red image must have the highest signal in channel 0 (RGB, not BGR)
+        means = [float(x[0, c].mean()) for c in range(3)]
+        assert means[0] == max(means), f"channels look swapped: {means}"
+
+    def test_probabilities_are_a_real_distribution(self):
+        import io as _io
+        from PIL import Image
+        qi, _entry = self._entry()
+        buf = _io.BytesIO()
+        Image.new("RGB", (300, 300), (200, 30, 30)).save(buf, format="JPEG")
+        out = qi.assess(buf.getvalue(), "Tomato")
+        probs = [d["probability"] for d in out["distribution"]]
+        assert abs(sum(probs) - 1.0) < 0.01
+        assert all(0.0 <= p <= 1.0 for p in probs)
+        assert out["confidence"] == max(probs)
+
+    def test_inference_is_deterministic(self):
+        """Any augmentation leaking into inference would show up here."""
+        import io as _io
+        from PIL import Image
+        qi, _entry = self._entry()
+        buf = _io.BytesIO()
+        Image.new("RGB", (300, 300), (200, 30, 30)).save(buf, format="JPEG")
+        data = buf.getvalue()
+        runs = [qi.assess(data, "Tomato") for _ in range(3)]
+        assert len({r["label"] for r in runs}) == 1
+        assert len({round(r["confidence"], 6) for r in runs}) == 1
+
+    def test_confidence_is_never_rescaled_or_clamped(self):
+        """
+        The reported number must be the raw softmax maximum. Nothing may
+        multiply, offset or floor it to make the UI look better.
+        """
+        import inspect
+        from ml import quality_inference as qi
+        src = inspect.getsource(qi.assess)
+        assert 'round(values[top], 4)' in src, "confidence is no longer the raw max"
+        for bad in ("* 1.", "+ 0.1", "max(0.9", "min(1.0, values"):
+            assert bad not in src, f"confidence looks massaged: {bad}"

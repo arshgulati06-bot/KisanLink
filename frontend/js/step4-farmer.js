@@ -885,6 +885,18 @@ var KL_Step4 = (function () {
           _set('lot-transport-cost', rec.transport_cost != null ? rec.transport_cost : '');
           _set('lot-distance-km', rec.distance_km != null ? rec.distance_km : '');
 
+          // Carry the photo assessment across. Without this the lot silently
+          // published as "Grade A" even when the model had said Grade C, so
+          // the buyer saw a grade nobody had assessed.
+          var assessed = (window.CQA && window.CQA.state) || {};
+          var gradeEl = document.getElementById('lot-grade');
+          if (gradeEl && assessed.assessedGrade) {
+            var wanted = String(assessed.assessedGrade);
+            var match = Array.prototype.filter.call(gradeEl.options, function (o) {
+              return o.value === wanted || o.value.indexOf(wanted) === 0;
+            })[0];
+            if (match) gradeEl.value = match.value;
+          }
           var harvest = document.getElementById('lot-harvest');
           if (harvest && !harvest.value) {
             harvest.value = new Date().toISOString().slice(0, 10);
@@ -902,7 +914,15 @@ var KL_Step4 = (function () {
               ' · ' + _distLine(rec) +
               '<br>Estimated transport ' + _fmtInr(rec.transport_cost) +
               ' · Estimated net realisation <strong>' + _fmtInr(rec.net_realisation) + '</strong>' +
-              ' for ' + qty + ' QTL. Planning estimate — edit any field before publishing.';
+              ' for ' + qty + ' QTL. Planning estimate — edit any field before publishing.' +
+              (assessed.assessedGrade
+                ? '<br>Photo check: <strong>' + assessed.assessedGrade + '</strong>' +
+                  (assessed.assessedCondition ? ' · condition ' + assessed.assessedCondition : '') +
+                  (assessed.assessedConfidence != null
+                    ? ' · ' + Math.round(assessed.assessedConfidence * 100) + '% model confidence'
+                    : '') +
+                  ' — grade prefilled above, change it if you disagree.'
+                : '');
             summary.hidden = false;
           }
 
