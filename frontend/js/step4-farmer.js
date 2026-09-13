@@ -158,14 +158,18 @@ var KL_Step4 = (function () {
     }
 
     function _load() {
-      return fetch(API_BASE + '/api/commodities')
-        .then(function (r) {
-          if (r.status === 503) return null;          // still warming
-          if (!r.ok) throw new Error('HTTP ' + r.status);
-          return r.json();
-        })
+      // One shared fetch across every module that needs the commodity list.
+      var pending = (typeof window.getCommoditiesOnce === 'function')
+        ? window.getCommoditiesOnce()
+        : fetch(API_BASE + '/api/commodities').then(function (r) {
+            if (r.status === 503) return null;
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+          });
+
+      return pending
         .then(function (crops) {
-          if (crops === null) {
+          if (crops === null || (Array.isArray(crops) && !crops.length)) {
             _note('Loading market data…');
             if (typeof window.waitForMarketData === 'function') {
               return window.waitForMarketData().then(function (ok) {

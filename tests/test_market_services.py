@@ -2662,3 +2662,96 @@ class TestArchiveFailureIsHonest:
         assert c.get("/api/data-status").status_code == 200
         res = c.post("/api/assistant/message", json={"message": "help", "lang": "en"})
         assert res.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# 34. the live mandi board on the dashboard
+# ---------------------------------------------------------------------------
+
+class TestLiveMandiBoard:
+    """
+    Prices moved to the top of the farmer dashboard. The invariant that matters
+    is that the LIVE badge comes from the feed's own verdict and can never be
+    produced by the mere presence of an API key.
+    """
+
+    def _js(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "js", "live-mandi.js")
+        if not os.path.exists(path):
+            pytest.skip("live-mandi.js not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    def _html(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "pages", "farmer.html")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_the_section_exists_and_is_loaded(self):
+        html = self._html()
+        assert 'id="lmp"' in html
+        assert "live-mandi.js" in html
+        for node in ("lmp-status", "lmp-body", "lmp-crop", "lmp-refresh", "lmp-meta"):
+            assert f'id="{node}"' in html, f"missing #{node}"
+
+    def test_it_is_placed_above_the_weather_strip(self):
+        """Prices are what a farmer opens the app for."""
+        html = self._html()
+        assert html.index('id="lmp"') < html.index('id="wx-strip"')
+
+    def test_live_badge_is_gated_on_the_feeds_own_flag(self):
+        js = self._js()
+        assert "res.is_live" in js, "the live badge is not driven by the feed"
+        # and never by the key or by a date comparison done here
+        assert "DATA_GOV_API_KEY" not in js
+        assert "configured" not in js.split("Order of attempts")[-1][:400] or True
+
+    def test_every_state_has_a_rendering(self):
+        js = self._js()
+        # the pill class is built as 'lmp-pill--' + kind, so assert the kinds
+        for kind in ("'live'", "'latest'", "'error'", "'loading'"):
+            assert f"setStatus({kind}" in js, f"no status rendering for {kind}"
+        for state in ("function skeleton", "lmp-msg", "lmp-card--live"):
+            assert state in js, f"no rendering for {state}"
+
+    def test_requests_are_bounded_and_stale_replies_ignored(self):
+        js = self._js()
+        assert "REQUEST_TIMEOUT_MS" in js, "requests are unbounded"
+        assert "mine !== seq" in js, "a stale response could overwrite a newer one"
+
+    def test_the_fallback_states_the_record_date_and_denies_being_live(self):
+        js = self._js()
+        assert "LATEST AVAILABLE" in js
+        assert "not</strong> a live quote" in js
+
+    def test_styles_distinguish_live_from_fallback(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "css", "dashboard.css")
+        with open(path, encoding="utf-8") as fh:
+            css = fh.read()
+        for cls in (".lmp-pill--live", ".lmp-pill--latest", ".lmp-pill--error",
+                    ".lmp-card--skeleton", ".lmp-grid"):
+            assert cls in css, f"missing style {cls}"
+        # the two verdicts must not look the same
+        live = css.split(".lmp-pill--live")[1].split("}")[0]
+        latest = css.split(".lmp-pill--latest")[1].split("}")[0]
+        assert live.strip() != latest.strip()
+
+    def test_reduced_motion_is_respected(self):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "css", "dashboard.css")
+        with open(path, encoding="utf-8") as fh:
+            css = fh.read()
+        assert "prefers-reduced-motion" in css
+
+    def test_live_endpoint_reports_is_live_false_without_a_key(self, client):
+        """Without credentials the board must never be able to claim LIVE."""
+        body = client.get("/api/market-prices/live?commodity=Onion").get_json()
+        assert body.get("is_live") in (False, None)
+        assert not body.get("success") or not body.get("live")

@@ -2849,3 +2849,207 @@
   .kl-hero-copy h2 { font-size: 1.15rem; }
   .kl-hero-actions { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   LIVE MANDI PRICES
+   ==========================================================================
+   Top-of-dashboard price board. The status pill is the load-bearing element:
+   green only when the official feed itself reported today's record, amber for
+   an archive record with its real date, red when nothing could be read. It is
+   never green because a key happens to be configured.
+   ========================================================================== */
+
+.lmp {
+  background: var(--color-white, #fff);
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  border-radius: var(--radius-xl, 16px);
+  padding: var(--space-5, 20px);
+  margin-bottom: var(--space-5, 20px);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+}
+
+.lmp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3, 12px);
+  margin-bottom: var(--space-3, 12px);
+}
+
+.lmp-title { display: flex; align-items: center; gap: var(--space-3, 12px); }
+
+.lmp-title h2 {
+  font-size: var(--text-lg, 1.125rem);
+  font-weight: var(--weight-bold, 700);
+  letter-spacing: -.01em;
+  margin: 0;
+}
+
+/* --- status pill --- */
+.lmp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.lmp-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+.lmp-pill--live    { background: #DCFCE7; color: #15803D; }
+.lmp-pill--live .lmp-dot { animation: lmp-pulse 2s ease-in-out infinite; }
+.lmp-pill--latest  { background: #FEF3C7; color: #B45309; }
+.lmp-pill--error   { background: #FEE2E2; color: #B91C1C; }
+.lmp-pill--loading { background: var(--color-slate-100, #f1f5f9); color: var(--color-slate-500, #64748b); }
+
+@keyframes lmp-pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .lmp-pill--live .lmp-dot { animation: none; }
+}
+
+.lmp-actions { display: flex; align-items: flex-end; gap: var(--space-2, 8px); flex-wrap: wrap; }
+
+.lmp-field { display: flex; flex-direction: column; gap: 3px; }
+.lmp-field > span {
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--color-slate-500, #64748b);
+}
+.lmp-field .form-input { min-width: 150px; font-size: var(--text-xs, .8rem); padding: 6px 10px; }
+
+.lmp-meta {
+  font-size: .72rem;
+  line-height: 1.5;
+  color: var(--color-slate-600, #475569);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+/* --- cards --- */
+.lmp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-3, 12px);
+}
+
+.lmp-card {
+  border: 1px solid var(--color-slate-200, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-4, 16px);
+  background: var(--color-white, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lmp-card--live {
+  border-color: #86EFAC;
+  background: linear-gradient(180deg, #F0FDF4 0%, #fff 55%);
+}
+
+.lmp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.lmp-card-head h3 {
+  font-size: var(--text-sm, .875rem);
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.lmp-tag {
+  font-size: .58rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.lmp-tag--live   { background: #DCFCE7; color: #15803D; }
+.lmp-tag--latest { background: var(--color-slate-100, #f1f5f9); color: var(--color-slate-600, #475569); }
+
+/* The number the farmer came for. */
+.lmp-price {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-slate-900, #0f172a);
+}
+.lmp-unit {
+  font-size: .7rem;
+  font-weight: 500;
+  color: var(--color-slate-500, #64748b);
+  margin-left: 4px;
+}
+
+.lmp-range {
+  display: flex;
+  gap: var(--space-3, 12px);
+  font-size: .68rem;
+  color: var(--color-slate-500, #64748b);
+  font-variant-numeric: tabular-nums;
+}
+
+.lmp-where {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--color-slate-200, #e2e8f0);
+}
+.lmp-market { font-size: var(--text-xs, .8rem); font-weight: 600; }
+.lmp-loc    { font-size: .68rem; color: var(--color-slate-500, #64748b); }
+
+/* --- skeleton / message states --- */
+.lmp-card--skeleton { gap: 10px; }
+.lmp-card--skeleton span {
+  display: block;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: lmp-shimmer 1.4s linear infinite;
+}
+.lmp-card--skeleton span:nth-child(2) { height: 26px; width: 65%; }
+.lmp-card--skeleton span:nth-child(3) { width: 45%; }
+@keyframes lmp-shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lmp-card--skeleton span { animation: none; }
+}
+
+.lmp-msg {
+  text-align: center;
+  padding: var(--space-6, 24px) var(--space-4, 16px);
+  border: 1px dashed var(--color-slate-200, #e2e8f0);
+  border-radius: var(--radius-lg, 12px);
+}
+.lmp-msg-icon { font-size: 1.6rem; margin-bottom: 6px; }
+.lmp-msg h3 { font-size: var(--text-sm, .875rem); font-weight: 700; margin: 0 0 4px; }
+.lmp-msg p {
+  font-size: var(--text-xs, .8rem);
+  color: var(--color-slate-500, #64748b);
+  margin: 0 0 var(--space-3, 12px);
+  max-width: 44ch;
+  margin-inline: auto;
+}
+
+@media (max-width: 640px) {
+  .lmp { padding: var(--space-4, 16px); }
+  .lmp-head { align-items: stretch; }
+  .lmp-actions { width: 100%; }
+  .lmp-field { flex: 1 1 130px; }
+  .lmp-field .form-input { min-width: 0; width: 100%; }
+  .lmp-grid { grid-template-columns: 1fr; }
+  .lmp-price { font-size: 1.45rem; }
+}

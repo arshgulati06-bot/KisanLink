@@ -307,6 +307,44 @@
         <div id="kl-data-banner" class="kl-data-banner" role="status" hidden></div>
 
         <!-- =====================================================================
+             LIVE MANDI PRICES — the first thing a farmer needs. Status is
+             driven by the feed's own verdict (is_live), never by the presence
+             of an API key, so archive rows can never be dressed up as live.
+             ===================================================================== -->
+        <section id="lmp" class="lmp" aria-labelledby="lmp-heading">
+          <header class="lmp-head">
+            <div class="lmp-title">
+              <h2 id="lmp-heading">Mandi Prices</h2>
+              <span id="lmp-status" class="lmp-pill lmp-pill--loading">
+                <span class="lmp-dot" aria-hidden="true"></span>
+                <span id="lmp-status-text">Checking…</span>
+              </span>
+            </div>
+            <div class="lmp-actions">
+              <label class="lmp-field">
+                <span>Crop</span>
+                <select id="lmp-crop" class="form-input"><option value="">Loading…</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>State</span>
+                <select id="lmp-state" class="form-input"><option value="">All states</option></select>
+              </label>
+              <button type="button" id="lmp-refresh" class="btn btn-outline btn-sm">Refresh</button>
+            </div>
+          </header>
+
+          <p id="lmp-meta" class="lmp-meta"></p>
+
+          <div id="lmp-body" class="lmp-body" aria-live="polite">
+            <div class="lmp-grid" id="lmp-skeleton">
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =====================================================================
              WEATHER STRIP — first thing a farmer sees. Loads from the account's
              district; browser GPS is only requested if "Use my location" is
              clicked. Never blocks the rest of the dashboard.
@@ -2362,6 +2400,7 @@
   <script src="../js/numeric-input.js"></script>
   <!-- Compact weather summary at the top of the dashboard -->
   <script src="../js/weather-strip.js" defer></script>
+  <script src="../js/live-mandi.js" defer></script>
   <script src="../js/dashboard.js"></script>
   <!-- Step 3: Crop Quality Assessment -->
   <script src="../js/crop-quality.js"></script>

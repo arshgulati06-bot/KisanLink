@@ -162,7 +162,15 @@ var KL_PriceForecast = (function () {
   function loadCrops(isRetry) {
     var controller = new AbortController();
     requestState.cascadeController = controller;
-    _fetchJSON('/api/commodities', controller.signal).then(function (crops) {
+    // Shared fetch: three modules need this list, one request serves them all.
+    var pending = (typeof window.getCommoditiesOnce === 'function')
+      ? window.getCommoditiesOnce().then(function (list) {
+          if (!list || !list.length) throw new Error('API error: 503');
+          return list;
+        })
+      : _fetchJSON('/api/commodities', controller.signal);
+
+    pending.then(function (crops) {
       window.__klCommodities = Array.isArray(crops) ? crops : [];
       _populateSelect(IDS.cropSelect, window.__klCommodities, '-- Select Commodity --');
       _wireCropSearch();

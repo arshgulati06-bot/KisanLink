@@ -391,6 +391,43 @@ function waitForMarketData(onProgress) {
   });
 }
 
+/**
+ * The commodity list, fetched at most once per page.
+ *
+ * Three modules need it — the forecast selectors, the lot/market-price
+ * selectors and the live mandi board — and each used to issue its own request,
+ * so a single dashboard load fetched the same list three times. This shares
+ * one in-flight promise and caches the result.
+ *
+ * @param {boolean} [force] refetch even if a list is already cached
+ * @returns {Promise<string[]>} resolves [] when the archive is still loading
+ */
+var _commoditiesPromise = null;
+function getCommoditiesOnce(force) {
+  if (force) _commoditiesPromise = null;
+  if (_commoditiesPromise) return _commoditiesPromise;
+  _commoditiesPromise = fetch(window.apiClient.baseUrl + '/commodities')
+    .then(function (r) {
+      if (r.status === 503) {
+        _commoditiesPromise = null;      // still warming: allow a later retry
+        return [];
+      }
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (list) {
+      var arr = Array.isArray(list) ? list : [];
+      if (arr.length) window.__klCommodities = arr;
+      return arr;
+    })
+    .catch(function (err) {
+      _commoditiesPromise = null;        // failures must not be cached
+      throw err;
+    });
+  return _commoditiesPromise;
+}
+
+window.getCommoditiesOnce                = getCommoditiesOnce;
 window.waitForMarketData                 = waitForMarketData;
 window.assessCropQuality                 = assessCropQuality;
 window.getCropQualityStatus              = getCropQualityStatus;
