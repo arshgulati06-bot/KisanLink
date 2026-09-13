@@ -38,6 +38,9 @@ class LogisticsRequest(BaseModel):
         "quantity",
         "estimated_cost",
         "actual_cost",
+        "eta_minutes",
+        "route_progress_percent",
+        "reliability_score"
     )
 
     id: int = None
@@ -62,6 +65,13 @@ class LogisticsRequest(BaseModel):
     status: str = REQUESTED
     provider_name: str = None
     provider_phone: str = None
+    transporter_id: int = None
+    vehicle_id: int = None
+    eta_minutes: float = None
+    route_status: str = "NOT_STARTED"
+    route_progress_percent: float = 0.0
+    incident_status: str = "NONE"
+    reliability_score: float = None
     notes: str = None
     created_at: str = None
     updated_at: str = None

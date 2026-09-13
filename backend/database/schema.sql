@@ -13,7 +13,7 @@ CREATE DATABASE IF NOT EXISTS kisanlink_db;
 USE kisanlink_db;
 
 -- ---------------------------------------------------------------------------
--- 1. IDENTITY
+-- 1. IDENTITIES
 -- ---------------------------------------------------------------------------
 
 -- Every human on the platform. role decides which dashboard they land on.
@@ -108,6 +108,41 @@ CREATE TABLE IF NOT EXISTS fpo_members (
     UNIQUE (fpo_id, farmer_id),
     FOREIGN KEY (fpo_id) REFERENCES fpo_profiles(id) ON DELETE CASCADE,
     FOREIGN KEY (farmer_id) REFERENCES farmer_profiles(id) ON DELETE CASCADE
+);
+
+-- Transporters provide transportation services for farmer/buyer transactions.
+CREATE TABLE IF NOT EXISTS transporters (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL UNIQUE,
+    business_name VARCHAR(180) NOT NULL,
+    phone VARCHAR(20),
+    district VARCHAR(120),
+    state VARCHAR(120) DEFAULT 'Maharashtra',
+    verification_status VARCHAR(30) NOT NULL DEFAULT 'UNVERIFIED',
+    rating DECIMAL(3, 2) NOT NULL DEFAULT 0,
+    reliability_score DECIMAL(5, 2) NOT NULL DEFAULT 40.00,
+    total_trips INT NOT NULL DEFAULT 0,
+    completed_trips INT NOT NULL DEFAULT 0,
+    is_available TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Vehicles belong to a transporter and are used for logistics requests.
+CREATE TABLE IF NOT EXISTS vehicles (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    transporter_id INT NOT NULL,
+    vehicle_type VARCHAR(30) NOT NULL,
+    vehicle_number VARCHAR(30) NOT NULL UNIQUE,
+    capacity_tonnes DECIMAL(8, 2) NOT NULL,
+    service_area VARCHAR(255),
+    rate_per_km DECIMAL(10, 2),
+    verification_status VARCHAR(30) NOT NULL DEFAULT 'UNVERIFIED',
+    is_available TINYINT(1) NOT NULL DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (transporter_id) REFERENCES transporters(id) ON DELETE CASCADE
 );
 
 -- ---------------------------------------------------------------------------
@@ -453,14 +488,39 @@ CREATE TABLE IF NOT EXISTS logistics_requests (
     status VARCHAR(20) NOT NULL DEFAULT 'REQUESTED',
     provider_name VARCHAR(180),
     provider_phone VARCHAR(20),
+    transporter_id INT,
+    vehicle_id INT,
+    eta_minutes DECIMAL(10, 2),
+    route_status VARCHAR(30) NOT NULL DEFAULT 'NOT_STARTED',
+    route_progress_percent DECIMAL(5, 2) NOT NULL DEFAULT 0,
+    incident_status VARCHAR(20) NOT NULL DEFAULT 'NONE',
+    reliability_score DECIMAL(5, 2),
     notes VARCHAR(500),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
     FOREIGN KEY (lot_id) REFERENCES lots(id) ON DELETE SET NULL,
-    FOREIGN KEY (requested_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+    FOREIGN KEY (requested_by_user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (transporter_id) REFERENCES transporters(id) ON DELETE SET NULL,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicles(id) ON DELETE SET NULL
 );
 
+-- Basic incident reporting for logistics requests.
+CREATE TABLE IF NOT EXISTS logistics_incidents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    logistics_request_id INT NOT NULL,
+    incident_type VARCHAR(40) NOT NULL,
+    description VARCHAR(500) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+    reported_by_user_id INT NOT NULL,
+    reported_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME,
+    resolution_notes VARCHAR(500),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (logistics_request_id) REFERENCES logistics_requests(id) ON DELETE CASCADE,
+    FOREIGN KEY (reported_by_user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 -- Payment tracking only. No payment gateway is integrated in this prototype.
 CREATE TABLE IF NOT EXISTS payments (
     id INT AUTO_INCREMENT PRIMARY KEY,

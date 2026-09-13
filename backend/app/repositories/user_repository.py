@@ -4,6 +4,7 @@ from app.models import row_to_dict
 from app.models.buyer_profile import BuyerProfile
 from app.models.farmer_profile import FarmerProfile
 from app.models.fpo_profile import FpoProfile
+from app.models.transporter import Transporter
 from app.models.user import User
 from app.repositories import BaseRepository, Filter, utcnow
 
@@ -164,8 +165,26 @@ class FpoProfileRepository(BaseRepository):
         self.update(fpo_id, {"member_count": int(count or 0)})
         return int(count or 0)
 
+class TransporterProfileRepository(BaseRepository):
+    table = "transporters"
+    model = Transporter
+
+    def find_by_user_id(self, user_id):
+        return self.find_one_by("user_id", user_id)
+
+    def upsert(self, user_id, data):
+        existing = self.find_by_user_id(user_id)
+        if existing:
+            self.update(existing.id, data)
+            return self.find_by_id(existing.id)
+
+        payload = dict(data)
+        payload["user_id"] = user_id
+        new_id = self.insert(payload)
+        return self.find_by_id(new_id)
 
 user_repository = UserRepository()
 farmer_profile_repository = FarmerProfileRepository()
 buyer_profile_repository = BuyerProfileRepository()
 fpo_profile_repository = FpoProfileRepository()
+transporter_profile_repository = TransporterProfileRepository()

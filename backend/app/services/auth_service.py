@@ -1,10 +1,11 @@
 """Registration, login and profile resolution."""
 from app.models.buyer_profile import BUYER_TYPES
-from app.models.user import ADMIN, BUYER, FARMER, FPO
+from app.models.user import ADMIN, BUYER, FARMER, FPO, TRANSPORTER
 from app.repositories.user_repository import (
     buyer_profile_repository,
     farmer_profile_repository,
     fpo_profile_repository,
+    transporter_profile_repository,
     user_repository,
 )
 from app.utils.responses import ConflictError, NotFoundError, UnauthorizedError, ValidationError
@@ -92,6 +93,16 @@ def _create_role_profile(user_id, role, data):
                 "contact_person": data.get("name"),
             },
         )
+    elif role == TRANSPORTER:
+        transporter_profile_repository.upsert(
+            user_id,
+            {
+                "business_name": data.get("business_name") or data["name"],
+                "phone": data.get("phone"),
+                "district": data.get("district"),
+                "state": data.get("state", "Maharashtra"),
+            },
+        )
 
 
 def login(phone, password):
@@ -126,6 +137,9 @@ def get_profile(user):
         profile = record.to_dict() if record else None
     elif user.role == FPO:
         record = fpo_profile_repository.find_by_user_id(user.id)
+        profile = record.to_dict() if record else None
+    elif user.role == TRANSPORTER:
+        record = transporter_profile_repository.find_by_user_id(user.id)
         profile = record.to_dict() if record else None
     return {"user": user.to_dict(), "profile": profile, "role": user.role}
 
