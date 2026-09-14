@@ -355,13 +355,16 @@ function _normaliseTx(row) {
   const rate = Number(row.price_per_qtl) || 0;
   return {
     id: row.id,
+    // The server mints a human-readable code; showing the raw row id made the
+    // farmer's tracker and the buyer's tracker look like different deals.
+    code: row.transaction_code || ('Deal #' + row.id),
     lotId: row.lot_id,
     crop: row.commodity || row.crop || 'Lot #' + (row.lot_id || '?'),
     quantity: qty,
     unit: 'QTL',
     buyerName: row.buyer_name || ('Buyer #' + (row.buyer_user_id || '?')),
     agreedRate: rate,
-    grossTotal: row.total_value != null ? Number(row.total_value) : qty * rate,
+    grossTotal: row.gross_amount != null ? Number(row.gross_amount) : qty * rate,
     status: row.status || 'ACCEPTED',
     currentStep: 2,
     date: (row.created_at || '').slice(0, 10),
@@ -453,7 +456,7 @@ function renderFarmerTransactions() {
       <div class="tx-header">
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-slate-900">${tx.id}</span>
+            <span class="font-bold text-slate-900">${tx.code}</span>
             <span class="badge badge-sky">${tx.crop} (${tx.quantity} ${tx.unit})</span>
           </div>
           <div class="text-xs text-slate" style="margin-top: 2px;">

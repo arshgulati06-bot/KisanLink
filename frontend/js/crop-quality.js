@@ -673,7 +673,12 @@ function _showResultState(result) {
       indEl.innerHTML = result.indicators.map(function(ind) {
         var name = (ind && ind.name != null) ? ind.name : ind;
         var val  = (ind && ind.value != null) ? ind.value : '';
-        return '<li class="cqa-indicator-item">' +
+        // --pct drives a CSS-only proportional bar behind the row. Purely
+        // presentational: the row still reads as label + percentage without
+        // it, and the value shown is the model's own probability, unchanged.
+        var pct = parseFloat(String(val).replace('%', ''));
+        var style = isFinite(pct) ? ' style="--pct:' + Math.max(0, Math.min(100, pct)) + '"' : '';
+        return '<li class="cqa-indicator-item"' + style + '>' +
           '<span class="cqa-indicator-dot" aria-hidden="true"></span>' +
           _escapeHtml(String(name).replace(/_+/g, ' ')) +
           (val ? ' <span class="cqa-indicator-value">' + _escapeHtml(String(val)) + '</span>' : '') +

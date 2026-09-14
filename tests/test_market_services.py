@@ -2869,20 +2869,26 @@ class TestLivePricesReachTheUI:
                     hits.append(os.path.basename(path))
         assert not hits, f"frontend files referencing the key: {hits}"
 
-    def test_district_and_market_lookups_send_the_commodity(self):
+    def test_state_district_and_market_lookups_send_the_commodity(self):
         """
-        /api/districts is scoped by commodity AND state; sending state alone
-        400s and left the picker permanently disabled.
+        Every picker endpoint is scoped by commodity. /api/states was being
+        called bare, which 400s: the state picker stayed empty and every
+        filter below it was unreachable, exactly as the district picker once
+        was.
         """
-        import os
+        import os, re
         path = os.path.join(os.path.dirname(__file__), "..",
                             "frontend", "js", "live-mandi.js")
         with open(path, encoding="utf-8") as fh:
             js = fh.read()
-        d = js[js.index("/districts?"):js.index("/districts?") + 120]
-        m = js[js.index("/markets?"):js.index("/markets?") + 120]
-        assert "commodity=" in d, "district lookup omits the commodity"
-        assert "commodity=" in m, "market lookup omits the commodity"
+        # Only string literals, so the explanatory comments above them do not
+        # count as calls.
+        for endpoint in ("/states", "/districts", "/markets"):
+            calls = re.findall(r"'(" + re.escape(endpoint) + r"[^']{0,140})'", js)
+            assert calls, f"{endpoint} is never requested"
+            for call in calls:
+                assert call.startswith(endpoint + "?commodity="), (
+                    f"{endpoint} requested without a commodity: {call!r}")
 
     def test_archive_still_serves_the_forecast_series(self, client):
         """
@@ -2899,3 +2905,157 @@ class TestLivePricesReachTheUI:
         assert body["historical_records"] > 1
         assert body["date_range"]["start"] < body["date_range"]["end"]
         assert body["forecast_starts"] > body["latest_actual_date"]
+
+
+class TestBuyerProcurementFlow:
+    """
+    A buyer could see farmer lots but could not act on them: the cards had no
+    call to action, sent offers were invisible, and the transaction panel was
+    static markup that never called the API. The deal a farmer accepted was
+    therefore only ever visible to the farmer.
+    """
+
+    def _page(self, name):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..",
+                            "frontend", "pages", name)
+        if not os.path.exists(path):
+            pytest.skip(f"{name} not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    def _js(self, name):
+        import os
+        path = os.path.join(os.path.dirname(__file__), "..", "frontend", "js", name)
+        if not os.path.exists(path):
+            pytest.skip(f"{name} not present")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+
+    # -- the page actually loads the module ------------------------------
+
+    def test_buyer_page_loads_the_procurement_module(self):
+        html = self._page("buyer.html")
+        assert "js/buyer-portal.js" in html, "buyer.html never loads buyer-portal.js"
+
+    def test_every_lot_card_offers_both_actions(self):
+        """Without these the buyer can read a lot but never buy it."""
+        html = self._page("buyer.html")
+        assert "bp-cta-offer" in html, "lot cards have no Buy / Send offer button"
+        assert "bp-cta-details" in html, "lot cards have no View details button"
+        assert "Buy / Send offer" in html
+
+    def test_rendered_lots_are_published_for_the_buttons(self):
+        """
+        The buttons resolve the lot the buyer is looking at. If the renderer
+        stops publishing it they would silently open nothing.
+        """
+        html = self._page("buyer.html")
+        js = self._js("buyer-portal.js")
+        assert "window.__klBuyerLots" in html
+        assert "__klBuyerLots" in js
+
+    def test_transaction_panel_is_not_static_placeholder(self):
+        """It used to hard-code 'No Active Transactions' and never ask."""
+        html = self._page("buyer.html")
+        js = self._js("buyer-portal.js")
+        assert "No Active Transactions" not in html
+        assert "/transactions/my" in js, "the buyer never reads their deals"
+        assert "/offers/my" in js, "the buyer never sees the offers they sent"
+
+    def test_buyer_portal_invents_no_endpoints(self):
+        """
+        This pass was frontend-only. Anything the module calls must already be
+        served by the backend.
+        """
+        import re
+        js = self._js("buyer-portal.js")
+        called = set(re.findall(r"apiBase\(\) \+ '(/[a-z/-]+)'", js))
+        assert called, "no API calls found — the parse is wrong, not the file"
+        assert called <= {"/offers", "/offers/my", "/transactions/my"}, called
+
+    def test_buyer_portal_never_fabricates_a_counterparty(self):
+        """
+        A missing name degrades to the user id. Inventing a plausible trader
+        name would misrepresent who the farmer actually sold to.
+        """
+        js = self._js("buyer-portal.js")
+        assert "t.seller_name ||" in js
+        assert "'Farmer #' + t.seller_user_id" in js
+
+    # -- the deal is one row, seen from both sides -----------------------
+
+    def _user(self, client, role):
+        import uuid
+        s = uuid.uuid4().hex[:10]
+        res = client.post("/api/auth/register", json={
+            "name": f"{role.title()} {s[:4]}", "username": f"{role[0]}_{s}",
+            "password": "StrongPass!234", "role": role,
+            "district": "Pune", "state": "Maharashtra",
+        })
+        assert res.status_code in (200, 201), res.get_json()
+        body = res.get_json()
+        return {"Authorization": f"Bearer {body['token']}"}, body["user"]["name"]
+
+    def test_accepted_offer_is_one_deal_visible_to_both_parties(self, client):
+        buyer_h, buyer_name = self._user(client, "BUYER")
+        farmer_h, farmer_name = self._user(client, "FARMER")
+
+        lot = client.post("/api/lots", headers=farmer_h, json={
+            "commodity": "Onion", "quantity_qtl": 40, "grade": "Grade A",
+            "district": "Nashik", "state": "Maharashtra", "price_per_qtl": 2800,
+        })
+        assert lot.status_code == 201, lot.get_json()
+        lot_id = lot.get_json()["lot"]["id"]
+
+        # Exactly the payload frontend/js/buyer-portal.js sends.
+        offer = client.post("/api/offers", headers=buyer_h, json={
+            "lot_id": lot_id, "quantity_qtl": 30, "price_per_qtl": 2950,
+            "message": "Pickup Friday, payment on delivery.",
+        })
+        assert offer.status_code == 201, offer.get_json()
+        offer_id = offer.get_json()["offer_id"]
+
+        sent = client.get("/api/offers/my", headers=buyer_h).get_json()["offers"]
+        mine = [o for o in sent if o["id"] == offer_id]
+        assert mine, "the buyer cannot see the offer they just sent"
+        assert mine[0]["seller_name"] == farmer_name, "offer does not name the farmer"
+
+        accepted = client.post(f"/api/offers/{offer_id}/respond",
+                               headers=farmer_h, json={"status": "ACCEPTED"})
+        assert accepted.status_code == 200, accepted.get_json()
+
+        f_txs = client.get("/api/transactions/my", headers=farmer_h).get_json()["transactions"]
+        b_txs = client.get("/api/transactions/my", headers=buyer_h).get_json()["transactions"]
+        f_row = [t for t in f_txs if t["lot_id"] == lot_id]
+        b_row = [t for t in b_txs if t["lot_id"] == lot_id]
+        assert len(f_row) == 1 and len(b_row) == 1, (len(f_row), len(b_row))
+
+        # One row, one code, one set of figures — not two views that can drift.
+        assert f_row[0]["id"] == b_row[0]["id"]
+        assert f_row[0]["transaction_code"] == b_row[0]["transaction_code"]
+        assert f_row[0]["gross_amount"] == b_row[0]["gross_amount"] == 30 * 2950
+
+        # Each side is told who the other is, by name.
+        assert b_row[0]["seller_name"] == farmer_name
+        assert f_row[0]["buyer_name"] == buyer_name
+
+    def test_farmer_tracker_reads_the_amount_the_server_stored(self):
+        """
+        _normaliseTx read `total_value`, a column that does not exist, so the
+        tracker always fell back to its own multiplication.
+        """
+        js = self._js("dashboard.js")
+        assert "row.gross_amount" in js
+        assert "row.total_value" not in js
+
+    def test_both_trackers_show_the_same_transaction_code(self):
+        """
+        The farmer showed the raw row id and the buyer the code, so one deal
+        looked like two.
+        """
+        buyer_js = self._js("buyer-portal.js")
+        farmer_js = self._js("dashboard.js")
+        assert "transaction_code" in buyer_js
+        assert "row.transaction_code" in farmer_js
+        assert "${tx.code}" in farmer_js

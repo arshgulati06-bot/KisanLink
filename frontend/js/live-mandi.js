@@ -171,14 +171,32 @@
       });
   }
 
-  /** State -> district -> market, each narrowing the next. */
+  /** Crop -> state -> district -> market, each narrowing the next. */
   function refreshDependents(changed) {
     var base = (window.apiClient && window.apiClient.baseUrl) || '/api';
     var sel = selection();
     var chain = Promise.resolve();
-    if (changed === 'state' || changed === 'init') {
+    if (changed === 'commodity' || changed === 'init') {
+      // /api/states is scoped by commodity. Asking for it without one returned
+      // a 400, so the state picker stayed empty and every filter below it was
+      // unreachable — the same mistake the district picker had.
+      if (changed === 'commodity') {
+        ['lmp-state', 'lmp-district', 'lmp-market'].forEach(function (id) {
+          var n = el(id); if (n) n.value = '';
+        });
+      }
+      chain = chain.then(function () {
+        return sel.commodity
+          ? fillDependent('lmp-state',
+              base + '/states?commodity=' + encodeURIComponent(sel.commodity),
+              'All states')
+          : fillDependent('lmp-state', 'data:application/json,[]', 'All states');
+      });
+    }
+    if (changed === 'commodity' || changed === 'state' || changed === 'init') {
       var d = el('lmp-district'); if (d && changed === 'state') d.value = '';
       var m0 = el('lmp-market'); if (m0 && changed === 'state') m0.value = '';
+      sel = selection();
       chain = chain.then(function () {
         // /api/districts is scoped by commodity AND state — sending state
         // alone returns a 400 and left the picker permanently disabled.
@@ -190,7 +208,8 @@
           : fillDependent('lmp-district', 'data:application/json,[]', 'All districts');
       });
     }
-    if (changed === 'state' || changed === 'district' || changed === 'init') {
+    if (changed === 'commodity' || changed === 'state' ||
+        changed === 'district' || changed === 'init') {
       chain = chain.then(function () {
         var cur = selection();
         return (cur.state && cur.district && cur.commodity)
@@ -312,10 +331,9 @@
     });
   }
 
-  /** Fill the crop and state pickers from the archive the server has. */
+  /** Fill the crop picker from the archive, then cascade the rest. */
   function fillPickers() {
     var crop = el('lmp-crop');
-    var state = el('lmp-state');
     if (!crop) return;
     var base = (window.apiClient && window.apiClient.baseUrl) || '/api';
 
@@ -345,7 +363,8 @@
         return '<option value="' + esc(c) + '">' + esc(c) + '</option>';
       }).join('');
       if (present.length) crop.value = present[0];
-      load();
+      // States depend on the crop, so they can only be filled once one is set.
+      refreshDependents('commodity').then(load);
     }).catch(function () {
       crop.innerHTML = '<option value="">Could not load crops</option>';
       setStatus('error', 'UNAVAILABLE');
@@ -353,15 +372,6 @@
               'Check that the KisanLink backend is running.', true);
     });
 
-    if (state) {
-      fetch(base + '/states').then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (list) {
-          if (!Array.isArray(list)) return;
-          state.innerHTML = '<option value="">All states</option>' + list.map(function (v) {
-            return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
-          }).join('');
-        }).catch(function () {});
-    }
   }
 
   function init() {
@@ -375,7 +385,7 @@
         }, 150);
       };
     }
-    var e1 = el('lmp-crop');   if (e1) e1.addEventListener('change', debounced('state'));
+    var e1 = el('lmp-crop');   if (e1) e1.addEventListener('change', debounced('commodity'));
     var e2 = el('lmp-state');  if (e2) e2.addEventListener('change', debounced('state'));
     var e3 = el('lmp-district'); if (e3) e3.addEventListener('change', debounced('district'));
     var e4 = el('lmp-market'); if (e4) e4.addEventListener('change', debounced('market'));
