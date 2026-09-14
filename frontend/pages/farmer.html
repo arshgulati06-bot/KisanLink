@@ -1,0 +1,2748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Ctext y=%2726%27 font-size=%2726%27%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E">
+  <!-- Auth guard: a dashboard is a protected view. Runs before anything else
+       renders so an unauthenticated visitor never sees a half-populated
+       dashboard. Session validity is confirmed against /auth/me below. -->
+  <script>
+    (function () {
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch (e) {}
+      if (!token) {
+        var here = location.pathname.split('/').pop() || 'farmer.html';
+        location.replace('auth.html?next=' + encodeURIComponent(here));
+      }
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="KisanLink Farmer Dashboard — SIH 2026: Crop lot management, live mandi intelligence, explainable recommendations, and verified buyer linkage.">
+  <title>Farmer Dashboard — KisanLink | SIH 2026</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- Loaded without blocking the parser. A render-blocking font link
+       stalled DOMContentLoaded for ~13s whenever the CDN was slow or
+       unreachable (offline demo wifi, captive portal), which froze the
+       whole dashboard - weather, quality and forecast all waited on it.
+       style.css carries a full system-font fallback stack. -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all';this.onload=null">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
+
+  <!-- Core Stylesheets -->
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/responsive.css">
+  <link rel="stylesheet" href="../css/logistics.css">
+</head>
+<body>
+
+  <div class="dashboard-layout">
+    <!-- =======================================================================
+         DASHBOARD SIDEBAR
+         ======================================================================= -->
+    <aside class="dashboard-sidebar" id="farmer-sidebar">
+      <div class="sidebar-header">
+        <a href="../index.html" class="brand-logo" style="font-size: var(--text-lg);">
+          <div class="brand-icon-wrapper" style="width: 32px; height: 32px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+            </svg>
+          </div>
+          <span>Kisan<span class="text-emerald">Link</span></span>
+        </a>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Dashboard Navigation">
+        <a href="#overview-section" class="sidebar-link active">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect width="7" height="9" x="3" y="3" rx="1"/>
+            <rect width="7" height="5" x="14" y="3" rx="1"/>
+            <rect width="7" height="9" x="14" y="12" rx="1"/>
+            <rect width="7" height="5" x="3" y="16" rx="1"/>
+          </svg>
+          <span>Overview</span>
+        </a>
+
+        <a href="#lots-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+          </svg>
+          <span>My Sale Lots</span>
+          <span class="sidebar-link-badge badge-success" id="sidebar-lot-badge">0</span>
+        </a>
+
+        <a href="#best-action-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          <span data-i18n="nav.bestAction">Best Action</span>
+          <span class="sidebar-link-badge badge-success">New</span>
+        </a>
+
+        <a href="#price-forecast-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          <span data-i18n="nav.priceOutlook">Price Outlook</span>
+        </a>
+
+        <a href="#market-intel-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span data-i18n="nav.marketIntel">Market Intelligence</span>
+        </a>
+
+        <a href="#market-compare-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Compare Markets</span>
+        </a>
+
+        <a href="#recommendations-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <span data-i18n="nav.recommendation">Recommendation</span>
+        </a>
+
+        <a href="#buyer-matches-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+          </svg>
+          <span data-i18n="nav.buyerMatches">Buyer Matches</span>
+        </a>
+
+        <a href="#offers-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span data-i18n="nav.offers">Received Offers</span>
+          <span class="sidebar-link-badge badge-amber" id="sidebar-offer-badge">0</span>
+        </a>
+
+        <a href="#transactions-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+          <span data-i18n="nav.transactions">Transactions</span>
+        </a>
+
+        <a href="#logistics-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+            <path d="M15 18H9"/>
+            <path d="M19 18h2a1 1 0 0 0 1-1v-5l-3-4h-4v10"/>
+            <circle cx="7" cy="18" r="2"/>
+            <circle cx="17" cy="18" r="2"/>
+          </svg>
+          <span data-i18n="nav.logistics">Transportation</span>
+          <span class="sidebar-link-badge badge-sky" id="sidebar-logistics-badge">0</span>
+        </a>
+
+        <a href="#crop-quality-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 12l2 2 4-4"/>
+            <rect x="3" y="3" width="18" height="18" rx="3"/>
+            <path d="M15 2v4M9 2v4"/>
+          </svg>
+          <span data-i18n="nav.cropQuality">Crop Quality Check</span>
+          <span class="sidebar-link-badge badge-sky">Step 3</span>
+        </a>
+
+        <div style="height:1px;background:var(--color-slate-100,#f1f5f9);margin:var(--space-2) var(--space-4);"></div>
+        <div style="font-size:0.6rem;font-weight:700;letter-spacing:0.08em;color:var(--color-slate-400);text-transform:uppercase;padding:0 var(--space-4) var(--space-1);">Farmer Resources</div>
+
+        <a href="#market-prices-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <span>Mandi Prices</span>
+        </a>
+
+        <a href="#weather-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+          <span>Weather</span>
+        </a>
+
+        <a href="#schemes-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Govt Schemes</span>
+        </a>
+
+        <a href="#knowledge-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Farming Knowledge</span>
+        </a>
+
+        <a href="#learning-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          <span>Learn &amp; Videos</span>
+        </a>
+
+        <a href="#helpline-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.9 13.5a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.83 2.93h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 10.91"/></svg>
+          <span>Helpline</span>
+        </a>
+
+        <a href="#seeds-section" class="sidebar-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          <span>Seeds</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <!-- 13-Language Selector -->
+        <div class="kl-lang-dropdown-wrap" style="width:100%;margin-bottom:var(--space-3);">
+          <select class="kl-lang-select" style="width:100%;" aria-label="Select preferred language" data-lang-select>
+            <option value="en">English (English)</option>
+            <option value="hi">हिन्दी (Hindi)</option>
+            <option value="mr">मराठी (Marathi)</option>
+            <option value="gu">ગુજરાતી (Gujarati)</option>
+            <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+            <option value="bn">বাংলা (Bengali)</option>
+            <option value="ta">தமிழ் (Tamil)</option>
+            <option value="te">తెలుగు (Telugu)</option>
+            <option value="kn">ಕನ್ನಡ (Kannada)</option>
+            <option value="ml">മലയാളം (Malayalam)</option>
+            <option value="or">ଓଡ଼ିଆ (Odia)</option>
+            <option value="as">অসমীয়া (Assamese)</option>
+            <option value="ur">اردو (Urdu)</option>
+          </select>
+        </div>
+
+        <!-- Farmer Profile -->
+        <div class="user-profile-badge" id="farmer-profile-badge" style="cursor:pointer;" onclick="document.getElementById('farmer-profile-panel').classList.toggle('panel-open')" aria-expanded="false" aria-controls="farmer-profile-panel" title="View Profile">
+          <div class="user-avatar" id="profile-avatar">?</div>
+          <div class="user-info">
+            <h4 id="profile-name">Loading…</h4>
+            <p id="profile-location">Farmer</p>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:auto;flex-shrink:0;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <!-- Expanded Profile Panel -->
+        <div id="farmer-profile-panel" class="profile-panel" hidden>
+          <div class="profile-panel-row">
+            <span class="profile-panel-label" data-i18n="profile.contact">Contact</span>
+            <span id="profile-contact" class="profile-panel-val">—</span>
+          </div>
+          <div class="profile-panel-row">
+            <span class="profile-panel-label" data-i18n="profile.language">Language</span>
+            <span id="profile-lang" class="profile-panel-val">English</span>
+          </div>
+          <div class="profile-panel-row" style="gap:6px;">
+            <button type="button" class="btn btn-outline btn-xs" style="flex:1;" onclick="location.href='auth.html'">Switch Account</button>
+            <button type="button" class="btn btn-xs" style="flex:1;background:var(--color-accent-rose,#e11d48);color:#fff;border:none;cursor:pointer;" onclick="(function(){localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';})()">Logout</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =======================================================================
+         MAIN DASHBOARD BODY
+         ======================================================================= -->
+    <main class="dashboard-main">
+      <!-- Topbar Header -->
+      <header class="dashboard-topbar">
+        <div class="topbar-left">
+          <button type="button" class="sidebar-toggle-btn" aria-label="Toggle sidebar menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="4" x2="20" y1="12" y2="12"/>
+              <line x1="4" x2="20" y1="6" y2="6"/>
+              <line x1="4" x2="20" y1="18" y2="18"/>
+            </svg>
+          </button>
+          <div class="dashboard-title-group">
+            <h1>Farmer / FPO Selling Dashboard</h1>
+            <p id="ingest-status-banner">Loading dataset freshness…</p>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <!-- 13-Language Topbar Selector -->
+          <div class="kl-lang-dropdown-wrap">
+            <select class="kl-lang-select" aria-label="Language selector" data-lang-select>
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+              <option value="mr">मराठी</option>
+              <option value="gu">ગુજરાતી</option>
+              <option value="pa">ਪੰਜਾਬੀ</option>
+              <option value="bn">বাংলা</option>
+              <option value="ta">தமிழ்</option>
+              <option value="te">తెలుగు</option>
+              <option value="kn">ಕನ್ನಡ</option>
+              <option value="ml">മലയാളം</option>
+              <option value="or">ଓଡ଼ିଆ</option>
+              <option value="as">অসমীয়া</option>
+              <option value="ur">اردو</option>
+            </select>
+          </div>
+
+          <!-- Notifications Bell -->
+          <div class="notif-wrapper" style="position:relative;">
+            <button type="button" id="notif-toggle-btn" class="btn btn-ghost btn-sm notif-bell-btn" aria-label="Activity and notifications" aria-haspopup="true" aria-expanded="false">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span id="notif-badge" class="notif-badge" hidden>2</span>
+            </button>
+            <!-- Notifications Dropdown -->
+            <div id="kl-notifications" class="notif-dropdown" hidden aria-label="Notifications panel">
+              <div class="notif-dropdown-header">
+                <span class="notif-dropdown-title" data-i18n="section.notifications">Activity &amp; Notifications</span>
+            <span class="badge badge-success">Activity</span>
+              </div>
+              <div id="kl-notifications-list" class="notif-list"></div>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-primary btn-sm open-create-lot-modal" data-i18n="topbar.createLot">
+            + Create Sale Lot
+          </button>
+          <a href="buyer.html" class="btn btn-outline btn-sm" data-i18n="topbar.switchBuyer">Switch to Buyer Portal</a>
+          <a href="../index.html" class="btn btn-ghost btn-sm" data-i18n="topbar.home">Home</a>
+          <button type="button" class="btn btn-ghost btn-sm" style="color:var(--color-accent-rose,#e11d48);" onclick="localStorage.removeItem('kisanlink_auth_token');localStorage.removeItem('kisanlink_user');location.href='auth.html';" title="Logout">Logout</button>
+        </div>
+      </header>
+
+      <div class="dashboard-body">
+        <!-- Data provenance warning: only shown when the backend reports it is
+             running on the synthetic development fixture. -->
+        <div id="kl-data-banner" class="kl-data-banner" role="status" hidden></div>
+
+        <!-- =====================================================================
+             LIVE MANDI PRICES — the first thing a farmer needs. Status is
+             driven by the feed's own verdict (is_live), never by the presence
+             of an API key, so archive rows can never be dressed up as live.
+             ===================================================================== -->
+        <section id="lmp" class="lmp" aria-labelledby="lmp-heading">
+          <header class="lmp-head">
+            <div class="lmp-title">
+              <div>
+                <h2 id="lmp-heading">Mandi Prices</h2>
+                <p class="lmp-kicker">Official market rates · Data.gov.in / AGMARKNET</p>
+              </div>
+              <span id="lmp-status" class="lmp-pill lmp-pill--loading">
+                <span class="lmp-dot" aria-hidden="true"></span>
+                <span id="lmp-status-text">Checking…</span>
+              </span>
+            </div>
+            <div class="lmp-actions">
+              <label class="lmp-field">
+                <span>Crop</span>
+                <select id="lmp-crop" class="form-input"><option value="">Loading…</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>State</span>
+                <select id="lmp-state" class="form-input"><option value="">All states</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>District</span>
+                <select id="lmp-district" class="form-input" disabled><option value="">All districts</option></select>
+              </label>
+              <label class="lmp-field">
+                <span>Market</span>
+                <select id="lmp-market" class="form-input" disabled><option value="">All markets</option></select>
+              </label>
+              <button type="button" id="lmp-refresh" class="btn btn-outline btn-sm">Refresh</button>
+            </div>
+          </header>
+
+          <p id="lmp-meta" class="lmp-meta"></p>
+
+          <div id="lmp-body" class="lmp-body" aria-live="polite">
+            <div class="lmp-grid" id="lmp-skeleton">
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+              <div class="lmp-card lmp-card--skeleton"><span></span><span></span><span></span></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =====================================================================
+             WEATHER STRIP — first thing a farmer sees. Loads from the account's
+             district; browser GPS is only requested if "Use my location" is
+             clicked. Never blocks the rest of the dashboard.
+             ===================================================================== -->
+        <section id="wx-strip" class="wx-strip" aria-label="Weather where you are">
+          <div class="wx-strip-main">
+            <div class="wx-strip-now">
+              <span id="wx-strip-icon" class="wx-strip-icon" aria-hidden="true">⏳</span>
+              <div>
+                <div id="wx-strip-temp" class="wx-strip-temp">—</div>
+                <div id="wx-strip-cond" class="wx-strip-cond">Loading weather…</div>
+              </div>
+            </div>
+            <dl class="wx-strip-stats">
+              <div><dt>Today</dt><dd id="wx-strip-range">—</dd></div>
+              <div><dt>💧 Humidity</dt><dd id="wx-strip-hum">—</dd></div>
+              <div><dt>🌧 Rain chance</dt><dd id="wx-strip-rain">—</dd></div>
+              <div><dt>💨 Wind</dt><dd id="wx-strip-wind">—</dd></div>
+            </dl>
+          </div>
+
+          <div id="wx-strip-days" class="wx-strip-days" hidden></div>
+
+          <p id="wx-strip-tip" class="wx-strip-tip" hidden></p>
+
+          <div class="wx-strip-foot">
+            <span id="wx-strip-place" class="wx-strip-place">—</span>
+            <span class="wx-strip-actions">
+              <button type="button" id="wx-strip-gps" class="btn btn-ghost btn-sm">Use my location</button>
+              <a href="#weather-section" class="btn btn-ghost btn-sm sidebar-link" data-wx-more>Full forecast</a>
+            </span>
+          </div>
+          <p id="wx-strip-status" class="wx-strip-status" hidden></p>
+        </section>
+
+        <!-- ===================================================================
+             0. FARMER QUICK ACTIONS BANNER (Step 5)
+             =================================================================== -->
+        <!-- =====================================================================
+             WHAT THIS PRODUCT IS FOR. Stated plainly, above the analytics, so a
+             farmer sees the point of the page before any chart or table.
+             ===================================================================== -->
+        <section class="kl-hero" aria-labelledby="kl-hero-title">
+          <div class="kl-hero-copy">
+            <h2 id="kl-hero-title">Sell your crop directly. No broker in between.</h2>
+            <p>
+              See what each nearby mandi and buyer will actually pay you after
+              transport and charges — then deal with the buyer yourself.
+            </p>
+          </div>
+          <div class="kl-hero-actions">
+            <button type="button" class="kl-hero-btn kl-hero-btn--primary" data-qa-action="sellNow">
+              <span class="kl-hero-ico" aria-hidden="true">🌾</span>
+              <span class="kl-hero-txt">
+                <strong>Sell my crop</strong>
+                <small>Compare mandis by what you keep</small>
+              </span>
+            </button>
+            <button type="button" class="kl-hero-btn" data-qa-action="findBuyers">
+              <span class="kl-hero-ico" aria-hidden="true">🤝</span>
+              <span class="kl-hero-txt">
+                <strong>Find buyers</strong>
+                <small>Offer straight to a buyer</small>
+              </span>
+            </button>
+            <a href="#market-prices-section" class="kl-hero-btn sidebar-link">
+              <span class="kl-hero-ico" aria-hidden="true">💰</span>
+              <span class="kl-hero-txt">
+                <strong>Today&rsquo;s prices</strong>
+                <small>Mandi rates near you</small>
+              </span>
+            </a>
+            <a href="#lots-section" class="kl-hero-btn sidebar-link">
+              <span class="kl-hero-ico" aria-hidden="true">📋</span>
+              <span class="kl-hero-txt">
+                <strong>My lots &amp; offers</strong>
+                <small>What you have listed</small>
+              </span>
+            </a>
+          </div>
+        </section>
+
+        <div class="farmer-qa-banner" role="region" aria-label="Quick Farmer Actions">
+          <div class="farmer-qa-header">
+            <span class="farmer-qa-title" data-i18n="qa.title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Quick Farmer Actions
+            </span>
+            <span class="badge badge-success" style="font-size: 0.68rem;">1-Click Decision Shortcuts</span>
+          </div>
+          <div class="qa-chips-grid">
+            <button type="button" class="qa-chip qa-chip--primary" data-qa-action="sellNow" aria-label="Quick Action: Sell Now">
+              <span class="qa-chip-icon">⚡</span>
+              <span data-i18n="qa.sellNow">SELL NOW</span>
+            </button>
+            <button type="button" class="qa-chip qa-chip--amber" data-qa-action="wait" aria-label="Quick Action: Wait for better price">
+              <span class="qa-chip-icon">⏳</span>
+              <span data-i18n="qa.wait">WAIT FOR BETTER PRICE</span>
+            </button>
+            <button type="button" class="qa-chip" data-qa-action="compare" aria-label="Quick Action: Compare Markets">
+              <span class="qa-chip-icon">📊</span>
+              <span data-i18n="qa.compare">COMPARE MARKETS</span>
+            </button>
+            <button type="button" class="qa-chip" data-qa-action="checkQuality" aria-label="Quick Action: Check Crop Quality">
+              <span class="qa-chip-icon">📷</span>
+              <span data-i18n="qa.checkQuality">CHECK CROP QUALITY</span>
+            </button>
+            <button type="button" class="qa-chip" data-qa-action="findBuyers" aria-label="Quick Action: Find Verified Buyers">
+              <span class="qa-chip-icon">🤝</span>
+              <span data-i18n="qa.findBuyers">FIND VERIFIED BUYERS</span>
+            </button>
+          </div>
+        </div>
+        <!-- ===================================================================
+             1. KPI METRIC WIDGETS
+             =================================================================== -->
+        <section class="metric-grid" id="overview-section">
+          <div class="stat-widget">
+            <div>
+              <div class="stat-label">Active Sale Lots</div>
+              <div class="stat-value" id="stat-active-lots-count">0</div>
+              <div class="stat-subtext">Listed lots you created</div>
+            </div>
+            <div class="stat-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-amber">
+            <div>
+              <div class="stat-label">Pending Buyer Offers</div>
+              <div class="stat-value" id="stat-pending-offers-count">0</div>
+              <div class="stat-subtext" id="stat-avg-offer-subtext">No pending offers</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-amber-light); color: var(--color-accent-amber);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-sky">
+            <div>
+              <div class="stat-label">Best Est. Net Realisation</div>
+              <div class="stat-value" id="stat-best-net-realisation">—</div>
+              <div class="stat-subtext" id="stat-best-net-subtext">Generate a forecast to see</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-sky-light); color: var(--color-accent-sky);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="stat-widget widget-rose">
+            <div>
+              <div class="stat-label">Transactions in Progress</div>
+              <div class="stat-value" id="stat-tx-count">0</div>
+              <div class="stat-subtext">Accept an offer to start a tracker</div>
+            </div>
+            <div class="stat-icon-wrapper" style="background-color: var(--color-accent-rose-light); color: var(--color-accent-rose);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             2. MY CROPS & SALE LOTS
+             =================================================================== -->
+        <section id="lots-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">My Active Sale Lots</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Batches declared for price discovery and buyer matching</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm open-create-lot-modal">
+              <span>+ Create New Lot</span>
+            </button>
+          </div>
+
+          <div class="lot-grid" id="farmer-lots-container">
+            <!-- Dynamic lots rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             3. BEST OPPORTUNITY & EXPLAINABLE RECOMMENDATION
+             =================================================================== -->
+        <section id="recommendations-section">
+          <div class="section-tag" style="margin-bottom: var(--space-2);">Decision Intelligence</div>
+          <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-4);">
+            Market-Based Sale Recommendation
+          </h2>
+
+          <div id="rec-card-container">
+            <!-- Initial state: prompt user to generate a forecast -->
+            <div id="rec-idle-state" class="recommendation-card" style="text-align:center;padding:var(--space-8);">
+              <div style="font-size:2rem;margin-bottom:var(--space-3);">📊</div>
+              <h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);margin-bottom:var(--space-2);">No Forecast Generated Yet</h3>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);max-width:400px;margin:0 auto;">
+                Use the <strong>Price Outlook &amp; 7-Day Forecast</strong> section above to select a
+                Commodity, State, District and Market, then click "Generate Forecast".
+                The recommendation will update automatically from real market data.
+              </p>
+            </div>
+            <!-- Populated by kl:forecastReady event in price-forecast.js -->
+            <div id="rec-result-state" class="recommendation-card" hidden>
+              <div class="best-opp-badge"><span>Data-Driven Recommendation</span></div>
+              <div id="rec-content" style="margin-top:var(--space-3);"></div>
+              <p style="font-size:0.65rem;color:var(--color-slate-400);margin-top:var(--space-3);">Based on available government mandi historical data and Chronos forecast. Not financial advice. Always verify with local mandi before selling.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             4. MARKET INTELLIGENCE COMPARISON
+             =================================================================== -->
+        <section id="market-intel-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Market Rates &amp; APMC Comparison</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Latest modal price in the historical dataset for the selected market</p>
+            </div>
+            <span class="badge badge-success">Real Data</span>
+          </div>
+
+          <div class="market-intel-wrapper">
+            <div class="table-responsive">
+              <table class="market-table">
+                <thead>
+                  <tr>
+                    <th>Market Channel</th>
+                    <th>Latest modal (₹/QTL)</th>
+                    <th>As-of date</th>
+                    <th>Records</th>
+                    <th>Context</th>
+                    <th>Gaps / outliers</th>
+                    <th>Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="market-intel-body">
+                  <tr>
+                    <td colspan="7" style="font-size:var(--text-xs);color:var(--color-slate-400);padding:12px;text-align:center;">
+                      Generate a forecast above to load real market price data for the selected commodity and district.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             5. RECEIVED DIGITAL OFFERS
+             =================================================================== -->
+        <section id="offers-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Formal Buyer Offers Received</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Review and accept locked digital terms with verified buyers</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-4" id="farmer-offers-container">
+            <!-- Dynamic offers rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             6. TRANSACTION LIFECYCLE TRACKER
+             =================================================================== -->
+        <section id="transactions-section">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <h2 style="font-size: var(--text-lg); font-weight: var(--weight-bold);">Transaction Milestone Tracker</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Transparent delivery, quality check, and payment milestones</p>
+            </div>
+          </div>
+
+          <div id="farmer-transactions-container">
+            <!-- Dynamic transactions rendered by dashboard.js -->
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             TRANSPORTATION & LOGISTICS (from real /api/logistics/*)
+             =================================================================== -->
+        <section id="logistics-section" class="logistics-section">
+          <div class="logistics-header-bar">
+            <div class="logistics-title-group">
+              <h2>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                  <path d="M15 18H9"/>
+                  <path d="M19 18h2a1 1 0 0 0 1-1v-5l-3-4h-4v10"/>
+                  <circle cx="7" cy="18" r="2"/>
+                  <circle cx="17" cy="18" r="2"/>
+                </svg>
+                <span>Transportation &amp; Logistics</span>
+              </h2>
+              <p>Farm-gate produce pickup, verified fleet assignments &amp; real-time delivery status</p>
+            </div>
+            <div class="logistics-action-buttons">
+              <button type="button" class="btn btn-outline btn-sm" id="logistics-refresh-btn" title="Refresh transport requests">
+                <span>&#8635; Refresh</span>
+              </button>
+              <button type="button" class="btn btn-primary btn-sm open-request-transport-modal">
+                <span>+ Request Transportation</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Overview Metric Widgets -->
+          <div class="logistics-metric-grid">
+            <div class="logistics-metric-card">
+              <div>
+                <div class="logistics-metric-label">Total Bookings</div>
+                <div class="logistics-metric-val" id="logistics-stat-total">0</div>
+                <div class="logistics-metric-sub">All transport requests</div>
+              </div>
+              <div class="logistics-metric-icon logistics-icon-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="logistics-metric-card">
+              <div>
+                <div class="logistics-metric-label">Active / Pending</div>
+                <div class="logistics-metric-val" id="logistics-stat-active">0</div>
+                <div class="logistics-metric-sub">Awaiting pickup or assigned</div>
+              </div>
+              <div class="logistics-metric-icon logistics-icon-amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="logistics-metric-card">
+              <div>
+                <div class="logistics-metric-label">In Transit</div>
+                <div class="logistics-metric-val" id="logistics-stat-transit">0</div>
+                <div class="logistics-metric-sub">En route to destination</div>
+              </div>
+              <div class="logistics-metric-icon logistics-icon-sky">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/>
+                  <path d="M15 18H9"/>
+                  <path d="M19 18h2a1 1 0 0 0 1-1v-5l-3-4h-4v10"/>
+                  <circle cx="7" cy="18" r="2"/>
+                  <circle cx="17" cy="18" r="2"/>
+                </svg>
+              </div>
+            </div>
+
+            <div class="logistics-metric-card">
+              <div>
+                <div class="logistics-metric-label">Delivered</div>
+                <div class="logistics-metric-val" id="logistics-stat-delivered">0</div>
+                <div class="logistics-metric-sub">Safely delivered to destination</div>
+              </div>
+              <div class="logistics-metric-icon logistics-icon-emerald">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Filter Tabs -->
+          <div class="logistics-filters-bar">
+            <div class="logistics-status-pills">
+              <button type="button" class="logistics-pill-btn active" data-status="ALL">
+                <span>All Requests</span>
+              </button>
+              <button type="button" class="logistics-pill-btn" data-status="REQUESTED">
+                <span>Pending / Requested</span>
+              </button>
+              <button type="button" class="logistics-pill-btn" data-status="ASSIGNED">
+                <span>Assigned</span>
+              </button>
+              <button type="button" class="logistics-pill-btn" data-status="IN_TRANSIT">
+                <span>In Transit</span>
+              </button>
+              <button type="button" class="logistics-pill-btn" data-status="DELIVERED">
+                <span>Delivered</span>
+              </button>
+              <button type="button" class="logistics-pill-btn" data-status="CANCELLED">
+                <span>Cancelled</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Transport Requests List -->
+          <div id="logistics-requests-container">
+            <div class="empty-state">
+              <div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto 8px;"></div>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Loading transport requests&hellip;</p>
+            </div>
+          </div>
+
+          <!-- Available Transporters Preview -->
+          <div style="margin-top: var(--space-6);">
+            <div class="flex items-center justify-between" style="margin-bottom: var(--space-2);">
+              <h3 style="font-size: var(--text-sm); font-weight: var(--weight-bold); color: var(--color-slate-800);">
+                Available Transporter Network
+              </h3>
+              <span style="font-size: 0.7rem; color: var(--color-slate-400);">From /api/logistics/transporters</span>
+            </div>
+            <div id="logistics-transporters-container"></div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             7. BEST ACTION FOR YOUR CROP — Step 4
+             =================================================================== -->
+        <section id="best-action-section" aria-labelledby="ba-heading">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <div class="section-tag">Decision Engine</div>
+              <h2 id="ba-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
+                  data-i18n="section.bestAction">Best Action for Your Crop</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Explainable selling recommendation from the forecast decision engine.</p>
+            </div>
+            <span class="badge badge-success">ML Connected</span>
+          </div>
+
+          <!-- Decision Input Grid -->
+          <div class="ba-inputs-grid">
+            <div class="ba-input-block">
+              <div class="ba-input-label">Crop</div>
+              <div id="ba-crop" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Quality Grade</div>
+              <div id="ba-quality" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Location</div>
+              <div id="ba-location" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Quantity</div>
+              <div id="ba-quantity" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Current Market Price</div>
+              <div id="ba-market-price" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">7-Day Forecast</div>
+              <div id="ba-forecast" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Buyer Demand</div>
+              <div id="ba-demand" class="ba-input-val">—</div>
+            </div>
+            <div class="ba-input-block">
+              <div class="ba-input-label">Est. Logistics Cost</div>
+              <div id="ba-logistics" class="ba-input-val">—</div>
+            </div>
+          </div>
+
+          <!-- Arrow flow -->
+          <div class="ba-flow-arrow" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+
+          <!-- Net Realisation Block -->
+          <div class="ba-net-block">
+            <div class="ba-net-label">Estimated Net Realisation</div>
+            <div id="ba-net-realisation" class="ba-net-value">—</div>
+            <div id="ba-net-per-qtl" class="ba-net-sub">—</div>
+            <div class="ba-net-note">Planning estimate after transport and charges — not a guaranteed payout.</div>
+          </div>
+
+          <!-- Full money breakdown: filled by Sell Now from the backend's own
+               net-realisation figures. Hidden until a recommendation exists. -->
+          <div id="ba-breakdown" class="ba-breakdown" hidden>
+            <div class="ba-breakdown-head">
+              <h3 class="ba-breakdown-title">How this figure is built</h3>
+              <span id="ba-breakdown-market" class="badge badge-success">—</span>
+            </div>
+            <table class="ba-breakdown-table">
+              <tbody>
+                <tr>
+                  <th scope="row">Gross sale value <span>quantity × mandi price</span></th>
+                  <td id="ba-bd-gross-qtl" class="num">—</td>
+                  <td id="ba-bd-gross" class="num total">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Transport cost <span id="ba-bd-distance">—</span></th>
+                  <td id="ba-bd-transport-qtl" class="num">—</td>
+                  <td id="ba-bd-transport" class="num">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Handling &amp; loading</th>
+                  <td id="ba-bd-handling-qtl" class="num">—</td>
+                  <td id="ba-bd-handling" class="num">—</td>
+                </tr>
+                <tr class="deduct">
+                  <th scope="row">Mandi fee <span>~1% of gross</span></th>
+                  <td id="ba-bd-fee-qtl" class="num">—</td>
+                  <td id="ba-bd-fee" class="num">—</td>
+                </tr>
+                <tr class="deduct subtotal">
+                  <th scope="row">Total deductions</th>
+                  <td id="ba-bd-costs-qtl" class="num">—</td>
+                  <td id="ba-bd-costs" class="num">—</td>
+                </tr>
+                <tr class="net">
+                  <th scope="row">Estimated Net Realisation</th>
+                  <td id="ba-bd-net-qtl" class="num">—</td>
+                  <td id="ba-bd-net" class="num total">—</td>
+                </tr>
+              </tbody>
+              <caption class="ba-breakdown-caption">
+                All figures in ₹ per quintal and ₹ total for the quantity entered.
+              </caption>
+            </table>
+
+            <!-- Sell Now vs Wait -->
+            <div id="ba-timing" class="ba-timing" hidden>
+              <div class="ba-timing-col">
+                <div class="ba-timing-label">Sell now</div>
+                <div id="ba-timing-now" class="ba-timing-val">—</div>
+                <div id="ba-timing-now-note" class="ba-timing-note">At today&rsquo;s modal price</div>
+              </div>
+              <div class="ba-timing-vs" aria-hidden="true">vs</div>
+              <div class="ba-timing-col">
+                <div class="ba-timing-label">Wait (7-day forecast)</div>
+                <div id="ba-timing-wait" class="ba-timing-val">—</div>
+                <div id="ba-timing-wait-note" class="ba-timing-note">At forecast P50</div>
+              </div>
+              <div id="ba-timing-delta" class="ba-timing-delta">—</div>
+            </div>
+
+            <div class="ba-cta-row">
+              <button type="button" id="ba-sell-now-btn" class="btn btn-primary">
+                <span>Sell Now — list this lot</span>
+              </button>
+              <button type="button" id="ba-make-offer-btn" class="btn btn-outline">
+                <span>Make Offer to a Buyer</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Arrow flow -->
+          <div class="ba-flow-arrow" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+          </div>
+
+          <!-- Recommendation — populated by kl:forecastReady event -->
+          <div class="ba-recommendation-block">
+            <div class="ba-rec-label">Recommended Action</div>
+            <div id="ba-recommendation-chip" class="ba-rec-chip" style="background:var(--color-slate-200);color:var(--color-slate-600);">Generate Forecast First</div>
+            <p id="ba-rec-reason" class="ba-rec-reason" style="font-size:0.7rem;color:var(--color-slate-500);">Select a market and generate a forecast — or use Find best net market below.</p>
+          </div>
+
+          <div id="sell-now-panel" class="ba-recommendation-block" style="margin-top:var(--space-5);">
+            <div class="ba-rec-label">Best market · Net realisation</div>
+            <p style="font-size:var(--text-xs);color:var(--color-slate-500);margin:0 0 var(--space-3);">
+              Ranks candidate mandis by net realisation (modal × quantity minus estimated transport, handling, and mandi fee).
+              LIVE is shown only after a successful government feed for today. Road distance is used when a routing provider responds; otherwise a labelled straight-line estimate.
+            </p>
+            <div class="pf-controls" style="flex-wrap:wrap;margin-bottom:var(--space-3);">
+              <div class="form-group" style="flex:1;min-width:140px;">
+                <label class="form-label" for="sn-qty">Quantity (QTL)</label>
+                <input class="form-input kl-qty" id="sn-qty" type="text" inputmode="decimal" autocomplete="off" value="10" required data-label="Quantity" aria-label="Quantity in quintals" placeholder="e.g. 25">
+              </div>
+              <div style="align-self:flex-end;display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="sn-gps-btn" class="btn btn-sm">Use My Current Location</button>
+                <button type="button" id="sn-run-btn" class="btn btn-primary">Find best net market</button>
+              </div>
+            </div>
+            <div id="sn-gps-status" style="font-size:var(--text-xs);color:var(--color-slate-500);margin-bottom:var(--space-2);"></div>
+            <div id="sn-status" style="font-size:var(--text-xs);color:var(--color-slate-500);margin-bottom:var(--space-2);"></div>
+            <div id="sn-result"></div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             8. PRICE OUTLOOK & 7-DAY FORECAST — ML Connected
+             =================================================================== -->
+        <section id="price-forecast-section" aria-labelledby="pf-heading">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <div class="section-tag">Price Outlook</div>
+              <h2 id="pf-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
+                  data-i18n="section.priceOutlook">Price Outlook &amp; 7-Day Forecast</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Powered by Amazon Chronos (chronos-t5-tiny) pretrained model.</p>
+            </div>
+            <span class="badge badge-success" id="pf-ml-badge">ML Connected</span>
+          </div>
+
+          <!-- Cascading Selectors: Crop → State → District → Market -->
+          <div class="pf-controls" style="flex-wrap:wrap;">
+            <div class="form-group" style="flex:1;min-width:140px;">
+              </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-crop-select">Commodity / Crop</label>
+              <select class="form-input" id="pf-crop-select">
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-state-select">State</label>
+              <select class="form-input" id="pf-state-select" disabled>
+                <option value="">-- Select Crop first --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-district-select">District</label>
+              <select class="form-input" id="pf-district-select" disabled>
+                <option value="">-- Select State first --</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:140px;">
+              <label class="form-label" for="pf-market-select">Market</label>
+              <select class="form-input" id="pf-market-select" disabled>
+                <option value="">-- Select District first --</option>
+              </select>
+            </div>
+            <div style="align-self:flex-end;">
+              <button type="button" id="pf-fetch-btn" class="btn btn-primary btn-sm" disabled>Generate Forecast</button>
+            </div>
+          </div>
+
+          <!-- Forecast Result Area -->
+          <div id="pf-result-area">
+            <!-- IDLE -->
+            <div id="pf-idle-state" class="pf-state-box">
+              <p style="color:var(--color-slate-500);font-size:var(--text-xs);">Select Crop, State, District and Market, then click &ldquo;Generate Forecast&rdquo;.</p>
+            </div>
+            <!-- LOADING -->
+            <div id="pf-loading-state" class="pf-state-box" hidden aria-live="polite">
+              <div class="cqa-spinner-ring" style="width:32px;height:32px;border-width:3px;"></div>
+              <p style="font-size:var(--text-xs);color:var(--color-slate-500);">Running Chronos forecast model&hellip; This may take 15-30 seconds.</p>
+            </div>
+            <!-- RESULT -->
+            <div id="pf-result-state" hidden aria-live="polite">
+              <!-- Summary Row -->
+              <div style="display:flex;flex-wrap:wrap;gap:var(--space-3);margin-bottom:var(--space-4);">
+                <div class="pf-price-block" style="flex:1;min-width:180px;">
+                  <div class="pf-block-label">Selection</div>
+                  <div id="pf-selection-info" style="font-size:var(--text-xs);color:var(--color-slate-600);line-height:1.6;"></div>
+                </div>
+                <div class="pf-price-block" style="flex:1;min-width:180px;">
+                  <div class="pf-block-label">Data Source</div>
+                  <div id="pf-data-info" style="font-size:var(--text-xs);color:var(--color-slate-600);line-height:1.6;"></div>
+                </div>
+              </div>
+              <!-- 7-Day Forecast Table -->
+              <div style="margin-bottom:var(--space-4);">
+                <div class="pf-block-label" style="margin-bottom:var(--space-2);">7-Day Price Forecast</div>
+                <div id="pf-sparkline" class="pf-sparkline"></div>
+                <div class="pf-day-labels"><span>D1</span><span>D2</span><span>D3</span><span>D4</span><span>D5</span><span>D6</span><span>D7</span></div>
+                <div id="pf-forecast-table" style="margin-top:var(--space-3);"></div>
+              </div>
+              <!-- Evaluation Metrics -->
+              <div id="pf-eval-block" hidden>
+                <div class="pf-block-label" style="margin-bottom:var(--space-2);">Model Evaluation (Holdout Backtest)</div>
+                <div id="pf-eval-metrics" style="display:flex;gap:var(--space-4);flex-wrap:wrap;"></div>
+              </div>
+            </div>
+            <!-- ERROR -->
+            <div id="pf-error-state" class="pf-state-box" hidden role="alert">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <p id="pf-error-msg" style="font-size:var(--text-xs);color:#9F1239;"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             9. MARKET COMPARISON — Step 4
+             =================================================================== -->
+        <section id="market-compare-section" aria-labelledby="mc-heading">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <div class="section-tag">Location Intelligence</div>
+              <h2 id="mc-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
+                  data-i18n="section.marketCompare">Compare Nearby Markets</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Compare the latest available prices across mandis in the same district and state.</p>
+            </div>
+            <span class="badge badge-success" id="mc-data-badge">Real Data</span>
+          </div>
+
+          <!-- Note: Market comparison is auto-populated when you generate a forecast above -->
+          <div id="mc-api-note" class="cqa-disclaimer" role="note" style="margin-bottom:var(--space-4);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;color:#10B981;"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+            <p style="font-size:var(--text-xs);color:#065F46;">
+              Market comparison loads automatically when you <strong>Generate Forecast</strong> above for a Commodity + District.
+              Shows latest modal prices from the combined historical CSVs for all markets in the selected district.
+              Or use the Compare button below to select a different district.
+            </p>
+          </div>
+
+          <!-- Manual trigger form -->
+          <div class="mc-location-form" style="flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-3);">
+            <div style="font-size:var(--text-xs);color:var(--color-slate-500);align-self:center;">Current selection: <strong id="mc-origin-label">—</strong> &nbsp;|&nbsp; Crop: <strong id="mc-crop-label">—</strong></div>
+            <div style="align-self:flex-end;margin-left:auto;">
+              <button type="button" id="mc-fetch-btn" class="btn btn-outline btn-sm">Refresh Comparison</button>
+            </div>
+          </div>
+
+          <!-- Results Table -->
+          <div class="mc-table-wrap">
+            <table class="mc-table" aria-label="Market comparison table">
+              <thead>
+                <tr>
+                  <th>Market / APMC</th>
+                  <th>Latest modal (₹/QTL)</th>
+                  <th>As-of date</th>
+                  <th>Age</th>
+                  <th>Records</th>
+                  <th>Coverage</th>
+                </tr>
+              </thead>
+              <tbody id="mc-table-body">
+                <tr><td colspan="6" style="font-size:var(--text-xs);color:var(--color-slate-400);padding:12px;">Generate a forecast above to load real market comparison data.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p id="mc-source-note" style="font-size:0.68rem;color:var(--color-slate-400);margin-top:var(--space-2);">Prices are the latest modal prices available to this server, not a live official API quote.</p>
+        </section>
+
+        <!-- ===================================================================
+             10. BUYER MATCHES (STEP 4 ENHANCED)
+             =================================================================== -->
+        <section id="buyer-matches-section" aria-labelledby="bm-heading">
+          <div class="flex items-center justify-between" style="margin-bottom: var(--space-4);">
+            <div>
+              <div class="section-tag">Buyer Linkage</div>
+              <h2 id="bm-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);"
+                  data-i18n="section.buyerMatches">Buyer Opportunities</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Matched based on crop, quality, and location. Integration-ready for backend buyer matching API.</p>
+            </div>
+            <span class="badge badge-success" id="bm-status-badge">API Connected</span>
+          </div>
+          <div id="buyer-matches-container" class="bmc-grid">
+            <!-- Initial state -->
+            <div class="empty-state" style="grid-column:1/-1;">
+              <div class="empty-state-icon">🤝</div>
+              <h3>Click "View Matches" on a Lot Card</h3>
+              <p>Select a lot from "My Active Sale Lots" above and click <strong>View Matches</strong> to see real buyer matching results for that commodity.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             11. DECISION PIPELINE — Visual Workflow Summary (Step 4)
+             =================================================================== -->
+        <section id="decision-pipeline-section" aria-labelledby="dp-heading">
+          <div style="margin-bottom: var(--space-4);">
+            <div class="section-tag">Complete Workflow</div>
+            <h2 id="dp-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-top: var(--space-1);">Quality + Decision Flow</h2>
+            <p style="font-size: var(--text-xs); color: var(--color-slate-500);">End-to-end pipeline from crop details to recommendation.</p>
+          </div>
+          <div class="dp-pipeline" role="list" aria-label="KisanLink decision pipeline steps">
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/></svg>
+              </div>
+              <div class="dp-step-label">Crop Details<br><small>Crop, Qty, Grade, Location</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-sky">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <div class="dp-step-label">Photo Quality Check<br><small>Camera / Upload — ML Placeholder</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+              </div>
+              <div class="dp-step-label">Quality Grade<br><small>A / B / C — Indicative</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-amber">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <div class="dp-step-label">Market Prices<br><small>Combined mandi CSVs + ingest</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-primary">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <div class="dp-step-label">Price Forecast<br><small>Chronos 7-day P10/P50/P90</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-sky">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="dp-step-label">Buyer Demand<br><small>Matched buyer requirements</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step" role="listitem">
+              <div class="dp-step-icon dp-icon-rose">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13" rx="1"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/></svg>
+              </div>
+              <div class="dp-step-label">Logistics Cost<br><small>Estimated freight to market</small></div>
+              <div class="dp-arrow">&#8595;</div>
+            </div>
+            <div class="dp-step dp-step--highlight" role="listitem">
+              <div class="dp-step-icon dp-icon-green" style="width:48px;height:48px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              </div>
+              <div class="dp-step-label" style="font-weight:var(--weight-bold);">Expected Net Realisation<br><small>+ Sell / Wait / Compare Recommendation</small></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===================================================================
+             7. CROP QUALITY ASSESSMENT
+             =================================================================== -->
+        <section id="crop-quality-section" aria-labelledby="cqa-section-heading">
+
+          <!-- Section Header -->
+          <div class="cqa-section-header">
+            <div>
+              <div class="section-tag" style="margin-bottom: var(--space-2);">AI-Assisted Quality</div>
+              <h2 id="cqa-section-heading" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-1);">Crop Quality Check</h2>
+              <p style="font-size: var(--text-xs); color: var(--color-slate-500);">Photograph or upload your crop — get an indicative quality assessment to inform buyer &amp; market matching.</p>
+            </div>
+            <span class="badge badge-demo" style="flex-shrink:0;">ML Placeholder</span>
+          </div>
+
+          <!-- Workflow Visual: Photo → Quality Assessment → Buyer/Market -->
+          <div class="cqa-workflow" role="img" aria-label="Quality workflow: Photo leads to Quality Assessment which leads to Buyer and Market Compatibility">
+            <span class="cqa-workflow-step">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              Photo
+            </span>
+            <span class="cqa-workflow-arrow" aria-hidden="true">&#8595;</span>
+            <span class="cqa-workflow-step">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+              Quality Assessment
+            </span>
+            <span class="cqa-workflow-arrow" aria-hidden="true">&#8595;</span>
+            <span class="cqa-workflow-step">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Buyer / Market Compatibility
+            </span>
+          </div>
+
+          <!-- Photo Quality Guidance Box (Step 5) -->
+          <div class="cqa-guide-box" role="region" aria-label="Photo Quality Guidelines">
+            <div class="cqa-guide-title" data-i18n="cqa.guide.title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Photo Quality Guidance for Best Results
+            </div>
+            <div class="cqa-guide-grid">
+              <div class="cqa-guide-item">
+                <span class="cqa-guide-bullet">☀️</span>
+                <span data-i18n="cqa.guide.g1">Take the photo in good natural light (avoid dark shadows).</span>
+              </div>
+              <div class="cqa-guide-item">
+                <span class="cqa-guide-bullet">🔍</span>
+                <span data-i18n="cqa.guide.g2">Keep the crop clearly visible and centered in the frame.</span>
+              </div>
+              <div class="cqa-guide-item">
+                <span class="cqa-guide-bullet">📸</span>
+                <span data-i18n="cqa.guide.g3">Avoid blurry or out-of-focus camera angles.</span>
+              </div>
+              <div class="cqa-guide-item">
+                <span class="cqa-guide-bullet">🧅</span>
+                <span data-i18n="cqa.guide.g4">Show crop skin surface, size, and color clearly.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── Two-Column Main Layout ─────────────────────────── -->
+          <div class="cqa-main-layout">
+
+            <!-- ── LEFT PANEL: Image Input ───────────────────────── -->
+            <div class="cqa-left-panel">
+
+              <!-- Crop Selector -->
+              <div class="form-group" style="margin-bottom: var(--space-3);">
+                <label class="form-label" for="cqa-crop-select" style="font-size: var(--text-xs); font-weight: var(--weight-bold);">Selected Crop for Quality Check</label>
+                <select class="form-input" id="cqa-crop-select" style="font-size: var(--text-xs);">
+                  <option value="">Loading commodities…</option>
+                </select>
+              </div>
+
+              <!-- Mode Toggle Buttons -->
+              <div class="cqa-mode-toggle" role="group" aria-label="Select image input method">
+                <button
+                  type="button"
+                  id="cqa-mode-camera"
+                  class="cqa-mode-btn"
+                  aria-pressed="false"
+                  aria-controls="cqa-camera-panel"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                  <span data-i18n="action.takePhoto">Take Photo</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="cqa-mode-upload"
+                  class="cqa-mode-btn"
+                  aria-pressed="false"
+                  aria-controls="cqa-upload-panel"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <polyline points="16 16 12 12 8 16"/>
+                    <line x1="12" y1="12" x2="12" y2="21"/>
+                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                  </svg>
+                  <span data-i18n="action.uploadImage">Upload Image</span>
+                </button>
+              </div>
+
+              <!-- ── Camera Panel ──── -->
+              <div id="cqa-camera-panel" hidden aria-live="polite">
+
+                <div class="cqa-camera-panel" role="region" aria-label="Camera viewfinder">
+
+                  <!-- Initial placeholder (before permission) -->
+                  <div id="cqa-camera-placeholder" class="cqa-camera-placeholder">
+                    <div class="cqa-camera-icon-ring" aria-hidden="true">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                    <h4>Starting camera&hellip;</h4>
+                    <p>Allow camera access when prompted by your browser.</p>
+                  </div>
+
+                  <!-- Permission Denied / Error -->
+                  <div id="cqa-camera-perm-denied" class="cqa-camera-perm-denied" hidden>
+                    <div class="cqa-perm-icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    </div>
+                    <p class="cqa-perm-title">Camera Unavailable</p>
+                    <p class="cqa-perm-text">Camera access could not be started.</p>
+                  </div>
+
+                  <!-- Live camera feed -->
+                  <div id="cqa-camera-live-wrap" class="cqa-camera-live-wrap" hidden>
+                    <video
+                      id="cqa-video"
+                      class="cqa-video"
+                      playsinline
+                      muted
+                      autoplay
+                      aria-label="Live camera preview"
+                    ></video>
+                    <div class="cqa-live-badge" aria-hidden="true">
+                      <span class="cqa-live-dot"></span> LIVE
+                    </div>
+                  </div>
+
+                  <!-- Captured photo -->
+                  <div id="cqa-camera-captured-wrap" class="cqa-camera-captured-wrap" hidden>
+                    <img id="cqa-captured-img" class="cqa-captured-img" src="" alt="" />
+                    <div class="cqa-captured-overlay">
+                      <span class="cqa-captured-badge" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Photo Captured
+                      </span>
+                    </div>
+                  </div>
+
+                </div><!-- /.cqa-camera-panel -->
+
+                <!-- Camera Action Buttons -->
+                <div style="display: flex; gap: var(--space-3); margin-bottom: var(--space-4);">
+                  <div id="cqa-camera-live-wrap-controls" style="display:contents;">
+                    <button
+                      type="button"
+                      id="cqa-capture-btn"
+                      class="btn btn-primary"
+                      style="flex:1;"
+                      aria-label="Capture photo"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>
+                      <span data-i18n="action.capture">Capture Photo</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    id="cqa-retake-camera"
+                    class="btn btn-outline"
+                    style="flex:1;"
+                    aria-label="Retake photo"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    <span data-i18n="action.retake">Retake</span>
+                  </button>
+                </div>
+
+                <!-- Hidden canvas for photo capture -->
+                <canvas id="cqa-canvas" class="cqa-canvas" aria-hidden="true"></canvas>
+
+              </div><!-- /#cqa-camera-panel -->
+
+              <!-- ── Upload Panel ──── -->
+              <div id="cqa-upload-panel" class="cqa-upload-panel" hidden>
+
+                <!-- Hidden file input -->
+                <input
+                  type="file"
+                  id="cqa-file-input"
+                  class="sr-only"
+                  accept=".jpg,.jpeg,.png"
+                  aria-label="Upload crop image file (JPG or PNG)"
+                />
+
+                <!-- Drop Zone -->
+                <div
+                  id="cqa-upload-dropzone"
+                  class="cqa-upload-dropzone"
+                  role="button"
+                  tabindex="0"
+                  aria-label="Click or drag an image here to upload crop photo"
+                  aria-describedby="cqa-upload-formats"
+                >
+                  <div class="cqa-upload-icon" aria-hidden="true">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                  </div>
+                  <h4>Drag &amp; drop your crop photo here</h4>
+                  <p id="cqa-upload-formats">JPG / JPEG / PNG &bull; Max 10 MB</p>
+                  <button
+                    type="button"
+                    id="cqa-upload-trigger"
+                    class="btn btn-outline btn-sm"
+                    aria-label="Browse and select an image file from your device"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span data-i18n="action.browse">Browse File</span>
+                  </button>
+                </div>
+
+                <!-- File error -->
+                <div id="cqa-upload-file-error" class="cqa-upload-file-error" hidden role="alert"></div>
+
+                <!-- Preview -->
+                <div id="cqa-upload-preview-wrap" class="cqa-upload-preview" hidden>
+                  <div class="cqa-upload-preview-img-wrap">
+                    <img
+                      id="cqa-upload-preview-img"
+                      class="cqa-upload-preview-img"
+                      src=""
+                      alt=""
+                    />
+                  </div>
+                  <div class="cqa-upload-preview-meta">
+                    <div class="cqa-upload-file-info">
+                      <span id="cqa-upload-crop-name" class="cqa-upload-crop-name"></span>
+                      <span id="cqa-upload-file-size" class="cqa-upload-file-size"></span>
+                    </div>
+                    <button
+                      type="button"
+                      id="cqa-remove-upload"
+                      class="btn btn-outline btn-sm"
+                      aria-label="Remove selected image and choose a different one"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      <span data-i18n="action.remove">Remove</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div><!-- /#cqa-upload-panel -->
+
+              <!-- Analyze Quality Button -->
+              <button
+                type="button"
+                id="cqa-analyze-btn"
+                class="cqa-analyze-btn"
+                disabled
+                aria-disabled="true"
+                aria-describedby="cqa-analyze-help"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M9 12l2 2 4-4"/>
+                  <rect x="3" y="3" width="18" height="18" rx="3"/>
+                  <path d="M15 2v4M9 2v4"/>
+                </svg>
+                <span data-i18n="action.analyze">Analyze Quality</span>
+              </button>
+              <p id="cqa-analyze-help" class="form-helper" style="text-align:center; margin-top: calc(-1 * var(--space-4)); margin-bottom: var(--space-2);">
+                Select or capture a photo first to enable quality analysis.
+              </p>
+
+            </div><!-- /.cqa-left-panel -->
+
+            <!-- ── RIGHT PANEL: Result Area ──────────────────────── -->
+            <div class="cqa-right-panel">
+
+              <div id="cqa-result-area" class="cqa-result-area" aria-live="polite" aria-atomic="true">
+
+                <!-- IDLE STATE (default) -->
+                <div id="cqa-idle-state" class="cqa-idle-state">
+                  <div class="cqa-idle-icon" aria-hidden="true">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>
+                  </div>
+                  <h4 data-i18n="cqa.state.notAssessed">Quality Result Will Appear Here</h4>
+                  <p data-i18n="cqa.state.notAssessedSub">Select a photo mode, provide a crop image, and click &ldquo;Analyze Quality&rdquo; to begin.</p>
+                </div>
+
+                <!-- LOADING STATE -->
+                <div id="cqa-loading-state" class="cqa-loading-state" hidden aria-label="Analysing crop quality, please wait">
+                  <div class="cqa-spinner-ring" role="status" aria-hidden="true"></div>
+                  <h4 data-i18n="cqa.state.assessing">Analysing Crop Quality&hellip;</h4>
+                  <p data-i18n="cqa.state.assessingSub">Sending image for quality assessment. This may take a few moments.</p>
+                </div>
+
+                <!-- RESULT STATE -->
+                <div id="cqa-result-state" class="cqa-result-state" hidden>
+
+                  <div class="cqa-result-header">
+                    <span class="cqa-result-title">Indicative Quality Assessment</span>
+                    <button
+                      type="button"
+                      id="cqa-analyze-again-btn"
+                      class="btn btn-outline btn-sm"
+                      aria-label="Clear result and analyze again"
+                    ><span data-i18n="action.analyzeAgain">Analyze Again</span></button>
+                  </div>
+
+                  <div class="cqa-result-grid">
+                    <div class="cqa-result-block">
+                      <div class="cqa-result-block-label" data-i18n="cqa.state.gradeLabel">Indicative Grade</div>
+                      <div id="cqa-result-grade" aria-live="polite"></div>
+                    </div>
+                    <div class="cqa-result-block">
+                      <div class="cqa-result-block-label" data-i18n="cqa.state.confLabel">Model Confidence</div>
+                      <div id="cqa-result-confidence" aria-live="polite"></div>
+                    </div>
+                  </div>
+
+                  <div class="cqa-indicators-block">
+                    <div class="cqa-indicators-label" data-i18n="cqa.state.indicators">Visible Quality Indicators</div>
+                    <ul id="cqa-result-indicators" class="cqa-indicators-list" aria-label="Quality indicators from model"></ul>
+                  </div>
+
+                  <div id="cqa-result-model-status" class="cqa-result-model-status" aria-label="Model status information"></div>
+
+                  <!-- Decision Pipeline Action -->
+                  <div style="margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--color-slate-200);">
+                    <button
+                      type="button"
+                      id="cqa-apply-pipeline-btn"
+                      class="btn btn-primary"
+                      style="width:100%;"
+                      aria-label="Apply Quality Result to Decision Engine"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      <span data-i18n="action.applyPipeline">Apply Quality to Decision Engine</span>
+                    </button>
+                  </div>
+
+                </div><!-- /#cqa-result-state -->
+
+                <!-- ERROR STATE -->
+                <div id="cqa-error-state" class="cqa-error-state" hidden role="alert">
+                  <div class="cqa-error-icon" aria-hidden="true">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  </div>
+                  <h4>Analysis Failed</h4>
+                  <p id="cqa-error-message" class="cqa-error-message"></p>
+                  <button
+                    type="button"
+                    id="cqa-error-retry-btn"
+                    class="btn btn-outline btn-sm"
+                    aria-label="Dismiss error and try again"
+                  ><span data-i18n="action.analyzeAgain">Try Again</span></button>
+                </div>
+
+              </div><!-- /#cqa-result-area -->
+
+              <!-- Disclaimer -->
+              <div class="cqa-disclaimer" role="note">
+                <svg class="cqa-disclaimer-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <p class="cqa-disclaimer-text">
+                  <strong>Disclaimer:</strong> Image-based assessment is indicative and does not replace physical or laboratory quality inspection. Results should be verified by a qualified agronomist before use in trade negotiations.
+                </p>
+              </div>
+
+              <!-- Workflow Integration Banner -->
+              <div class="cqa-context-banner">
+                <div class="cqa-context-icon" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <p class="cqa-context-text">
+                  <strong>How this fits the KisanLink workflow:</strong> Your declared <em>Crop + Quantity + Quality Grade + Location</em> feeds into the recommendation engine to determine WHERE to sell, WHEN to sell, and TO WHOM — for the best net realisation.
+                </p>
+              </div>
+
+            </div><!-- /.cqa-right-panel -->
+
+          </div><!-- /.cqa-main-layout -->
+
+        </section><!-- /#crop-quality-section -->
+
+      </div><!-- /.dashboard-body -->
+
+      <!-- =====================================================================
+           FARMER RESOURCE SECTIONS
+           These live inside .dashboard-main so they pick up the sidebar offset
+           and page padding. As direct children of <body> they rendered at
+           left:0 underneath the 260px sidebar, clipping their own headings and
+           controls, and sat below the full-height layout leaving a large band
+           of empty space above them.
+           ===================================================================== -->
+  <section id="market-prices-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Mandi Prices</div>
+        <h2 class="section-heading">Mandi Prices</h2>
+        <p class="section-subtext">Search crop, state, district, and market. LIVE only after a successful official feed for today; otherwise latest verified records with their real dates.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <div style="min-width:200px;">
+        <select id="mp-commodity" class="form-select"><option value="">Select Commodity…</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-state" class="form-select"><option value="">All states</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-district" class="form-select"><option value="">All districts</option></select>
+      </div>
+      <div style="min-width:170px;">
+        <select id="mp-market" class="form-select"><option value="">All markets</option></select>
+      </div>
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadMarketPrices()">Search</button>
+    </div>
+    <div id="mp-label" style="font-size:0.75rem;color:var(--color-slate-500);margin-bottom:8px;"></div>
+    <div id="mp-container">
+      <div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3><p>Choose a commodity above to view latest available mandi prices.</p></div>
+    </div>
+  </section>
+
+  <!-- WEATHER SECTION -->
+  <section id="weather-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Open-Meteo</div>
+        <h2 class="section-heading">Weather Forecast</h2>
+        <p class="section-subtext">Real weather data for your location. Source: Open-Meteo (open-meteo.com)</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="wx-district" class="form-input" placeholder="District (e.g. Nashik)" style="max-width:180px;">
+      <input type="text" id="wx-state" class="form-input" placeholder="State (e.g. Maharashtra)" style="max-width:180px;">
+      <button type="button" class="btn btn-sm" id="wx-gps-btn">Use My Current Location</button>
+      <button type="button" class="btn btn-primary btn-sm" onclick="klLoadWeather()">Get Weather</button>
+    </div>
+    <div id="wx-container">
+      <div class="empty-state"><div class="empty-state-icon">🌤️</div><h3>Enter Your Location</h3><p>Enter district and state to get current weather and 5-day forecast.</p></div>
+    </div>
+  </section>
+
+  <!-- GOVT SCHEMES SECTION -->
+  <section id="schemes-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Government of India</div>
+        <h2 class="section-heading">Government Schemes for Farmers</h2>
+        <p class="section-subtext">Curated information about central government agricultural schemes. Verify eligibility on official portals before applying.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="text" id="sch-search" class="form-input" placeholder="Search schemes…" style="max-width:240px;" oninput="klLoadSchemes()">
+    </div>
+    <div id="schemes-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading schemes…</p></div>
+    </div>
+  </section>
+
+  <!-- KNOWLEDGE SECTION -->
+  <section id="knowledge-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Ministry of Agriculture</div>
+        <h2 class="section-heading">Farming Knowledge</h2>
+        <p class="section-subtext">Practical farming guidance. All content is advisory — consult your local KVK for specific recommendations.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <select id="kn-category" class="form-select" style="max-width:200px;" onchange="klLoadKnowledge()">
+        <option value="">All Categories</option>
+        <option value="Soil">Soil</option>
+        <option value="Irrigation">Irrigation</option>
+        <option value="Pest">Pest Awareness</option>
+        <option value="Crop">Crop Planning</option>
+        <option value="Post-Harvest">Post-Harvest</option>
+        <option value="Market">Market</option>
+        <option value="Storage">Storage</option>
+        <option value="Organic">Organic Farming</option>
+      </select>
+      <input type="text" id="kn-search" class="form-input" placeholder="Search topic…" style="max-width:200px;" oninput="klLoadKnowledge()">
+    </div>
+    <div id="knowledge-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading…</p></div>
+    </div>
+  </section>
+
+  <!-- LEARNING SECTION -->
+  <section id="learning-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">ICAR / Doordarshan / Official Sources</div>
+        <h2 class="section-heading">Learn &amp; Video Resources</h2>
+        <p class="section-subtext">Official educational resources from government agricultural institutions. Links open external sites.</p>
+      </div>
+    </div>
+    <div style="margin-bottom:var(--space-4);">
+      <input type="text" id="ln-search" class="form-input" placeholder="Search learning topics…" style="max-width:240px;" oninput="klLoadLearning(true)">
+    </div>
+    <div id="learning-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div><p style="margin-top:8px;font-size:var(--text-xs);color:var(--color-slate-500);">Loading resources…</p></div>
+    </div>
+  </section>
+
+  <!-- HELPLINE SECTION -->
+  <section id="helpline-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">Official Government Numbers</div>
+        <h2 class="section-heading">Kisan Helplines</h2>
+        <p class="section-subtext">Verified official helpline numbers only. Verify current availability before calling.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="search" id="helpline-search" class="form-input" style="max-width:320px;"
+             placeholder="Search helpline, purpose, or category" autocomplete="off"
+             aria-label="Search helplines">
+    </div>
+    <div id="helpline-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
+  <!-- SEEDS SECTION -->
+  <section id="seeds-section" class="dashboard-section" style="display:none;">
+    <div class="section-header-row">
+      <div>
+        <div class="section-tag">NSC / ICAR / State Corporations</div>
+        <h2 class="section-heading">Seeds &amp; Seed Resources</h2>
+        <p class="section-subtext">Official seed organizations and quality verification guidance. KisanLink does not sell seeds.</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:var(--space-4);">
+      <input type="search" id="seeds-search" class="form-input" style="max-width:320px;"
+             placeholder="Search organisation, crop, or service" autocomplete="off"
+             aria-label="Search seed organisations">
+    </div>
+    <div id="seeds-container">
+      <div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;"></div></div>
+    </div>
+  </section>
+
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       CREATE SALE LOT MODAL
+       ========================================================================= -->
+  <!-- =========================================================================
+       MAKE OFFER MODAL (farmer -> open buyer requirement)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="make-offer-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="offer-modal-title">
+    <div class="modal-dialog" style="max-width: 560px;">
+      <button type="button" class="modal-close-btn" id="close-make-offer-modal" aria-label="Close offer dialog">&times;</button>
+      <h2 id="offer-modal-title" style="font-size: var(--text-lg); font-weight: var(--weight-bold); margin-bottom: var(--space-1);">Send Offer to Buyer</h2>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-500); margin-bottom: var(--space-4);">
+        Offer one of your published lots against an open buyer requirement. The buyer
+        receives it in their offers list and can accept or reject.
+      </p>
+
+      <form id="make-offer-form">
+        <div id="offer-context" class="lot-reco-summary" hidden></div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-requirement">Buyer requirement *</label>
+          <select class="form-select" id="offer-requirement" name="requirement_id" required>
+            <option value="">Loading open requirements…</option>
+          </select>
+          <p id="offer-requirement-help" style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;"></p>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-lot">Your lot to offer *</label>
+          <select class="form-select" id="offer-lot" name="lot_id" required>
+            <option value="">Loading your lots…</option>
+          </select>
+          <p id="offer-lot-help" style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;"></p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="offer-quantity">Quantity (QTL) *</label>
+            <input type="text" class="form-input kl-qty" id="offer-quantity" name="quantity_qtl"
+                   inputmode="decimal" autocomplete="off" required placeholder="e.g. 25">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="offer-price">Your asking price (₹/QTL) *</label>
+            <input type="text" class="form-input kl-qty" id="offer-price" name="price_per_qtl"
+                   inputmode="decimal" autocomplete="off" required placeholder="e.g. 2000">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="offer-message">Message to buyer (optional)</label>
+          <textarea class="form-input" id="offer-message" name="message" rows="2" maxlength="500"
+                    placeholder="e.g. Grade A produce, ready for pickup from 15th."></textarea>
+        </div>
+
+        <div id="offer-total-line" style="font-size:0.82rem;color:var(--color-slate-700);margin-top:4px;"></div>
+        <div id="offer-feedback" role="status" style="margin-top:10px;font-size:0.82rem;"></div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" id="cancel-make-offer">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm" id="submit-make-offer">
+            <span>Send Offer</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="create-lot-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-lot-title">
+    <div class="modal-dialog" style="max-width: 600px;">
+      <button type="button" class="modal-close-btn" id="close-create-lot-modal" aria-label="Close modal">&times;</button>
+      
+      <div class="section-tag" style="margin-bottom: var(--space-2);">Crop Lot Declaration</div>
+      <h3 id="modal-lot-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Create New Sale Lot</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-600); margin-bottom: var(--space-6);">
+        Declare available crop volume, quality grade, and farm location to discover best net price opportunities.
+      </p>
+
+      <form id="create-lot-form">
+        <!-- Populated when the farmer arrives here via "Proceed to Sell" so the
+             chosen recommendation travels with the lot. Hidden otherwise. -->
+        <div id="lot-reco-summary" class="lot-reco-summary" hidden></div>
+        <input type="hidden" id="lot-net-realisation" name="net_realisation" value="">
+        <input type="hidden" id="lot-transport-cost" name="transport_cost" value="">
+        <input type="hidden" id="lot-distance-km" name="distance_km" value="">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-crop">Crop Commodity *</label>
+            <select class="form-select" id="lot-crop" name="crop" required>
+              <option value="">Loading commodities…</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-variety">Crop Variety</label>
+            <input type="text" class="form-input" id="lot-variety" name="variety" placeholder="e.g. Garwa, Red, Hybrid">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-quantity">Available Quantity *</label>
+            <input type="text" class="form-input kl-qty" id="lot-quantity" name="quantity" inputmode="decimal" autocomplete="off" placeholder="e.g. 25" required value="10" aria-label="Available quantity">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-unit">Unit of Measure *</label>
+            <select class="form-select" id="lot-unit" name="unit" required>
+              <option value="QTL" selected>Quintals (QTL - 100 kg)</option>
+              <option value="MT">Metric Tonnes (MT - 1000 kg)</option>
+              <option value="kg">Kilograms (kg)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-grade">Quality Grade *</label>
+            <select class="form-select" id="lot-grade" name="grade" required>
+              <option value="Grade A" selected>Grade A (Premium / Export Quality)</option>
+              <option value="Grade B">Grade B (Standard Commercial Quality)</option>
+              <option value="Grade C">Grade C (Processing Grade / Fair Quality)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="lot-harvest">Harvest / Availability Date *</label>
+            <input type="date" class="form-input" id="lot-harvest" name="harvestDate" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-location">Farm / Pickup Location *</label>
+            <input type="text" class="form-input" id="lot-location" name="location" placeholder="e.g. Dindori, Nashik (Maharashtra)" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lot-market">Recommended market</label>
+            <input type="text" class="form-input" id="lot-market" name="market" placeholder="Filled from best-market comparison">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="lot-price">Expected Base Price (₹/QTL)</label>
+            <input type="text" class="form-input kl-qty" id="lot-price" name="expectedPrice" placeholder="e.g. 2000" inputmode="decimal" autocomplete="off" aria-label="Expected base price per quintal">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="lot-district">District</label>
+            <input type="text" class="form-input" id="lot-district" name="district" placeholder="District">
+          </div>
+        </div>
+        <input type="hidden" id="lot-state" name="state" value="">
+
+        <div class="form-group">
+          <label class="form-label" for="lot-image">Crop photo (optional)</label>
+          <input type="file" class="form-input" id="lot-image" name="image"
+                 accept="image/jpeg,image/png,image/webp">
+          <p style="font-size:0.68rem;color:var(--color-slate-500);margin-top:4px;">
+            Buyers see this photo with your lot. JPG, PNG or WebP, up to 5&nbsp;MB.
+            You can publish without one.
+          </p>
+          <div id="lot-image-preview" class="lot-image-preview" hidden>
+            <img id="lot-image-preview-img" alt="Preview of your crop photo">
+            <button type="button" id="lot-image-remove" class="btn btn-ghost btn-sm">Remove photo</button>
+          </div>
+          <p id="lot-image-error" class="kl-qty-error" hidden></p>
+        </div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-6); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('create-lot-modal').classList.remove('modal-open')">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm">
+            <span>Publish Sale Lot</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       REQUEST TRANSPORTATION MODAL (maps to real POST /api/logistics/requests)
+       ========================================================================= -->
+  <div class="modal-backdrop" id="request-transport-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modal-transport-title">
+    <div class="modal-dialog" style="max-width: 620px;">
+      <button type="button" class="modal-close-btn" id="close-request-transport-modal" aria-label="Close modal">&times;</button>
+
+      <div class="section-tag" style="margin-bottom: var(--space-2);">Farm-Gate Logistics</div>
+      <h3 id="modal-transport-title" style="font-size: var(--text-xl); margin-bottom: var(--space-2);">Request Transportation</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-slate-600); margin-bottom: var(--space-4);">
+        Book produce pickup from farm gate to destination mandi or processing facility.
+      </p>
+
+      <form id="request-transport-form" novalidate>
+        <!-- Linkage to Lot or Transaction -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="req-lot-id">Crop Lot ID</label>
+            <input type="number" class="form-input" id="req-lot-id" name="lot_id" placeholder="e.g. 1" min="1">
+            <span style="font-size: 0.68rem; color: var(--color-slate-400);">Provide either Lot ID or Transaction ID</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="req-tx-id">Transaction ID (Optional)</label>
+            <input type="number" class="form-input" id="req-tx-id" name="transaction_id" placeholder="e.g. 1" min="1">
+            <span style="font-size: 0.68rem; color: var(--color-slate-400);">If booking against accepted deal</span>
+          </div>
+        </div>
+
+        <!-- Pickup Location -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="req-pickup-dist">Pickup District *</label>
+            <input type="text" class="form-input" id="req-pickup-dist" name="pickup_district" placeholder="e.g. Pune" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="req-pickup-addr">Pickup Farm / Gate Address</label>
+            <input type="text" class="form-input" id="req-pickup-addr" name="pickup_address" placeholder="e.g. Gat No. 42, Baramati Farm">
+          </div>
+        </div>
+
+        <!-- Destination Location -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="req-drop-dist">Destination District *</label>
+            <input type="text" class="form-input" id="req-drop-dist" name="drop_district" placeholder="e.g. Mumbai / Pune" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="req-drop-addr">Destination Mandi / Delivery Address</label>
+            <input type="text" class="form-input" id="req-drop-addr" name="drop_address" placeholder="e.g. APMC Market Yard, Gate 2">
+          </div>
+        </div>
+
+        <!-- Volume & Vehicle Type -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="req-quantity">Cargo Quantity *</label>
+            <input type="number" class="form-input" id="req-quantity" name="quantity" min="0.01" step="any" placeholder="e.g. 40" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="req-unit">Unit *</label>
+            <select class="form-select" id="req-unit" name="unit" required>
+              <option value="QUINTAL" selected>QUINTAL (100 kg)</option>
+              <option value="TONNE">TONNE (1000 kg)</option>
+              <option value="KG">KG</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="req-vehicle-type">Vehicle Requirement *</label>
+            <select class="form-select" id="req-vehicle-type" name="vehicle_type" required>
+              <option value="TEMPO" selected>Tempo / Mini Truck (up to 2.5T)</option>
+              <option value="PICKUP">Pickup Truck (up to 1.5T)</option>
+              <option value="TRACTOR_TROLLEY">Tractor Trolley (Farm-to-Mandi, up to 4T)</option>
+              <option value="TRUCK_9T">9-Tonne Commercial Truck</option>
+              <option value="TRUCK_16T">16-Tonne Heavy Truck</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="req-date">Scheduled Pickup Date *</label>
+            <input type="date" class="form-input" id="req-date" name="scheduled_date" required>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label class="form-label" for="req-notes">Handling Instructions / Notes</label>
+          <textarea class="form-input" id="req-notes" name="notes" rows="2" maxlength="500" placeholder="e.g. Keep dry, morning pickup preferred, produce bagged in 50kg jute bags."></textarea>
+        </div>
+
+        <div id="request-transport-feedback" class="bp-feedback" role="alert" hidden style="margin-top:var(--space-2);font-size:var(--text-xs);"></div>
+
+        <div class="flex items-center justify-end gap-3" style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-slate-200);">
+          <button type="button" class="btn btn-outline btn-sm" id="cancel-request-transport-modal">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="btn btn-primary btn-sm" id="request-transport-submit-btn">
+            <span>Submit Transport Request</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ── KisanLink Chat Assistant (floating) ────────────────────────── -->
+  <div class="chat-fab-wrap">
+    <button type="button" id="chat-toggle-btn" class="chat-fab-btn" aria-label="Open KisanLink Assistant" aria-haspopup="dialog" aria-expanded="false">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span id="chat-unread-badge" class="chat-fab-badge" hidden>1</span>
+    </button>
+
+    <div id="chat-panel" class="chat-panel" hidden role="dialog" aria-label="KisanLink Assistant" aria-modal="false" aria-hidden="true">
+      <!-- Header -->
+      <div class="chat-panel-header">
+        <div class="chat-panel-title">
+          <div class="chat-panel-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          <span data-i18n="chat.title">KisanLink Assistant</span>
+        </div>
+        <button type="button" id="chat-close-btn" class="chat-close-btn" aria-label="Close chat assistant">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+
+      <!-- API Notice -->
+      <div class="chat-api-notice" role="note" data-i18n="chat.apiNotice">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Assistant backend not connected. Responses are placeholder only.
+      </div>
+
+      <!-- Voice Listening Status Bar (Step 5) -->
+      <div id="chat-voice-status" class="chat-voice-status" hidden aria-live="polite">
+        <div class="chat-voice-wave" aria-hidden="true">
+          <span></span><span></span><span></span><span></span>
+        </div>
+        <span id="chat-voice-transcript" class="chat-voice-transcript" data-i18n="chat.voiceListening">Listening... Speak now</span>
+      </div>
+
+      <!-- Voice Notice Alert (if unsupported / mic denied) -->
+      <div id="chat-voice-notice" class="chat-voice-notice" hidden role="alert"></div>
+
+      <!-- Message list -->
+      <div id="chat-message-list" class="chat-message-list" role="log" aria-live="polite" aria-label="Chat messages">
+        <div id="chat-empty-state" class="chat-empty-state">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--color-slate-400);" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <p data-i18n="chat.empty">Ask about your crop, market prices, or buyer opportunities.</p>
+        </div>
+      </div>
+
+      <!-- Suggested Questions -->
+      <div id="chat-suggested" class="chat-suggested-wrap" aria-label="Suggested questions"></div>
+
+      <!-- Input Bar (Text + Voice Mic) -->
+      <div class="chat-input-bar">
+        <button
+          type="button"
+          id="chat-mic-btn"
+          class="chat-mic-btn"
+          aria-label="Voice input (Speak)"
+          title="Voice input (Speak)"
+          aria-pressed="false"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+          </svg>
+        </button>
+
+        <textarea
+          id="chat-input"
+          class="chat-textarea"
+          placeholder="Ask anything about your crop or market…"
+          rows="1"
+          data-i18n="chat.placeholder"
+          data-i18n-attr="placeholder"
+          aria-label="Type your question"
+        ></textarea>
+        <button type="button" id="chat-send-btn" class="chat-send-btn" aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       FARMER SUPER-APP SECTIONS
+       ========================================================================= -->
+
+  <!-- MARKET PRICES SECTION -->
+  <!-- INLINE JS FOR SUPER-APP SECTIONS -->
+  <script>
+  // ========================================================================
+  // Sidebar section nav — show/hide sections
+  // ========================================================================
+  (function() {
+    var SUPER_SECTIONS = ['market-prices-section','weather-section','schemes-section',
+      'knowledge-section','learning-section','helpline-section','seeds-section'];
+    var body = document.querySelector('.dashboard-body');
+
+    document.querySelectorAll('.sidebar-link').forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var href = link.getAttribute('href');
+        if (!href || !href.startsWith('#')) return;
+        var targetId = href.slice(1);
+        if (!SUPER_SECTIONS.includes(targetId)) {
+          SUPER_SECTIONS.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+          });
+          if (body) body.style.display = '';
+          return;
+        }
+        if (body) body.style.display = 'none';
+        SUPER_SECTIONS.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = (id === targetId) ? 'block' : 'none';
+        });
+        if (targetId === 'market-prices-section') {
+          if (window.KL_Step4) { /* commodities filled on init */ }
+        }
+        if (targetId === 'schemes-section')  window.klLoadSchemes && klLoadSchemes();
+        if (targetId === 'knowledge-section') window.klLoadKnowledge && klLoadKnowledge();
+        if (targetId === 'learning-section')  window.klLoadLearning && klLoadLearning();
+        if (targetId === 'helpline-section')  window.klLoadHelplines && klLoadHelplines();
+        if (targetId === 'seeds-section')     window.klLoadSeeds && klLoadSeeds();
+      });
+    });
+  })();
+
+  // ========================================================================
+  // Market Prices
+  // ========================================================================
+  window.klLoadMarketPrices = async function() {
+    var commodity = document.getElementById('mp-commodity').value;
+    var state     = document.getElementById('mp-state').value.trim();
+    var district  = document.getElementById('mp-district').value.trim();
+    var market    = (document.getElementById('mp-market') || {}).value || '';
+    market = (market || '').trim();
+    var container = document.getElementById('mp-container');
+    var label     = document.getElementById('mp-label');
+    if (!commodity) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💰</div><h3>Select a Commodity</h3></div>';
+      return;
+    }
+    container.innerHTML = '<div class="empty-state" style="padding:24px;"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:8px;">Loading prices…</p></div>';
+    try {
+      var result = null;
+      var liveErr = null;
+      if (typeof window.getLiveMarketPrices === 'function') {
+        try {
+          var live = await window.getLiveMarketPrices({ commodity, state, district, market });
+          if (live && live.success && live.records && live.records.length && live.live) {
+            result = {
+              label: live.label || "TODAY'S LIVE MANDI DATA",
+              latest_date: live.records[0].arrival_date,
+              source: live.source,
+              prices: live.records.map(function (p) {
+                return {
+                  market: p.market, district: p.district, state: p.state,
+                  min_price: p.min_price, max_price: p.max_price, modal_price: p.modal_price,
+                  date: p.arrival_date
+                };
+              }),
+              is_live: true
+            };
+          } else if (live && !live.success) {
+            liveErr = live.error || 'Live mandi feed unavailable';
+          }
+        } catch (e) {
+          liveErr = (e && e.message) || 'Live mandi service unavailable.';
+        }
+      }
+      if (!result) {
+        result = await window.getLatestMarketPrices({ commodity, state, district, market });
+        result.is_live = false;
+      }
+      var extra = '';
+      if (result.is_live) {
+        extra = 'LIVE TODAY — official government mandi feed.';
+      } else if (result.dev_fixture) {
+        // Synthetic rows are never described as verified or as mandi data.
+        extra = 'Generated sample rows for development — NOT real mandi prices ' +
+          'and not government data.';
+      } else {
+        extra = (liveErr ? liveErr + ' ' : 'Live mandi feed unavailable. ') +
+          'Showing latest verified mandi data' +
+          (result.latest_date ? ' from ' + result.latest_date : '') + '.';
+      }
+      if (label) label.textContent = (result.is_live ? (result.label || "TODAY'S LIVE MANDI DATA") : (result.label || 'Latest available mandi data')) +
+        ' · ' + extra + ' Source: ' + (result.source || '');
+      if (!result.prices || result.prices.length === 0) {
+        container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No Records Found</h3><p>No data for ' + commodity + (state ? ', '+state : '') + '. Try a different commodity or remove filters.</p></div>';
+        return;
+      }
+      function fmtDate(iso) {
+        if (!iso) return '—';
+        var p = String(iso).slice(0, 10).split('-');
+        if (p.length === 3) return p[2] + '-' + p[1] + '-' + p[0];
+        return iso;
+      }
+      var rows = result.prices.map(function(p) {
+        var freshness = result.is_live
+          ? '<span class="badge badge-success">LIVE TODAY</span>'
+          : (result.dev_fixture
+              ? ('Sample data<br>' + fmtDate(p.date))
+              : ('Latest available<br>' + fmtDate(p.date)));
+        return '<tr><td style="padding:8px 12px;">' + commodity + '</td>' +
+          '<td style="padding:8px 12px;color:var(--color-slate-500);">' + (p.variety||'—') + '</td>' +
+          '<td style="padding:8px 12px;font-weight:600;">' + (p.market||'—') + '</td>' +
+          '<td style="padding:8px 12px;">' + (p.district||'—') + '</td>' +
+          '<td style="padding:8px 12px;">' + (p.state||'—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;">' + (p.min_price ? '₹'+Math.round(p.min_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;">' + (p.max_price ? '₹'+Math.round(p.max_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-family:monospace;font-weight:700;color:var(--color-accent-green)">' + (p.modal_price ? '₹'+Math.round(p.modal_price).toLocaleString('en-IN') : '—') + '</td>' +
+          '<td style="padding:8px 12px;font-size:0.75rem;color:var(--color-slate-500);">' + freshness + '</td>' +
+          '<td style="padding:8px 12px;font-size:0.7rem;color:var(--color-slate-400);">' + (p.source || result.source || '—') + '</td></tr>';
+      }).join('');
+      var countLine = '<p style="font-size:0.75rem;color:var(--color-slate-500);margin:0 0 8px;">Showing ' +
+        result.prices.length + ' market' + (result.prices.length === 1 ? '' : 's') +
+        ' for ' + commodity + '. All prices in ₹ per quintal.</p>';
+      container.innerHTML = countLine + '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;"><thead><tr style="background:var(--color-slate-50,#f8fafc);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-slate-500);"><th style="padding:8px 12px;text-align:left;">Crop</th><th style="padding:8px 12px;text-align:left;">Variety</th><th style="padding:8px 12px;text-align:left;">Market</th><th style="padding:8px 12px;text-align:left;">District</th><th style="padding:8px 12px;text-align:left;">State</th><th style="padding:8px 12px;text-align:left;">Min ₹/Q</th><th style="padding:8px 12px;text-align:left;">Max ₹/Q</th><th style="padding:8px 12px;text-align:left;">Modal ₹/Q</th><th style="padding:8px 12px;text-align:left;">Freshness</th><th style="padding:8px 12px;text-align:left;">Source</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Price Data Unavailable</h3><p>' + (err.message||'Backend error') + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Mandi Prices filters: searchable crop -> state -> district -> market.
+  // Every list comes from the dataset via the API; nothing is hardcoded.
+  // ========================================================================
+  (function () {
+    var cropSel = document.getElementById('mp-commodity');
+    var stateSel = document.getElementById('mp-district') && document.getElementById('mp-state');
+    var distSel = document.getElementById('mp-district');
+    var mktSel = document.getElementById('mp-market');
+    if (!cropSel || !stateSel || !distSel || !mktSel) return;
+
+    function fill(sel, values, allLabel) {
+      var current = sel.value;
+      sel.innerHTML = '<option value="">' + allLabel + '</option>';
+      (values || []).forEach(function (v) {
+        var o = document.createElement('option');
+        o.value = v; o.textContent = v;
+        sel.appendChild(o);
+      });
+      if (current && values && values.indexOf(current) >= 0) sel.value = current;
+      else sel.value = '';
+    }
+
+    function api(path) {
+      return window.apiClient.get(path).then(function (r) {
+        return Array.isArray(r.data) ? r.data : [];
+      }).catch(function () { return []; });
+    }
+
+    function loadStates() {
+      var c = cropSel.value;
+      if (!c) { fill(stateSel, [], 'Select a crop first'); fill(distSel, [], 'Select a state first');
+                fill(mktSel, [], 'Select a district first'); return; }
+      fill(stateSel, [], 'Loading states…');
+      api('/states?commodity=' + encodeURIComponent(c)).then(function (v) {
+        fill(stateSel, v, 'All states');
+        loadDistricts();
+      });
+    }
+
+    function loadDistricts() {
+      var c = cropSel.value, st = stateSel.value;
+      if (!c || !st) { fill(distSel, [], 'Select a state first');
+                       fill(mktSel, [], 'Select a district first'); return; }
+      fill(distSel, [], 'Loading districts…');
+      api('/districts?commodity=' + encodeURIComponent(c) + '&state=' + encodeURIComponent(st))
+        .then(function (v) { fill(distSel, v, 'All districts'); loadMarkets(); });
+    }
+
+    function loadMarkets() {
+      var c = cropSel.value, st = stateSel.value, d = distSel.value;
+      if (!c || !st || !d) { fill(mktSel, [], 'Select a district first'); return; }
+      fill(mktSel, [], 'Loading markets…');
+      api('/markets?commodity=' + encodeURIComponent(c) + '&state=' + encodeURIComponent(st) +
+          '&district=' + encodeURIComponent(d))
+        .then(function (v) { fill(mktSel, v, 'All markets'); });
+    }
+
+    cropSel.addEventListener('change', loadStates);
+    stateSel.addEventListener('change', loadDistricts);
+    distSel.addEventListener('change', loadMarkets);
+
+    function attachAll() {
+      if (!window.KLCombobox) return;
+      KLCombobox.attach('mp-commodity', { label: 'Crop', placeholder: 'Type a crop, e.g. Onion',
+                                          emptyHint: 'Loading crops…' });
+      KLCombobox.attach('mp-state', { label: 'State', placeholder: 'Type a state, e.g. Maharashtra',
+                                      emptyHint: 'Choose a crop first' });
+      KLCombobox.attach('mp-district', { label: 'District', placeholder: 'Type a district',
+                                         emptyHint: 'Choose a state first' });
+      KLCombobox.attach('mp-market', { label: 'Market', placeholder: 'Type a mandi name',
+                                       emptyHint: 'Choose a district first' });
+      // Price Outlook uses the same treatment.
+      KLCombobox.attach('pf-crop-select', { label: 'Crop', placeholder: 'Type a crop, e.g. Onion',
+                                            emptyHint: 'Loading crops…' });
+      KLCombobox.attach('pf-state-select', { label: 'State', placeholder: 'Type a state',
+                                             emptyHint: 'Choose a crop first' });
+      KLCombobox.attach('pf-district-select', { label: 'District', placeholder: 'Type a district',
+                                                emptyHint: 'Choose a state first' });
+      KLCombobox.attach('pf-market-select', { label: 'Market', placeholder: 'Type a mandi name',
+                                              emptyHint: 'Choose a district first' });
+      KLCombobox.attach('lot-crop', { label: 'Crop', placeholder: 'Type a crop',
+                                      emptyHint: 'Loading crops…' });
+      KLCombobox.attach('cqa-crop-select', { label: 'Crop', placeholder: 'Type a crop',
+                                             emptyHint: 'Loading crops…' });
+    }
+
+    // The selects are filled asynchronously; attach once they exist and retry
+    // briefly for the ones populated after first paint.
+    var tries = 0;
+    (function poll() {
+      attachAll();
+      if (++tries < 12) setTimeout(poll, 700);
+    })();
+
+    // Enter anywhere in the filter row runs the search.
+    ['mp-commodity', 'mp-state', 'mp-district', 'mp-market'].forEach(function (id) {
+      var host = document.getElementById(id);
+      if (!host || !host.parentNode) return;
+      host.parentNode.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.classList.contains('kl-cb-input')) {
+          var list = e.target.parentNode.querySelector('.kl-cb-list');
+          if (list && !list.hidden) return;   // let the combobox take Enter first
+          e.preventDefault();
+          window.klLoadMarketPrices();
+        }
+      });
+    });
+  })();
+
+  // ========================================================================
+  // Weather
+  // ========================================================================
+  window.klLoadWeather = async function() {
+    var district  = (document.getElementById('wx-district').value||'').trim();
+    var state     = (document.getElementById('wx-state').value||'').trim();
+    var container = document.getElementById('wx-container');
+    var gps = window.__klGps;
+    container.innerHTML = '<div class="empty-state"><div class="cqa-spinner-ring" style="width:28px;height:28px;border-width:3px;margin:0 auto;"></div><p style="font-size:var(--text-xs);color:var(--color-slate-500);margin-top:8px;">Fetching weather…</p></div>';
+    try {
+      var opts = (gps && gps.lat != null) ? { lat: gps.lat, lon: gps.lon, district: district, state: state } : { district: district, state: state };
+      var result = await window.getWeather(opts);
+      if (!result.success) throw new Error(result.error || 'Weather unavailable');
+      var c = result.current;
+      var tip = result.farmer_tip || '';
+      var locLabel = result.location_note || [district, state].filter(Boolean).join(', ');
+      var rain0 = (result.forecast && result.forecast[0] && result.forecast[0].rain_probability_pct != null)
+        ? result.forecast[0].rain_probability_pct + '%' : '—';
+      var wxIcon = {'Clear sky':'☀️','Mainly clear':'🌤️','Partly cloudy':'⛅','Overcast':'☁️','Foggy':'🌫️','Drizzle':'🌦️','Rain':'🌧️','Rain showers':'🌦️','Thunderstorm':'⛈️'};
+      var icon = wxIcon[c.condition] || '🌡️';
+      var currentHtml = '<div style="background:var(--color-slate-50,#f8fafc);border-radius:12px;padding:20px;margin-bottom:16px;">' +
+        '<div style="display:flex;align-items:center;gap:16px;">' +
+        '<div style="font-size:3rem;">' + icon + '</div>' +
+        '<div><div style="font-size:2rem;font-weight:700;">' + (c.temperature_c != null ? c.temperature_c+'°C' : '—') + '</div>' +
+        '<div style="font-weight:600;color:var(--color-slate-700);">' + c.condition + '</div>' +
+        '<div style="font-size:0.78rem;color:var(--color-slate-500);margin-top:4px;">' + locLabel + '</div></div>' +
+        '<div style="margin-left:auto;display:flex;flex-direction:column;gap:6px;align-items:flex-end;">' +
+        '<span style="font-size:0.8rem;">💧 Humidity: <strong>' + (c.humidity_pct != null ? c.humidity_pct+'%' : '—') + '</strong></span>' +
+        '<span style="font-size:0.8rem;">💨 Wind: <strong>' + (c.wind_kmh != null ? c.wind_kmh+' km/h' : '—') + '</strong></span>' +
+        '<span style="font-size:0.8rem;">🌧 Rain (today): <strong>' + rain0 + '</strong></span>' +
+        '</div></div>' +
+        (tip ? '<div style="margin-top:12px;padding:10px 14px;background:#f0fdf4;border-left:3px solid #22c55e;border-radius:6px;font-size:0.82rem;color:#166534;">🌱 ' + tip + '</div>' : '') +
+        '<div style="font-size:0.68rem;color:var(--color-slate-400);margin-top:8px;">Source: ' + result.source + (result.updated ? ' · Updated: ' + result.updated : '') + '</div>' +
+        '</div>';
+      var forecast = (result.forecast || []).map(function(d) {
+        var fi = wxIcon[d.condition] || '🌡️';
+        return '<div style="background:white;border:1px solid var(--color-slate-100);border-radius:10px;padding:14px 10px;text-align:center;min-width:110px;">' +
+          '<div style="font-size:0.7rem;color:var(--color-slate-500);font-weight:600;">' + d.date + '</div>' +
+          '<div style="font-size:1.6rem;margin:6px 0;">' + fi + '</div>' +
+          '<div style="font-size:0.78rem;font-weight:600;">' + (d.temp_max!=null?d.temp_max+'°':' ') + ' / ' + (d.temp_min!=null?d.temp_min+'°':' ') + '</div>' +
+          '<div style="font-size:0.68rem;color:#3b82f6;margin-top:4px;">' + (d.rain_probability_pct!=null?'🌧 '+d.rain_probability_pct+'%':'') + '</div>' +
+          '</div>';
+      }).join('');
+      container.innerHTML = currentHtml + (forecast ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;">' + forecast + '</div>' : '');
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Weather Unavailable</h3><p>' + (err.message||'Could not connect to weather service.') + '</p></div>';
+    }
+  };
+
+  (function() {
+    var btn = document.getElementById('wx-gps-btn');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+      var container = document.getElementById('wx-container');
+      if (!navigator.geolocation) {
+        if (container) container.innerHTML = '<div class="empty-state"><h3>GPS not available</h3><p>Enter district and state instead.</p></div>';
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        window.__klGps = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        window.klLoadWeather();
+      }, function() {
+        if (container) container.innerHTML = '<div class="empty-state"><h3>GPS permission was denied</h3><p>Select your district and state manually.</p></div>';
+      }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    });
+  })();
+  // ========================================================================
+  var _schemesAll = null;
+  window.klLoadSchemes = async function() {
+    var container = document.getElementById('schemes-container');
+    var q = ((document.getElementById('sch-search') || {}).value || '').toLowerCase();
+    try {
+      if (!_schemesAll) {
+        var result = await window.getSchemes();
+        if (!result.success || !result.schemes || !result.schemes.length) throw new Error('No schemes data');
+        _schemesAll = result;
+      }
+      var schemes = (_schemesAll.schemes || []).filter(function(s) {
+        if (!q) return true;
+        return (s.name + ' ' + (s.category||'') + ' ' + (s.short_desc||'') + ' ' + (s.eligibility||'')).toLowerCase().indexOf(q) >= 0;
+      });
+      var html = '<div style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">' +
+        '⚠️ ' + (_schemesAll.note || '') + ' Source: ' + (_schemesAll.source || '') + '</div>';
+      if (!schemes.length) {
+        container.innerHTML = html + '<div class="empty-state"><h3>No matching schemes</h3></div>';
+        return;
+      }
+      html += '<div class="lot-grid">' + schemes.map(function(s) {
+        return '<div class="lot-card" style="display:flex;flex-direction:column;gap:10px;">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+          '<h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);">' + s.name + '</h3>' +
+          '<span class="badge badge-sky" style="white-space:nowrap;flex-shrink:0;">' + s.category + '</span>' +
+          '</div>' +
+          '<p style="font-size:0.82rem;color:var(--color-slate-600);">' + s.short_desc + '</p>' +
+          '<div style="font-size:0.78rem;"><strong>Main Benefit:</strong> ' + s.main_benefit + '</div>' +
+          '<div style="font-size:0.78rem;"><strong>Eligibility:</strong> ' + s.eligibility + '</div>' +
+          (s.note ? '<div style="font-size:0.7rem;color:var(--color-slate-500);font-style:italic;">' + s.note + '</div>' : '') +
+          '<a href="' + s.official_link + '" target="_blank" rel="noopener" class="btn btn-outline btn-xs" style="width:fit-content;margin-top:4px;">Official Portal ↗</a>' +
+          '</div>';
+      }).join('') + '</div>';
+      container.innerHTML = html;
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Schemes Unavailable</h3><p>' + (err.message||'Could not load schemes.') + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Knowledge
+  // ========================================================================
+  var _knowledgeAll = null;
+  window.klLoadKnowledge = async function() {
+    var container = document.getElementById('knowledge-container');
+    var category  = (document.getElementById('kn-category') || {}).value || '';
+    var q         = (document.getElementById('kn-search') || {}).value || '';
+    try {
+      if (!_knowledgeAll) {
+        container.innerHTML = '<div class="empty-state"><div class="cqa-spinner-ring" style="width:24px;height:24px;border-width:3px;"></div></div>';
+        var result = await window.getKnowledge();
+        if (!result.success) throw new Error('No knowledge data');
+        _knowledgeAll = result.knowledge || [];
+      }
+      var items = _knowledgeAll.filter(function(k) {
+        var catMatch = !category || k.category.toLowerCase().includes(category.toLowerCase());
+        var qMatch   = !q || k.title.toLowerCase().includes(q.toLowerCase()) || k.summary.toLowerCase().includes(q.toLowerCase());
+        return catMatch && qMatch;
+      });
+      if (!items.length) { container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>No Results</h3><p>Try a different search or category.</p></div>'; return; }
+      container.innerHTML = '<div class="lot-grid">' + items.map(function(k) {
+        var pts = (k.key_points || []).map(function(p) { return '<li style="margin-bottom:3px;">'+p+'</li>'; }).join('');
+        return '<div class="lot-card">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+          '<h3 style="font-size:var(--text-sm);font-weight:var(--weight-bold);">' + k.title + '</h3>' +
+          '<span class="badge badge-sky" style="font-size:0.65rem;">' + k.category + '</span>' +
+          '</div>' +
+          '<p style="font-size:0.8rem;color:var(--color-slate-600);margin-bottom:8px;">' + k.summary + '</p>' +
+          '<ul style="font-size:0.75rem;color:var(--color-slate-700);padding-left:16px;">' + pts + '</ul>' +
+          (k.disclaimer ? '<div style="font-size:0.68rem;color:var(--color-slate-400);margin-top:8px;font-style:italic;">' + k.disclaimer + '</div>' : '') +
+          '</div>';
+      }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + (err.message||'Could not load knowledge.') + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Learning
+  // ========================================================================
+  var _learningAll = null;
+  window.klLoadLearning = async function(forceFilter) {
+    var container = document.getElementById('learning-container');
+    var q = ((document.getElementById('ln-search') || {}).value || '').toLowerCase();
+    try {
+      if (!_learningAll) {
+        var result = await window.getLearning();
+        if (!result.success || !result.resources.length) throw new Error('No resources');
+        _learningAll = result.resources;
+      }
+      var resources = _learningAll.filter(function(r) {
+        if (!q) return true;
+        return (r.title + ' ' + r.topic + ' ' + r.description).toLowerCase().indexOf(q) >= 0;
+      });
+      var typeColorFn = function(t) { return t === 'YouTube Channel' ? '#ef4444' : t === 'Web Portal' ? '#3b82f6' : '#8b5cf6'; };
+      container.innerHTML = '<div class="lot-grid">' + resources.map(function(r) {
+        var typeColor = typeColorFn(r.type);
+        return '<div class="lot-card" style="display:flex;flex-direction:column;gap:10px;">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">' +
+          '<h3 style="font-size:var(--text-sm);font-weight:var(--weight-bold);">' + r.title + '</h3>' +
+          '<span style="background:' + typeColor + '22;color:' + typeColor + ';font-size:0.65rem;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0;font-weight:600;">' + r.type + '</span>' +
+          '</div>' +
+          '<div style="font-size:0.7rem;font-weight:600;color:var(--color-slate-500);">' + r.topic + '</div>' +
+          '<p style="font-size:0.8rem;color:var(--color-slate-600);">' + r.description + '</p>' +
+          '<div style="font-size:0.72rem;color:var(--color-slate-400);">Source: ' + r.source + ' · Language: ' + r.language + '</div>' +
+          '<a href="' + r.url + '" target="_blank" rel="noopener" class="btn btn-outline btn-sm" style="width:100%;text-align:center;margin-top:auto;">Visit Resource ↗</a>' +
+          '</div>';
+      }).join('') + '</div>';
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Helplines
+  // ========================================================================
+  var _helplinesLoaded = false;
+
+  // ========================================================================
+  // Generic client-side card search (helplines, seeds)
+  // Filters already-rendered cards; no extra requests.
+  // ========================================================================
+  function klWireCardSearch(inputId, containerId, cardSelector) {
+    var input = document.getElementById(inputId);
+    var container = document.getElementById(containerId);
+    if (!input || !container || input.dataset.wired) return;
+    input.dataset.wired = '1';
+
+    var note = document.createElement('p');
+    note.style.cssText = 'font-size:0.78rem;color:var(--color-slate-500);margin:8px 0 0;';
+    note.hidden = true;
+    container.parentNode.insertBefore(note, container.nextSibling);
+
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      var cards = container.querySelectorAll(cardSelector);
+      var shown = 0;
+      cards.forEach(function (card) {
+        var hit = !q || (card.textContent || '').toLowerCase().indexOf(q) >= 0;
+        card.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      if (!q) {
+        note.hidden = true;
+      } else {
+        note.hidden = false;
+        note.textContent = shown
+          ? 'Showing ' + shown + ' of ' + cards.length + ' results for "' + input.value.trim() + '".'
+          : 'No results for "' + input.value.trim() + '". Clear the search to see all ' + cards.length + '.';
+      }
+    });
+  }
+  window.klWireCardSearch = klWireCardSearch;
+
+  window.klLoadHelplines = async function() {
+    if (_helplinesLoaded) return;
+    var container = document.getElementById('helpline-container');
+    try {
+      var result = await window.getHelplines();
+      if (!result.success || !result.helplines.length) throw new Error('No helplines');
+      _helplinesLoaded = true;
+      container.innerHTML = '<p style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">⚠️ ' + result.note + '</p>' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">' +
+        result.helplines.map(function(h) {
+          return '<div class="lot-card" style="border-left:4px solid var(--color-accent-green);">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;">' +
+            '<div>' +
+            '<div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-slate-400);margin-bottom:4px;">' + h.category + '</div>' +
+            '<h3 style="font-size:var(--text-base);font-weight:700;">' + h.name + '</h3>' +
+            '</div>' +
+            (h.free ? '<span style="background:#f0fdf4;color:#166534;font-size:0.65rem;padding:2px 8px;border-radius:20px;font-weight:600;">FREE</span>' : '') +
+            '</div>' +
+            '<div style="font-size:1.5rem;font-weight:800;font-family:monospace;color:var(--color-accent-green);margin:8px 0;">' + h.display_number + '</div>' +
+            '<a href="tel:' + h.number + '" class="btn btn-primary btn-sm" style="width:100%;text-align:center;margin-bottom:8px;">📞 Call</a>' +
+            '<p style="font-size:0.78rem;color:var(--color-slate-600);">' + h.purpose + '</p>' +
+            '<div style="font-size:0.7rem;color:var(--color-slate-400);margin-top:6px;">' +
+            (h.availability ? '🕐 '+h.availability : '') + (h.language ? ' · 🗣 '+h.language : '') +
+            '</div>' +
+            '<div style="font-size:0.65rem;color:var(--color-slate-400);margin-top:4px;">Source: ' + h.source + '</div>' +
+            '</div>';
+        }).join('') + '</div>';
+      klWireCardSearch('helpline-search', 'helpline-container', '.lot-card');
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+
+  // ========================================================================
+  // Seeds
+  // ========================================================================
+  var _seedsLoaded = false;
+  window.klLoadSeeds = async function() {
+    if (_seedsLoaded) return;
+    var container = document.getElementById('seeds-container');
+    try {
+      var result = await window.getSeeds();
+      if (!result.success || !result.organizations.length) throw new Error('No seed data');
+      _seedsLoaded = true;
+      container.innerHTML = '<p style="font-size:0.72rem;color:var(--color-slate-400);margin-bottom:12px;">ℹ️ ' + result.note + '</p>' +
+        '<div class="lot-grid">' + result.organizations.map(function(o) {
+          var pts = (o.what_they_offer || []).map(function(p){return '<li style="margin-bottom:3px;">'+p+'</li>';}).join('');
+          return '<div class="lot-card">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+            '<h3 style="font-size:var(--text-base);font-weight:var(--weight-bold);">' + o.name + '</h3>' +
+            '<span class="badge badge-success" style="font-size:0.65rem;white-space:nowrap;">' + o.type + '</span>' +
+            '</div>' +
+            '<p style="font-size:0.8rem;color:var(--color-slate-600);margin-bottom:8px;">' + o.about + '</p>' +
+            '<ul style="font-size:0.75rem;color:var(--color-slate-700);padding-left:16px;margin-bottom:8px;">' + pts + '</ul>' +
+            '<div style="font-size:0.78rem;color:var(--color-slate-600);margin-bottom:6px;"><strong>How to buy:</strong> ' + o.how_to_buy + '</div>' +
+            (o.note ? '<div style="font-size:0.68rem;color:var(--color-slate-500);font-style:italic;margin-bottom:8px;">' + o.note + '</div>' : '') +
+            (o.official_website !== 'https://farmer.gov.in' ? '<a href="' + o.official_website + '" target="_blank" rel="noopener" class="btn btn-outline btn-xs">Official Website ↗</a>' : '') +
+            '</div>';
+        }).join('') + '</div>';
+      klWireCardSearch('seeds-search', 'seeds-container', '.lot-card');
+    } catch(err) {
+      container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⚠️</div><h3>Unavailable</h3><p>' + err.message + '</p></div>';
+    }
+  };
+  </script>
+
+  <!-- Scripts (load order matters) -->
+  <script src="../js/config.js"></script>
+  <script src="../js/api.js"></script>
+  <!-- Searchable combobox: upgrades the selects below in place -->
+  <script src="../js/combobox.js"></script>
+  <!-- Typeable numeric fields with plain-language validation -->
+  <script src="../js/numeric-input.js"></script>
+  <!-- Compact weather summary at the top of the dashboard -->
+  <script src="../js/weather-strip.js" defer></script>
+  <script src="../js/live-mandi.js" defer></script>
+  <script src="../js/dashboard.js"></script>
+  <!-- Step 3: Crop Quality Assessment -->
+  <script src="../js/crop-quality.js"></script>
+  <!-- Step 4: i18n -->
+  <script src="../js/i18n.js"></script>
+  <!-- Step 4: Price Forecast -->
+  <script src="../js/price-forecast.js"></script>
+  <!-- Step 4: Notifications -->
+  <script src="../js/notifications.js"></script>
+  <!-- Step 4: Chat Assistant -->
+  <script src="../js/chat-assistant.js"></script>
+  <!-- Step 4: Main Controller -->
+  <script src="../js/step4-farmer.js"></script>
+  <!-- Transportation & Logistics Module -->
+  <script src="../js/logistics.js" defer></script>
+  <!-- Auth: load actual user name dynamically -->
+  <script>
+    (function() {
+      var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+
+      function setProfileUI(name, role, district) {
+        var nameEl = document.getElementById('profile-name');
+        var locEl  = document.getElementById('profile-location');
+        var avEl   = document.getElementById('profile-avatar');
+        if (nameEl) nameEl.textContent = name || 'User';
+        if (avEl)   avEl.textContent   = (name || 'U').slice(0, 2).toUpperCase();
+        var loc = (district ? district + ' \u2022 ' : '') + (role || 'Farmer');
+        if (locEl)  locEl.textContent  = loc;
+      }
+
+      // Fast path: use cached user from localStorage immediately
+      try {
+        var cached = JSON.parse(localStorage.getItem('kisanlink_user') || 'null');
+        if (cached && cached.name) setProfileUI(cached.name, cached.role, null);
+      } catch(e) {}
+
+      // Authoritative path: fetch from backend
+      var token = null;
+      try { token = localStorage.getItem('kisanlink_auth_token'); } catch(e) {}
+      if (token) {
+        fetch(API + '/auth/me', {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+        })
+        .then(function(r) {
+          if (r.status === 401 || r.status === 403) {
+            // Token expired or revoked — clear it and send them back to sign in.
+            try {
+              localStorage.removeItem('kisanlink_auth_token');
+              localStorage.removeItem('kisanlink_user');
+            } catch (e) {}
+            location.replace('auth.html?expired=1&next=farmer.html');
+            return null;
+          }
+          return r.ok ? r.json() : null;
+        })
+        .then(function(data) {
+          if (!data || !data.success) return;
+          var u = data.user || {};
+          var profile = data.profile || {};
+          // Cache the profile district alongside the user so features that
+          // need a location (weather) do not have to re-fetch or ask for GPS.
+          try {
+            var cacheable = Object.assign({}, u, {
+              district: profile.district || u.district || '',
+              state: profile.state || u.state || '',
+            });
+            localStorage.setItem('kisanlink_user', JSON.stringify(cacheable));
+            document.dispatchEvent(new CustomEvent('kl:profileReady', { detail: cacheable }));
+          } catch(e) {}
+          setProfileUI(u.name, u.role, profile.district);
+          // Update profile contact if element present
+          var contactEl = document.getElementById('profile-contact');
+          if (contactEl) contactEl.textContent = u.phone || u.email || u.username || '\u2014';
+        })
+        .catch(function() {}); // Non-blocking
+      }
+      // No token is handled by the auth guard at the top of this page, which
+      // redirects to sign-in before any of this runs.
+    })();
+  </script>
+</body>
+</html>

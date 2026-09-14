@@ -1,0 +1,499 @@
+/* ==========================================================================
+   KISANLINK RESPONSIVE STYLES
+   SIH 2026 — PS SIH26132: Market Linkages & Price Discovery
+   Adaptive media queries for landing page and role dashboards
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Large Screens & Laptops (Max Width: 1199px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1199px) {
+  :root {
+    --container-max-w: 980px;
+  }
+
+  .hero-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+  }
+
+  .pipeline-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .trust-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .footer-grid {
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+    gap: var(--space-6);
+  }
+
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   2. Tablets & Medium Screens (Max Width: 991px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 991px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+
+  .hero-content {
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .hero-pill {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-cta-group {
+    justify-content: center;
+  }
+
+  .hero-badges-group {
+    justify-content: center;
+  }
+
+  .recommendation-container {
+    grid-template-columns: 1fr;
+  }
+
+  .buyer-matching-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Mobile Navigation Drawer Activation */
+  .nav-toggle-btn {
+    display: flex;
+  }
+
+  .nav-links {
+    position: fixed;
+    top: var(--nav-height);
+    left: 0;
+    right: 0;
+    background-color: #FFFFFF;
+    flex-direction: column;
+    padding: var(--space-6);
+    gap: var(--space-4);
+    box-shadow: var(--shadow-lg);
+    border-bottom: 1px solid var(--color-slate-200);
+    transform: translateY(-120%);
+    opacity: 0;
+    visibility: hidden;
+    transition: transform var(--transition-base), opacity var(--transition-base), visibility var(--transition-base);
+    z-index: 999;
+  }
+
+  .nav-links.nav-open {
+    transform: translateY(0);
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .nav-link {
+    width: 100%;
+    text-align: left;
+    padding: var(--space-3) 0;
+    font-size: var(--text-base);
+    border-bottom: 1px solid var(--color-slate-100);
+  }
+
+  .nav-actions .btn-sm {
+    display: none;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-8);
+  }
+
+  /* Dashboard Responsive Collapse */
+  .dashboard-sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .dashboard-sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+  }
+
+  .sidebar-toggle-btn {
+    display: flex;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   3. Mobile Devices & Small Tablets (Max Width: 767px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 767px) {
+  :root {
+    --space-20: 3.5rem;
+    --space-16: 2.75rem;
+    --space-12: 2rem;
+  }
+
+  .section {
+    padding-top: var(--space-16);
+    padding-bottom: var(--space-16);
+  }
+
+  .hero-title {
+    font-size: 2.2rem;
+  }
+
+  .hero-desc {
+    font-size: var(--text-base);
+  }
+
+  .grid-cols-2,
+  .grid-cols-3,
+  .grid-cols-4,
+  .pipeline-grid,
+  .buyer-matching-grid,
+  .trust-grid,
+  .metric-grid,
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-body {
+    padding: var(--space-5) var(--space-4);
+    gap: var(--space-6);
+  }
+
+  .dashboard-main > .dashboard-section {
+    padding: var(--space-5) var(--space-4);
+  }
+
+  /* The topbar becomes a wrapping two-row block rather than a fixed-height
+     row, so its action buttons can never force horizontal page scroll. */
+  .dashboard-topbar {
+    height: auto;
+    min-height: 0;
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .topbar-left,
+  .topbar-right {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .topbar-right {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    row-gap: var(--space-2);
+  }
+
+  /* Labels are plain text on some of these controls, so shrink the control
+     itself instead of relying on an inner <span> that may not exist. */
+  .topbar-right .btn-sm {
+    font-size: var(--text-xs);
+    padding: var(--space-2) var(--space-3);
+    white-space: nowrap;
+  }
+
+  .dashboard-title-group h1 {
+    font-size: var(--text-base);
+  }
+
+  .dashboard-title-group p {
+    overflow-wrap: anywhere;
+  }
+
+  /* Wide content that genuinely cannot reflow scrolls inside its own box
+     rather than widening the page. */
+  .dashboard-body table {
+    min-width: 0;
+  }
+
+  #mp-container > div,
+  .mc-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .offer-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .offer-card .flex-col {
+    align-items: flex-start !important;
+    width: 100%;
+  }
+
+  .offer-card .text-right {
+    text-align: left !important;
+  }
+
+  /* Stepper Responsive Adaptation */
+  .stepper-track {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+    padding-left: var(--space-2);
+  }
+
+  .stepper-track::before {
+    top: 18px;
+    bottom: 18px;
+    left: 20px;
+    width: 3px;
+    height: auto;
+    right: auto;
+  }
+
+  .step-node {
+    flex-direction: row;
+    gap: var(--space-3);
+    text-align: left;
+  }
+
+  .step-node-label {
+    max-width: none;
+  }
+
+  .market-filter-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tab-group {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .rec-header {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: flex-start;
+  }
+
+  .sale-window-badge {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .cta-banner {
+    padding: var(--space-8) var(--space-5);
+  }
+
+  .cta-actions-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .cta-actions-group .btn {
+    width: 100%;
+  }
+
+  .footer-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-3);
+  }
+
+  .toast-container {
+    left: var(--space-4);
+    right: var(--space-4);
+    bottom: var(--space-4);
+  }
+
+  .toast {
+    min-width: 100%;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   4. Extra Small Mobile Devices (Max Width: 480px)
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+  }
+
+  .hero-badges-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .best-opp-badge {
+    position: static;
+    display: inline-flex;
+    margin-bottom: var(--space-3);
+  }
+
+  .recommendation-card {
+    padding: var(--space-5);
+  }
+
+  .role-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   5. Crop Quality Assessment — Responsive Adaptations (Step 3)
+   -------------------------------------------------------------------------- */
+
+/* Tablet: stack two-column CQA layout */
+@media (max-width: 991px) {
+  .cqa-main-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile: full-width mode buttons, compact panels */
+@media (max-width: 767px) {
+  .cqa-mode-toggle {
+    gap: var(--space-2);
+  }
+
+  .cqa-mode-btn {
+    padding: 0.55rem 0.9rem;
+    font-size: var(--text-xs);
+  }
+
+  .cqa-camera-panel {
+    min-height: 220px;
+    border-radius: var(--radius-lg);
+  }
+
+  .cqa-video,
+  .cqa-captured-img {
+    border-radius: var(--radius-lg);
+    max-height: 280px;
+  }
+
+  .cqa-upload-dropzone {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .cqa-analyze-btn {
+    font-size: var(--text-sm);
+    padding: 0.75rem var(--space-4);
+  }
+
+  .cqa-result-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cqa-workflow {
+    font-size: 0.68rem;
+    padding: 0.35rem 0.75rem;
+  }
+
+  .cqa-context-banner {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+}
+
+/* Extra small: single-column, max-width full */
+@media (max-width: 480px) {
+  .cqa-upload-preview-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cqa-capture-btn {
+    width: 52px;
+    height: 52px;
+  }
+
+  .cqa-capture-inner {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   6. STEP 4 — Responsive Adaptations
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  .ba-inputs-grid       { grid-template-columns: repeat(4, 1fr); }
+  .pf-result-grid       { grid-template-columns: 180px 1fr 180px; }
+}
+
+@media (max-width: 991px) {
+  /* Best Action: 4 → 2 cols */
+  .ba-inputs-grid       { grid-template-columns: repeat(2, 1fr); }
+  /* Price Forecast: horizontal → stacked */
+  .pf-result-grid       { grid-template-columns: 1fr; gap: var(--space-4); }
+  .pf-controls          { flex-direction: column; align-items: stretch; }
+  /* Buyer Match: auto-fill → 1 col */
+  .bmc-grid             { grid-template-columns: 1fr; }
+  /* Notifications dropdown */
+  .notif-dropdown       { width: 300px; }
+  /* Chat panel */
+  .chat-panel           { width: 320px; }
+}
+
+@media (max-width: 767px) {
+  /* Best Action: 2 → 1 col */
+  .ba-inputs-grid       { grid-template-columns: repeat(2, 1fr); }
+  /* Market Compare: form stacked */
+  .mc-location-form     { flex-direction: column; }
+  /* Decision pipeline full width */
+  .dp-pipeline          { max-width: 100%; }
+  /* Chat FAB at bottom-right stays; panel full-width on small */
+  .chat-panel           { width: 300px; }
+  .chat-fab-wrap        { right: var(--space-4); bottom: var(--space-4); }
+  /* Notification dropdown full-width */
+  .notif-dropdown       { width: 280px; right: -60px; }
+  /* Profile panel */
+  .profile-panel-row    { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+  .ba-inputs-grid       { grid-template-columns: 1fr; }
+  .ba-rec-chip          { font-size: var(--text-base); padding: var(--space-2) var(--space-4); }
+  .chat-panel           { width: calc(100vw - var(--space-8)); }
+  .chat-fab-wrap        { right: var(--space-3); bottom: var(--space-3); }
+  .bmc-details-grid     { grid-template-columns: 1fr; }
+  .bmc-actions          { flex-direction: column; }
+  .qa-chips-grid        { flex-direction: column; }
+  .qa-chip              { width: 100%; justify-content: center; }
+  .cqa-guide-grid       { grid-template-columns: 1fr; }
+}
+
+/* --------------------------------------------------------------------------
+   7. STEP 5 — Multilingual, Voice & Touch Adaptations
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .kl-lang-select       { font-size: 0.75rem; padding: 0.3rem 1.6rem 0.3rem 0.5rem; }
+  .chat-input-bar       { padding: var(--space-2) var(--space-3); }
+  .chat-mic-btn         { width: 34px; height: 34px; }
+  .chat-send-btn        { width: 34px; height: 34px; }
+}

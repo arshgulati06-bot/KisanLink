@@ -1,0 +1,82 @@
+[
+  {
+    "id": "icar-yt-channel",
+    "title": "ICAR Official YouTube Channel",
+    "topic": "Agricultural Research & Technology",
+    "description": "Official videos from Indian Council of Agricultural Research covering crop production, post-harvest, and new agricultural technologies.",
+    "source": "ICAR (Indian Council of Agricultural Research)",
+    "type": "YouTube Channel",
+    "url": "https://www.youtube.com/@ICARofficial",
+    "language": "Hindi / English"
+  },
+  {
+    "id": "dd-kisan",
+    "title": "DD Kisan YouTube Channel",
+    "topic": "Farming Education (Multiple Crops)",
+    "description": "Doordarshan Kisan — India's dedicated agricultural TV channel. Videos on crop cultivation, market, weather, and farmer success stories.",
+    "source": "Doordarshan (India's national public broadcaster)",
+    "type": "YouTube Channel",
+    "url": "https://www.youtube.com/@DDKisanChannel",
+    "language": "Hindi / Regional languages"
+  },
+  {
+    "id": "icar-pdkv",
+    "title": "Dr. PDKV Akola Agricultural University Videos",
+    "topic": "Crop Management in Maharashtra",
+    "description": "Videos on crop management, soil testing, and farming techniques relevant to Maharashtra farmers.",
+    "source": "Dr. Panjabrao Deshmukh Krishi Vidyapeeth (PDKV), Akola",
+    "type": "YouTube Channel",
+    "url": "https://www.youtube.com/results?search_query=PDKV+Akola+agriculture",
+    "language": "Marathi / Hindi"
+  },
+  {
+    "id": "tnau-agritech",
+    "title": "TNAU Agritech Portal",
+    "topic": "Crop Guides & Best Practices",
+    "description": "Tamil Nadu Agricultural University's Agritech portal — comprehensive crop guides, pest management, and agricultural advisories.",
+    "source": "Tamil Nadu Agricultural University (TNAU)",
+    "type": "Web Portal",
+    "url": "https://agritech.tnau.ac.in",
+    "language": "English / Tamil"
+  },
+  {
+    "id": "farmer-portal",
+    "title": "Farmer Portal (farmer.gov.in)",
+    "topic": "Government Schemes, Advisories & Market",
+    "description": "Official Indian government portal for farmers — schemes, advisories, market prices, weather, and agricultural services.",
+    "source": "Ministry of Agriculture & Farmers Welfare, Government of India",
+    "type": "Web Portal",
+    "url": "https://farmer.gov.in",
+    "language": "Hindi / English / Regional"
+  },
+  {
+    "id": "icar-nrcss",
+    "title": "ICAR-NRCS Soybean Research Resources",
+    "topic": "Soybean Cultivation",
+    "description": "ICAR's National Research Centre for Soybean — information on soybean varieties, cultivation, and disease management.",
+    "source": "ICAR-NRCS Indore",
+    "type": "Web Resource",
+    "url": "https://www.soybean.res.in",
+    "language": "Hindi / English"
+  },
+  {
+    "id": "nafed-learning",
+    "title": "NAFED Resources for Farmers",
+    "topic": "Market & Cooperative Farming",
+    "description": "NAFED (National Agricultural Cooperative Marketing Federation) — resources on cooperative marketing, price support, and FPO formation.",
+    "source": "NAFED",
+    "type": "Web Portal",
+    "url": "https://www.nafed-india.com",
+    "language": "Hindi / English"
+  },
+  {
+    "id": "krishi-vigyan-kendra",
+    "title": "Find Your Nearest Krishi Vigyan Kendra (KVK)",
+    "topic": "Local Agricultural Advisory",
+    "description": "KVKs are government farm science centres providing free advisory, demonstrations, and training for farmers. Find your nearest KVK through ICAR.",
+    "source": "ICAR (Indian Council of Agricultural Research)",
+    "type": "Service Locator",
+    "url": "https://kvk.icar.gov.in/kvkLocator.aspx",
+    "language": "Hindi / English / Regional"
+  }
+]
