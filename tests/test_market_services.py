@@ -458,7 +458,10 @@ class TestSellNow:
         assert all(m["distance_estimated"] for m in body["markets"])
         assert "straight-line" in body["distance_disclaimer"].lower()
 
-    def test_response_explains_and_disclaims(self, client):
+    def test_response_explains_and_disclaims(self, client, monkeypatch):
+        from backend.services import mandi_live
+        monkeypatch.setattr(mandi_live.config, "DATA_GOV_API_KEY", "")
+        mandi_live._CACHE.clear()
         body = client.post("/api/sell-now", json={
             "commodity": "Onion", "state": "Maharashtra",
             "district": "Nashik", "quantity_qtl": 20,
@@ -467,7 +470,10 @@ class TestSellNow:
         assert "not an official" in body["cost_disclaimer"].lower()
         assert body["live_feed"]["live"] is False
 
-    def test_no_market_is_labelled_live_without_a_live_feed(self, client):
+    def test_no_market_is_labelled_live_without_a_live_feed(self, client, monkeypatch):
+        from backend.services import mandi_live
+        monkeypatch.setattr(mandi_live.config, "DATA_GOV_API_KEY", "")
+        mandi_live._CACHE.clear()
         body = client.post("/api/sell-now", json={
             "commodity": "Onion", "state": "Maharashtra",
             "district": "Nashik", "quantity_qtl": 20,
@@ -2750,8 +2756,11 @@ class TestLiveMandiBoard:
             css = fh.read()
         assert "prefers-reduced-motion" in css
 
-    def test_live_endpoint_reports_is_live_false_without_a_key(self, client):
+    def test_live_endpoint_reports_is_live_false_without_a_key(self, client, monkeypatch):
         """Without credentials the board must never be able to claim LIVE."""
+        from backend.services import mandi_live
+        monkeypatch.setattr(mandi_live.config, "DATA_GOV_API_KEY", "")
+        mandi_live._CACHE.clear()
         body = client.get("/api/market-prices/live?commodity=Onion").get_json()
         assert body.get("is_live") in (False, None)
         assert not body.get("success") or not body.get("live")

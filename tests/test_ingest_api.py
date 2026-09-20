@@ -443,7 +443,8 @@ class TestBackendEndpoints:
         assert "transport_cost" in rec
         assert rec["net_realisation"] <= rec.get("gross_value", rec.get("gross_sale_value", rec["net_realisation"]))
 
-    def test_live_prices_unconfigured_is_honest(self, client):
+    def test_live_prices_unconfigured_is_honest(self, client, monkeypatch):
+        monkeypatch.setattr(config, "DATA_GOV_API_KEY", "")
         r = client.get("/api/market-prices/live?commodity=Tomato&state=Maharashtra")
         body = r.get_json()
         assert r.status_code == 200

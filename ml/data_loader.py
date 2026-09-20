@@ -37,7 +37,6 @@ import os
 import re
 
 import pandas as pd
-import torch
 import numpy as np
 
 from . import config
@@ -643,6 +642,14 @@ def get_market_data(df, commodity, state, district, market):
         "resolved_market"  : str — the actual market name used
         "available_markets": list or None — valid market names (shown on failure)
     """
+    if hasattr(df, "get_market_data"):
+        return df.get_market_data(commodity, state, district, market)
+    if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+        from .mandi_store import get_mandi_store
+        store = get_mandi_store()
+        if store.is_ready():
+            return store.get_market_data(commodity, state, district, market)
+
     messages = []
 
     # --- Helper: case-insensitive match ---
@@ -948,6 +955,7 @@ def prepare_context(market_df):
     recent_prices  = prices_clean[-context_length:]
     recent_dates   = dates[-context_length:]
 
+    import torch
     context_tensor = torch.tensor(
         recent_prices,
         dtype=torch.float32,

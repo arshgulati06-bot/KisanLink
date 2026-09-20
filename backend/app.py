@@ -28,9 +28,8 @@ from flask_cors import CORS
 import pandas as pd
 import numpy as np
 
-from ml.data_loader import load_combined_data, get_market_data, prepare_context
-from ml.forecaster import load_model, forecast_with_quantiles
-from ml.evaluator import evaluate_model
+from ml.data_loader import get_market_data, prepare_context
+from ml.mandi_store import get_mandi_store
 from ml.decision_engine import recommend_sale_window
 from ml.buyer_matcher import match_buyers
 from ml.price_sanity import sanitize_forecast
@@ -117,6 +116,9 @@ def _df():
     df = store.get("df")
     if df is not None and not df.empty:
         return df
+    mandi_store = store.get("mandi_store")
+    if mandi_store and mandi_store.is_ready():
+        return pd.DataFrame()
     # A failed load must not read as an empty market: say it failed and why.
     if store.get("data_error"):
         raise DataUnavailable(store["data_error"])
@@ -130,6 +132,11 @@ def _df():
 #: auth, weather and photo grading, none of which need forecasting — behind a
 #: model load the farmer may never trigger.
 _CHRONOS_LOCK = threading.Lock()
+
+
+def load_model(*args, **kwargs):
+    from ml.forecaster import load_model as _lm
+    return _lm(*args, **kwargs)
 
 
 def _pipeline():
@@ -284,7 +291,7 @@ def _describe_sources():
     return out
 
 
-def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=True):
+def create_app(dataframe=None, pipeline=None, load_real_data=False, load_chronos=False):
     app = Flask(__name__, static_folder=None)
     CORS(app)
     # Whole-app cap: must clear the largest legitimate request (a crop photo),
@@ -293,9 +300,12 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     app.config["JSON_SORT_KEYS"] = False
 
     using_dev_fixture = False
+    mandi_store = get_mandi_store()
+
     if dataframe is None and load_real_data:
-        print("[KisanLink API] Loading combined mandi datasets (cache used when valid)...")
+        print("[KisanLink API] Loading combined mandi datasets (eager mode requested)...")
         try:
+            from ml.data_loader import load_combined_data
             dataframe = load_combined_data()
             print(
                 f"[KisanLink API] Combined dataset ready: {len(dataframe):,} records, "
@@ -322,9 +332,8 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
         dataframe = _add_filter_columns(dataframe)
 
     if pipeline is None and load_chronos and _EAGER_CHRONOS:
-        # Off by default: _pipeline() loads it on the first forecast request.
-        # Set KISANLINK_EAGER_CHRONOS=1 to pay the cost up front instead.
         print("[KisanLink API] Loading Chronos model (eager mode)...")
+        from ml.forecaster import load_model
         pipeline = load_model()
         print("[KisanLink API] Chronos model loaded.")
 
@@ -333,23 +342,28 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
     if dataframe is not None and not dataframe.empty:
         latest = str(pd.to_datetime(dataframe[ml_config.COL_DATE]).max().date())
 
+    store_stats = mandi_store.get_stats() if (mandi_store and mandi_store.is_ready()) else {}
+    total_recs = len(dataframe) if (dataframe is not None and not dataframe.empty) else store_stats.get("records", 0)
+    latest_date_val = latest or store_stats.get("latest_date")
+
     app.extensions["kisanlink"] = {
         "df": dataframe,
+        "mandi_store": mandi_store,
         "dev_fixture": using_dev_fixture,
         "pipeline": pipeline,
         "buyers": buyers,
         "buyer_note": buyer_note,
         "ingestion_meta": {
             "last_update": None,
-            "total_records": 0 if dataframe is None else len(dataframe),
-            "latest_date_in_dataset": latest,
+            "total_records": total_recs,
+            "latest_date_in_dataset": latest_date_val,
             "live_api_connected": official_api_configured(),
-            # Report the archives actually on disk, not a fixed list. The old
-            # hard-coded list omitted the 2023/2024/2025 workbooks and named
-            # CSVs that may not be installed.
             "sources": [
-                {"name": "SYNTHETIC DEVELOPMENT FIXTURE", "type": "synthetic"},
-            ] if using_dev_fixture else _describe_sources(),
+                {"name": "mandi.sqlite3", "type": "sqlite", "present": True}
+            ] if (mandi_store and mandi_store.is_ready()) else (
+                [{"name": "SYNTHETIC DEVELOPMENT FIXTURE", "type": "synthetic"}]
+                if using_dev_fixture else _describe_sources()
+            ),
         },
     }
 
@@ -433,6 +447,23 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
         if intent == "price":
             if not crop:
                 return asst.reply_for("no_crop", lang), []
+            store = _store()
+            mandi_store = store.get("mandi_store")
+            if mandi_store and mandi_store.is_ready():
+                rec = mandi_store.get_latest_price_for_crop(crop)
+                if not rec:
+                    return asst.reply_for("price_none", lang, crop=crop), []
+                when = pd.to_datetime(rec["date"]).date()
+                age = (_dt.date.today() - when).days
+                fresh = (asst.FRESHNESS[lang if lang in ("en", "hi") else "en"]
+                         ["live" if age <= 0 else "old"].format(days=age))
+                return (asst.reply_for(
+                    "price", lang, crop=crop,
+                    price=float(rec["modal_price"]),
+                    market=str(rec["market"]),
+                    district=str(rec["district"]),
+                    date=when.isoformat(), freshness=fresh),
+                    ["mandi archive"])
             try:
                 df = _df()
             except DataWarmingUp:
@@ -504,18 +535,69 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
 
         return asst.reply_for(intent if intent in asst.REPLIES else "unknown", lang), []
 
+    @app.route("/api/health", methods=["GET"])
+    def health():
+        """
+        Lightweight health check endpoint for Render and load balancers.
+        Responds quickly without loading mandi data or ML models.
+        """
+        db_ok = False
+        try:
+            val = _app_db.query_scalar("SELECT 1")
+            db_ok = (val == 1)
+        except Exception:
+            db_ok = False
+
+        return jsonify({
+            "status": "ok",
+            "database": "connected" if db_ok else "unavailable",
+        }), 200
+
     @app.route("/api/data-status", methods=["GET"])
     def data_status():
         """
-        Cheap readiness probe for the mandi archive.
-
-        The dashboard's crop dropdowns come from /api/commodities, which 503s
-        while the archive loads. This lets the frontend wait for real data
-        instead of rendering an empty list.
+        Readiness probe for the mandi archive.
         """
         store = _store()
         df = store.get("df")
+        err = store.get("data_error")
         pending = bool(store.get("data_pending"))
+
+        if err:
+            return jsonify({
+                "success": True,
+                "ready": False,
+                "loading": False,
+                "failed": True,
+                "error": err,
+                "records": 0,
+                "commodities": 0,
+            }), 200
+
+        if pending:
+            return jsonify({
+                "success": True,
+                "ready": False,
+                "loading": True,
+                "failed": False,
+                "error": None,
+                "records": 0,
+                "commodities": 0,
+            }), 200
+
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            stats = mandi_store.get_stats()
+            return jsonify({
+                "success": True,
+                "ready": True,
+                "loading": False,
+                "failed": False,
+                "error": None,
+                "records": stats.get("records", 0),
+                "commodities": stats.get("commodities", 0),
+            }), 200
+
         ready = df is not None and not df.empty
         body = {
             "success": True,
@@ -553,12 +635,15 @@ def create_app(dataframe=None, pipeline=None, load_real_data=True, load_chronos=
 
 def start_background_data_load(app):
     """
-    Load the combined archive in a worker thread so the socket opens at once.
-
-    The dataframe is swapped in atomically when it is ready; until then
-    _df() raises DataWarmingUp and those endpoints answer 503 with a reason.
+    If mandi_store is already ready, do not run large-memory background load.
+    Only runs if eager loading is explicitly requested.
     """
     store = app.extensions["kisanlink"]
+    mandi_store = store.get("mandi_store")
+    if mandi_store and mandi_store.is_ready():
+        store["data_pending"] = False
+        return
+
     store["data_pending"] = True
 
     def _work():
@@ -779,23 +864,37 @@ def register_routes(app):
 
     @app.route("/api/commodities", methods=["GET"])
     def get_commodities():
-        df = _df()
-        if df.empty or ml_config.COL_COMMODITY not in df.columns:
-            return jsonify([])
-        commodities = sorted(df[ml_config.COL_COMMODITY].dropna().unique().tolist())
-        return jsonify(commodities)
+        store = _store()
+        if store.get("data_error"):
+            raise DataUnavailable(store["data_error"])
+        if store.get("data_pending"):
+            raise DataWarmingUp()
+        df = store.get("df")
+        if df is not None and not df.empty and ml_config.COL_COMMODITY in df.columns:
+            return jsonify(sorted(df[ml_config.COL_COMMODITY].dropna().unique().tolist()))
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            return jsonify(mandi_store.get_commodities())
+        return jsonify([])
 
     @app.route("/api/states", methods=["GET"])
     def get_states():
         commodity = request.args.get("commodity", "").strip()
         if not commodity:
             return _public_error("Missing 'commodity' parameter.")
-        df = _df()
-        if df.empty or "_commodity_l" not in df.columns:
-            return jsonify([])
-        mask = df["_commodity_l"] == commodity.lower()
-        states = sorted(df.loc[mask, ml_config.COL_STATE].dropna().unique().tolist())
-        return jsonify(states)
+        store = _store()
+        if store.get("data_error"):
+            raise DataUnavailable(store["data_error"])
+        if store.get("data_pending"):
+            raise DataWarmingUp()
+        df = store.get("df")
+        if df is not None and not df.empty and "_commodity_l" in df.columns:
+            mask = df["_commodity_l"] == commodity.lower()
+            return jsonify(sorted(df.loc[mask, ml_config.COL_STATE].dropna().unique().tolist()))
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            return jsonify(mandi_store.get_states(commodity))
+        return jsonify([])
 
     @app.route("/api/districts", methods=["GET"])
     def get_districts():
@@ -803,10 +902,19 @@ def register_routes(app):
         state = request.args.get("state", "").strip()
         if not commodity or not state:
             return _public_error("Missing 'commodity' or 'state' parameter.")
-        df = _df()
-        mask = _mask_commodity_state_district(df, commodity, state)
-        districts = sorted(df.loc[mask, ml_config.COL_DISTRICT].dropna().unique().tolist())
-        return jsonify(districts)
+        store = _store()
+        if store.get("data_error"):
+            raise DataUnavailable(store["data_error"])
+        if store.get("data_pending"):
+            raise DataWarmingUp()
+        df = store.get("df")
+        if df is not None and not df.empty:
+            mask = _mask_commodity_state_district(df, commodity, state)
+            return jsonify(sorted(df.loc[mask, ml_config.COL_DISTRICT].dropna().unique().tolist()))
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            return jsonify(mandi_store.get_districts(commodity, state))
+        return jsonify([])
 
     @app.route("/api/markets", methods=["GET"])
     def get_markets():
@@ -815,10 +923,19 @@ def register_routes(app):
         district = request.args.get("district", "").strip()
         if not commodity or not state or not district:
             return _public_error("Missing required parameter(s).")
-        df = _df()
-        mask = _mask_commodity_state_district(df, commodity, state, district)
-        markets = sorted(df.loc[mask, ml_config.COL_MARKET].dropna().unique().tolist())
-        return jsonify(markets)
+        store = _store()
+        if store.get("data_error"):
+            raise DataUnavailable(store["data_error"])
+        if store.get("data_pending"):
+            raise DataWarmingUp()
+        df = store.get("df")
+        if df is not None and not df.empty:
+            mask = _mask_commodity_state_district(df, commodity, state, district)
+            return jsonify(sorted(df.loc[mask, ml_config.COL_MARKET].dropna().unique().tolist()))
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            return jsonify(mandi_store.get_markets(commodity, state, district))
+        return jsonify([])
 
     @app.route("/api/forecast", methods=["POST"])
     def forecast():
@@ -844,7 +961,13 @@ def register_routes(app):
         if pipe is None:
             return _public_error("Forecast model is not loaded.", 503)
 
-        market_result = get_market_data(_df(), commodity, state, district, market)
+        store = _store()
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            market_result = mandi_store.get_market_data(commodity, state, district, market)
+        else:
+            market_result = get_market_data(_df(), commodity, state, district, market)
+
         if market_result["source"] == "Insufficient data":
             return _public_error(
                 market_result.get("message", "Insufficient market-specific data."),
@@ -853,6 +976,8 @@ def register_routes(app):
             )
 
         try:
+            from ml.data_loader import prepare_context
+            from ml.forecaster import forecast_with_quantiles
             ctx = prepare_context(market_result["data"])
             fc = forecast_with_quantiles(pipe, ctx["context_tensor"])
         except Exception:
@@ -893,6 +1018,7 @@ def register_routes(app):
                 "price_high": p90,
             })
 
+        from ml.evaluator import evaluate_model
         eval_result = evaluate_model(pipe, ctx["prices"])
         eval_response = None
         if eval_result is not None:
@@ -1006,7 +1132,12 @@ def register_routes(app):
         if not all([commodity, state, district, market]):
             return _public_error("Missing required parameter(s).")
 
-        market_result = get_market_data(_df(), commodity, state, district, market)
+        store = _store()
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            market_result = mandi_store.get_market_data(commodity, state, district, market)
+        else:
+            market_result = get_market_data(_df(), commodity, state, district, market)
         if market_result["source"] == "Insufficient data":
             return _public_error(
                 market_result.get("message", "No data for this market."),
@@ -1054,6 +1185,28 @@ def register_routes(app):
         district = (request.args.get("district") or data.get("district") or "").strip()
         if not all([commodity, state, district]):
             return _public_error("Missing required parameter(s).")
+
+        store = _store()
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            markets_list = mandi_store.get_market_compare_data(commodity, state, district)
+            if not markets_list:
+                return _public_error(
+                    f"No historical records for {commodity} in {district}, {state}.",
+                    422,
+                )
+            return jsonify({
+                "success": True,
+                "commodity": commodity,
+                "state": state,
+                "district": district,
+                "data_source": _source_label(),
+                "markets": markets_list,
+                "note": (
+                    "Prices are the latest modal prices in the historical dataset for each market. "
+                    "They are not claimed to be today's live quotes."
+                ),
+            }), 200
 
         df = _df()
         mask = _mask_commodity_state_district(df, commodity, state, district)
@@ -1136,15 +1289,20 @@ def register_routes(app):
         if gps_err:
             return _public_error(gps_err)
 
-        df = _df()
-        if df.empty:
-            return _public_error("Mandi dataset is not loaded.", 503)
+        store = _store()
+        mandi_store = store.get("mandi_store")
+        using_store = bool(mandi_store and mandi_store.is_ready())
 
-        mask = df["_commodity_l"] == commodity.lower()
-        mask = mask & (df["_state_l"] == state.lower())
-        sub = df[mask]
-        if sub.empty:
-            return _public_error(f"No historical records for {commodity} in {state}.", 422)
+        if not using_store:
+            df = _df()
+            if df.empty:
+                return _public_error("Mandi dataset is not loaded.", 503)
+
+            mask = df["_commodity_l"] == commodity.lower()
+            mask = mask & (df["_state_l"] == state.lower())
+            sub = df[mask]
+            if sub.empty:
+                return _public_error(f"No historical records for {commodity} in {state}.", 422)
 
         allow_net = _allow_external_http()
         live_feed = fetch_live_prices(commodity=commodity, state=state, limit=200)
@@ -1169,79 +1327,143 @@ def register_routes(app):
                     origin_src = geo.get("source")
 
         candidates = []
-        # observed=True: the market column is categorical (it carries every
-        # market in the archive), so the default would iterate thousands of
-        # empty groups for markets absent from this slice.
-        for mkt_name, grp in sub.groupby(ml_config.COL_MARKET, observed=True):
-            grp_sorted = grp.sort_values(ml_config.COL_DATE)
-            latest_date = grp_sorted[ml_config.COL_DATE].max()
-            dest_district = str(grp_sorted[ml_config.COL_DISTRICT].mode().iloc[0])
-            dest_state = str(grp_sorted[ml_config.COL_STATE].mode().iloc[0])
-            prices = grp_sorted.loc[
-                grp_sorted[ml_config.COL_DATE] == latest_date,
-                ml_config.COL_MODAL_PRICE,
-            ].astype(float)
-            prices = prices[np.isfinite(prices) & (prices > 0)]
-            if prices.empty:
-                continue
-            latest_price = float(prices.median())
-            recent = grp_sorted.tail(30)[ml_config.COL_MODAL_PRICE].astype(float)
-            recent = recent[np.isfinite(recent) & (recent > 0)]
-            if len(recent) and (
-                latest_price / float(recent.median()) > 5
-                or latest_price / float(recent.median()) < 0.2
-            ):
-                latest_price = float(recent.median())
-            is_live_price = False
-            price_source = "historical mandi dataset"
-            live_rec = live_by_market.get(str(mkt_name).strip().lower())
-            if live_rec and live_rec.get("modal_price"):
-                latest_price = float(live_rec["modal_price"])
-                latest_date = live_rec.get("arrival_date") or latest_date
-                is_live_price = bool(live_rec.get("is_today"))
-                price_source = live_rec.get("source") or "data.gov.in / AGMARKNET"
-            days_old, freshness_label = _freshness_fields(latest_date, is_live_price)
-            same_mkt = bool(origin_market) and origin_market.lower() == str(mkt_name).lower()
-            dist = estimate_distance_km(state, district, dest_state, dest_district, same_market=same_mkt)
-            money = net_realisation(latest_price, quantity_qtl, dist["km"])
-            freshness_penalty = 0.0
-            if days_old > 30:
-                freshness_penalty = min(0.15, days_old / 2000.0)
-            score = money["net_realisation"] * (1.0 - freshness_penalty)
-            candidates.append({
-                "market": str(mkt_name),
-                "district": dest_district,
-                "state": dest_state,
-                "latest_price": round(latest_price, 2),
-                "modal_price": round(latest_price, 2),
-                "latest_date": str(pd.Timestamp(latest_date).date()) if not isinstance(latest_date, str) else str(latest_date)[:10],
-                "days_since_update": days_old,
-                "stale_data": days_old > 7,
-                "is_live_today": is_live_price,
-                "is_live_price": is_live_price,
-                "freshness_label": freshness_label,
-                "price_source": price_source,
-                "distance_km": dist["km"],
-                "duration_minutes": None,
-                "distance_method": dist["method"],
-                "distance_source": dist["method"],
-                "distance_estimated": True,
-                "gross_sale_value": money["gross_sale_value"],
-                "gross_value": money["gross_sale_value"],
-                "transport_cost": money["transport_cost"],
-                "handling_cost": money["handling_cost"],
-                "mandi_fee_estimate": money["mandi_fee_estimate"],
-                "mandi_fee": money["mandi_fee_estimate"],
-                "total_cost": round(
-                    money["transport_cost"] + money["handling_cost"] + money["mandi_fee_estimate"], 2
-                ),
-                "net_realisation": money["net_realisation"],
-                "net_per_qtl": round(money["net_realisation"] / quantity_qtl, 2) if quantity_qtl else 0,
-                "score": round(score, 2),
-                "record_count": int(len(grp_sorted)),
-                "unit": "INR per quintal",
-                "_same_market": same_mkt,
-            })
+        if using_store:
+            store_candidates = mandi_store.get_sell_now_markets(commodity, state)
+            if not store_candidates:
+                return _public_error(f"No historical records for {commodity} in {state}.", 422)
+            for c in store_candidates:
+                mkt_name = c["market"]
+                dest_district = c["district"]
+                dest_state = c["state"]
+                latest_price = float(c["latest_price"])
+                latest_date = c["latest_date"]
+                rec_med = float(c.get("recent_median") or latest_price)
+                if rec_med > 0 and (latest_price / rec_med > 5 or latest_price / rec_med < 0.2):
+                    latest_price = rec_med
+                is_live_price = False
+                price_source = "historical mandi dataset"
+                live_rec = live_by_market.get(str(mkt_name).strip().lower())
+                if live_rec and live_rec.get("modal_price"):
+                    latest_price = float(live_rec["modal_price"])
+                    latest_date = live_rec.get("arrival_date") or latest_date
+                    is_live_price = bool(live_rec.get("is_today"))
+                    price_source = live_rec.get("source") or "data.gov.in / AGMARKNET"
+                days_old, freshness_label = _freshness_fields(latest_date, is_live_price)
+                same_mkt = bool(origin_market) and origin_market.lower() == str(mkt_name).lower()
+                dist = estimate_distance_km(state, district, dest_state, dest_district, same_market=same_mkt)
+                money = net_realisation(latest_price, quantity_qtl, dist["km"])
+                freshness_penalty = 0.0
+                if days_old > 30:
+                    freshness_penalty = min(0.15, days_old / 2000.0)
+                score = money["net_realisation"] * (1.0 - freshness_penalty)
+                candidates.append({
+                    "market": str(mkt_name),
+                    "district": dest_district,
+                    "state": dest_state,
+                    "latest_price": round(latest_price, 2),
+                    "modal_price": round(latest_price, 2),
+                    "latest_date": str(pd.Timestamp(latest_date).date()) if not isinstance(latest_date, str) else str(latest_date)[:10],
+                    "days_since_update": days_old,
+                    "stale_data": days_old > 7,
+                    "is_live_today": is_live_price,
+                    "is_live_price": is_live_price,
+                    "freshness_label": freshness_label,
+                    "price_source": price_source,
+                    "distance_km": dist["km"],
+                    "duration_minutes": None,
+                    "distance_method": dist["method"],
+                    "distance_source": dist["method"],
+                    "distance_estimated": True,
+                    "gross_sale_value": money["gross_sale_value"],
+                    "gross_value": money["gross_sale_value"],
+                    "transport_cost": money["transport_cost"],
+                    "handling_cost": money["handling_cost"],
+                    "mandi_fee_estimate": money["mandi_fee_estimate"],
+                    "mandi_fee": money["mandi_fee_estimate"],
+                    "total_cost": round(
+                        money["transport_cost"] + money["handling_cost"] + money["mandi_fee_estimate"], 2
+                    ),
+                    "net_realisation": money["net_realisation"],
+                    "net_per_qtl": round(money["net_realisation"] / quantity_qtl, 2) if quantity_qtl else 0,
+                    "score": round(score, 2),
+                    "record_count": c.get("record_count", 30),
+                    "unit": "INR per quintal",
+                    "_same_market": same_mkt,
+                })
+        else:
+            # observed=True: the market column is categorical (it carries every
+            # market in the archive), so the default would iterate thousands of
+            # empty groups for markets absent from this slice.
+            for mkt_name, grp in sub.groupby(ml_config.COL_MARKET, observed=True):
+                grp_sorted = grp.sort_values(ml_config.COL_DATE)
+                latest_date = grp_sorted[ml_config.COL_DATE].max()
+                dest_district = str(grp_sorted[ml_config.COL_DISTRICT].mode().iloc[0])
+                dest_state = str(grp_sorted[ml_config.COL_STATE].mode().iloc[0])
+                prices = grp_sorted.loc[
+                    grp_sorted[ml_config.COL_DATE] == latest_date,
+                    ml_config.COL_MODAL_PRICE,
+                ].astype(float)
+                prices = prices[np.isfinite(prices) & (prices > 0)]
+                if prices.empty:
+                    continue
+                latest_price = float(prices.median())
+                recent = grp_sorted.tail(30)[ml_config.COL_MODAL_PRICE].astype(float)
+                recent = recent[np.isfinite(recent) & (recent > 0)]
+                if len(recent) and (
+                    latest_price / float(recent.median()) > 5
+                    or latest_price / float(recent.median()) < 0.2
+                ):
+                    latest_price = float(recent.median())
+                is_live_price = False
+                price_source = "historical mandi dataset"
+                live_rec = live_by_market.get(str(mkt_name).strip().lower())
+                if live_rec and live_rec.get("modal_price"):
+                    latest_price = float(live_rec["modal_price"])
+                    latest_date = live_rec.get("arrival_date") or latest_date
+                    is_live_price = bool(live_rec.get("is_today"))
+                    price_source = live_rec.get("source") or "data.gov.in / AGMARKNET"
+                days_old, freshness_label = _freshness_fields(latest_date, is_live_price)
+                same_mkt = bool(origin_market) and origin_market.lower() == str(mkt_name).lower()
+                dist = estimate_distance_km(state, district, dest_state, dest_district, same_market=same_mkt)
+                money = net_realisation(latest_price, quantity_qtl, dist["km"])
+                freshness_penalty = 0.0
+                if days_old > 30:
+                    freshness_penalty = min(0.15, days_old / 2000.0)
+                score = money["net_realisation"] * (1.0 - freshness_penalty)
+                candidates.append({
+                    "market": str(mkt_name),
+                    "district": dest_district,
+                    "state": dest_state,
+                    "latest_price": round(latest_price, 2),
+                    "modal_price": round(latest_price, 2),
+                    "latest_date": str(pd.Timestamp(latest_date).date()) if not isinstance(latest_date, str) else str(latest_date)[:10],
+                    "days_since_update": days_old,
+                    "stale_data": days_old > 7,
+                    "is_live_today": is_live_price,
+                    "is_live_price": is_live_price,
+                    "freshness_label": freshness_label,
+                    "price_source": price_source,
+                    "distance_km": dist["km"],
+                    "duration_minutes": None,
+                    "distance_method": dist["method"],
+                    "distance_source": dist["method"],
+                    "distance_estimated": True,
+                    "gross_sale_value": money["gross_sale_value"],
+                    "gross_value": money["gross_sale_value"],
+                    "transport_cost": money["transport_cost"],
+                    "handling_cost": money["handling_cost"],
+                    "mandi_fee_estimate": money["mandi_fee_estimate"],
+                    "mandi_fee": money["mandi_fee_estimate"],
+                    "total_cost": round(
+                        money["transport_cost"] + money["handling_cost"] + money["mandi_fee_estimate"], 2
+                    ),
+                    "net_realisation": money["net_realisation"],
+                    "net_per_qtl": round(money["net_realisation"] / quantity_qtl, 2) if quantity_qtl else 0,
+                    "score": round(score, 2),
+                    "record_count": int(len(grp_sorted)),
+                    "unit": "INR per quintal",
+                    "_same_market": same_mkt,
+                })
 
         if not candidates:
             return _public_error("No usable market prices for this selection.", 422)
@@ -1300,7 +1522,7 @@ def register_routes(app):
                 row["dest_coords_source"] = dest_src
             row.pop("_same_market", None)
 
-        refine.sort(key=lambda x: x["score"], reverse=True)
+        refine.sort(key=lambda x: x["net_realisation"], reverse=True)
         top = refine[:12]
         best = top[0]
         rate = transport_rate()
@@ -1371,10 +1593,16 @@ def register_routes(app):
         pipe = _pipeline()
         if pipe is None:
             return _public_error("Forecast model is not loaded.", 503)
-        market_result = get_market_data(_df(), commodity, state, district, market)
+        store = _store()
+        mandi_store = store.get("mandi_store")
+        if mandi_store and mandi_store.is_ready():
+            market_result = mandi_store.get_market_data(commodity, state, district, market)
+        else:
+            market_result = get_market_data(_df(), commodity, state, district, market)
         if market_result["source"] == "Insufficient data":
             return _public_error(market_result.get("message", "Insufficient data."), 422)
         try:
+            from ml.forecaster import forecast_with_quantiles
             ctx = prepare_context(market_result["data"])
             fc = forecast_with_quantiles(pipe, ctx["context_tensor"])
         except Exception:
@@ -2371,8 +2599,35 @@ def register_routes(app):
             return _public_error("commodity parameter is required", 400)
 
         try:
-            df = _df()
-            if df.empty:
+            store = _store()
+            df = store.get("df")
+            if df is None or df.empty:
+                mandi_store = store.get("mandi_store")
+                if mandi_store and mandi_store.is_ready():
+                    records = mandi_store.get_latest_prices(commodity, state, district, market, limit)
+                    latest_date = records[0]["arrival_date"] if records else None
+                    import datetime
+                    today_str = datetime.date.today().isoformat()
+                    data_is_current = (latest_date == today_str) if latest_date else False
+                    label = "Today's mandi data" if data_is_current else "Latest available mandi data"
+                    note = f"Showing most recent available records. Dataset latest date: {latest_date or 'unknown'}."
+                    for r in records:
+                        if "date" not in r:
+                            r["date"] = r.get("arrival_date")
+                    return jsonify({
+                        "success": True,
+                        "prices": records,
+                        "count": len(records),
+                        "latest_date": latest_date,
+                        "label": label,
+                        "is_live_today": data_is_current,
+                        "is_live": False,
+                        "dev_fixture": False,
+                        "source": "Mandi database (government open data). Not a live API feed.",
+                        "note": note,
+                    }), 200
+
+            if df is None or df.empty:
                 return jsonify({"success": True, "prices": [], "count": 0,
                                 "message": "Dataset not loaded.", "latest_date": None}), 200
 
@@ -2666,8 +2921,9 @@ def get_app():
     if _REAL_APP is None:
         with _INIT_LOCK:
             if _REAL_APP is None:
-                skip = os.environ.get("KISANLINK_SKIP_STARTUP", "").lower() in {"1", "true", "yes"}
-                _REAL_APP = create_app(load_real_data=not skip, load_chronos=not skip)
+                eager_data = os.environ.get("KISANLINK_EAGER_DATA", "").lower() in {"1", "true", "yes"}
+                eager_chronos = os.environ.get("KISANLINK_EAGER_CHRONOS", "").lower() in {"1", "true", "yes"}
+                _REAL_APP = create_app(load_real_data=eager_data, load_chronos=eager_chronos)
     return _REAL_APP
 
 
@@ -2685,16 +2941,16 @@ app = _LazyApp()
 
 
 if __name__ == "__main__":
-    # The dashboard, auth, weather and photo grading need neither the mandi
-    # archive nor Chronos, so neither is loaded before the socket opens.
-    # KISANLINK_EAGER_DATA=1 restores the old blocking behaviour.
     eager_data = os.environ.get("KISANLINK_EAGER_DATA", "").lower() in {"1", "true", "yes"}
     application = create_app(load_real_data=eager_data, load_chronos=False)
-    if not eager_data:
+    mandi_store = get_mandi_store()
+    if not eager_data and (not mandi_store or not mandi_store.is_ready()):
         start_background_data_load(application)
         print("[KisanLink API] Mandi archive loading in the background — "
               "the site is usable now; forecasts and market pages become "
               "available when it finishes.")
-    print("[KisanLink API] Starting server on http://localhost:5000")
-    print("[KisanLink API] Frontend: http://localhost:5000/pages/farmer.html")
-    application.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+    host = os.environ.get("HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", 5000))
+    print(f"[KisanLink API] Starting server on http://{host}:{port}")
+    print(f"[KisanLink API] Frontend: http://{host}:{port}/pages/farmer.html")
+    application.run(host=host, port=port, debug=False, threaded=True)

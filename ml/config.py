@@ -77,6 +77,12 @@ CACHE_DIR = os.path.join(DATA_DIR, "_cache")
 COMBINED_CACHE_PATH = os.path.join(CACHE_DIR, "combined.pkl")
 COMBINED_CACHE_SIG = os.path.join(CACHE_DIR, "combined.sig")
 
+# SQLite indexed store for zero-startup-RAM on-demand querying
+MANDI_DB_PATH = os.environ.get(
+    "KISANLINK_MANDI_DB_PATH",
+    os.path.join(DATA_DIR, "mandi.sqlite3")
+)
+
 # Incrementally ingested records
 INGEST_DIR = os.path.join(DATA_DIR, "ingested")
 INGESTED_RECORDS_PATH = os.path.join(INGEST_DIR, "records.csv")
