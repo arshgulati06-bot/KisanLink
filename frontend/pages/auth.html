@@ -294,19 +294,19 @@
         </div>
         <div style="display: flex; gap: var(--space-3);">
           <a href="farmer.html" class="btn btn-primary btn-sm" id="goDashboardBtn" style="flex: 1; justify-content: center;">Go to Dashboard →</a>
-          <button onclick="handleLogout()" class="btn btn-secondary btn-sm" style="flex: 0 0 auto;">Sign Out</button>
+          <button type="button" onclick="handleLogout()" class="btn btn-secondary btn-sm" style="flex: 0 0 auto;">Sign Out</button>
         </div>
       </div>
 
 
       <!-- Auth Tabs -->
-      <div class="auth-tabs">
-        <button class="auth-tab active" id="tabLogin" onclick="switchTab('login')">Sign In</button>
-        <button class="auth-tab" id="tabRegister" onclick="switchTab('register')">Create Account</button>
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab active" id="tabLogin" role="tab" aria-selected="true" onclick="switchTab('login')">Sign In</button>
+        <button type="button" class="auth-tab" id="tabRegister" role="tab" aria-selected="false" onclick="switchTab('register')">Create Account</button>
       </div>
 
       <!-- Login Form -->
-      <div class="auth-form active" id="formLogin">
+      <div class="auth-form active" id="formLogin" role="tabpanel" aria-labelledby="tabLogin">
         <div class="auth-error" id="loginError"></div>
         <div class="auth-success" id="loginSuccess"></div>
 
@@ -318,11 +318,11 @@
           <label class="form-label" for="loginPassword">Password</label>
           <input class="form-input" type="password" id="loginPassword" placeholder="Your password" autocomplete="current-password">
         </div>
-        <button class="btn-auth" id="btnLogin" onclick="handleLogin()">Sign In</button>
+        <button type="button" class="btn-auth" id="btnLogin" onclick="handleLogin()">Sign In</button>
       </div>
 
       <!-- Register Form -->
-      <div class="auth-form" id="formRegister">
+      <div class="auth-form" id="formRegister" role="tabpanel" aria-labelledby="tabRegister">
         <div class="auth-error" id="registerError"></div>
         <div class="auth-success" id="registerSuccess"></div>
 
@@ -369,7 +369,7 @@
           <input class="form-input" type="password" id="regPassword" placeholder="Create a password" autocomplete="new-password">
         </div>
 
-        <button class="btn-auth" id="btnRegister" onclick="handleRegister()">Create Account</button>
+        <button type="button" class="btn-auth" id="btnRegister" onclick="handleRegister()">Create Account</button>
       </div>
 
       <!-- 13-Language Selector -->
@@ -412,10 +412,21 @@
     // Tab switching
     // ----------------------------------------------------------------
     function switchTab(tab) {
-      document.getElementById('formLogin').classList.toggle('active', tab === 'login');
-      document.getElementById('formRegister').classList.toggle('active', tab === 'register');
-      document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-      document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+      var isLogin = (tab === 'login');
+      var formLogin = document.getElementById('formLogin');
+      var formRegister = document.getElementById('formRegister');
+      var tabLogin = document.getElementById('tabLogin');
+      var tabRegister = document.getElementById('tabRegister');
+      if (formLogin) formLogin.classList.toggle('active', isLogin);
+      if (formRegister) formRegister.classList.toggle('active', !isLogin);
+      if (tabLogin) {
+        tabLogin.classList.toggle('active', isLogin);
+        tabLogin.setAttribute('aria-selected', isLogin ? 'true' : 'false');
+      }
+      if (tabRegister) {
+        tabRegister.classList.toggle('active', !isLogin);
+        tabRegister.setAttribute('aria-selected', isLogin ? 'false' : 'true');
+      }
       clearMessages();
     }
 
@@ -622,13 +633,19 @@
     // Enter key support
     // ----------------------------------------------------------------
     document.getElementById('loginPassword').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') handleLogin();
+      if (e.key === 'Enter') { e.preventDefault(); handleLogin(); }
     });
     document.getElementById('loginUsername').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') handleLogin();
+      if (e.key === 'Enter') { e.preventDefault(); handleLogin(); }
     });
     document.getElementById('regPassword').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') handleRegister();
+      if (e.key === 'Enter') { e.preventDefault(); handleRegister(); }
+    });
+    document.getElementById('regUsername').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); handleRegister(); }
+    });
+    document.getElementById('regName').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); handleRegister(); }
     });
 
     // ----------------------------------------------------------------
@@ -643,6 +660,22 @@
     // ----------------------------------------------------------------
     // Init
     // ----------------------------------------------------------------
+    (function initTabFromUrl() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var tab = (params.get('tab') || params.get('mode') || '').toLowerCase();
+        if (!tab && window.location.hash) {
+          tab = window.location.hash.replace('#', '').toLowerCase();
+        }
+        if (tab === 'register' || tab === 'create' || tab === 'signup') {
+          switchTab('register');
+        } else {
+          switchTab('login');
+        }
+      } catch (e) {
+        switchTab('login');
+      }
+    })();
     checkLoggedIn();
   </script>
 </body>
