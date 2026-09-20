@@ -490,10 +490,11 @@ function _onAnalyzeClick() {
 function analyzeCropQuality(imageFile, crop) {
   // Delegates to the real client in api.js, which posts the photo to
   // /api/ml/quality-assessment and returns the trained model's own output.
-  // api.js is loaded first, so its implementation is captured at load time
-  // before this module publishes its own window.assessCropQuality alias.
-  if (typeof KL_REAL_ASSESS === 'function') {
-    return KL_REAL_ASSESS(imageFile, crop);
+  var assessFn = (typeof KL_REAL_ASSESS === 'function')
+    ? KL_REAL_ASSESS
+    : ((typeof window !== 'undefined' && (window.assessCropQualityApi || window.assessCropQuality)) || null);
+  if (typeof assessFn === 'function' && assessFn !== analyzeCropQuality) {
+    return assessFn(imageFile, crop);
   }
   // Only reachable if api.js itself failed to load (network error, blocked
   // script). The models ARE integrated — see /api/ml/quality-status — so this

@@ -49,6 +49,7 @@ node_modules/
 
 # Local secrets — never commit
 .env
+.env.*
 .env.local
 .env.*.local
 backend/*.sqlite3

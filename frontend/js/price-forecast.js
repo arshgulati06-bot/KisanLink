@@ -18,9 +18,18 @@
 var KL_PriceForecast = (function () {
 
   /* ── API base URL ──────────────────────────────────────────────────── */
-  var API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
-    ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
-    : 'http://localhost:5000';
+  function _getApiBase() {
+    if (window.CONFIG && window.CONFIG.API_BASE_URL) {
+      return window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '');
+    }
+    if (window.apiClient && window.apiClient.baseUrl) {
+      return window.apiClient.baseUrl.replace(/\/api\/?$/, '');
+    }
+    var isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000');
+    return isLocal ? (window.location.port === '5000' ? '' : 'http://127.0.0.1:5000') : 'https://kisanlink-backend-42qd.onrender.com';
+  }
+  var API_BASE = _getApiBase();
 
   /* ── DOM element IDs ──────────────────────────────────────────────── */
   var IDS = {
@@ -152,7 +161,7 @@ var KL_PriceForecast = (function () {
 
   /* ── API helpers ───────────────────────────────────────────────────── */
   function _fetchJSON(url, signal) {
-    return fetch(API_BASE + url, { signal: signal }).then(function (res) {
+    return fetch(_getApiBase() + url, { signal: signal }).then(function (res) {
       if (!res.ok) throw new Error('API error: ' + res.status);
       return res.json();
     });
@@ -544,25 +553,38 @@ var KL_PriceForecast = (function () {
     if (btn) { btn.disabled = true; btn.textContent = 'Running Chronos...'; }
 
     requestState.forecastController = new AbortController();
-    fetch(API_BASE + '/api/forecast', {
+    var forecastTimer = setTimeout(function () {
+      if (requestState.forecastController) {
+        requestState.forecastController.abort();
+      }
+    }, 25000);
+
+    fetch(_getApiBase() + '/api/forecast', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: requestState.forecastController.signal,
       body:    JSON.stringify({ commodity: crop, state: state, district: district, market: market }),
     })
     .then(function (res) {
-      return res.json().then(function (d) { return { status: res.status, data: d }; });
+      clearTimeout(forecastTimer);
+      var ct = res.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        return res.json().then(function (d) { return { status: res.status, ok: res.ok, data: d }; });
+      } else {
+        return res.text().then(function () { return { status: res.status, ok: false, data: { success: false, error: 'Server returned HTTP ' + res.status } }; });
+      }
     })
     .then(function (result) {
       if (!_isCurrent(token, selection)) return;
-      if (result.data.success) {
+      // Always trigger market comparison and intelligence for this district, so farmer has real data
+      _loadMarketCompare(selection, token);
+      _loadMarketIntel(selection, token);
+
+      if (result.ok && result.data && result.data.success) {
         _renderResult(result.data);
-        // Also trigger market comparison for this district
-        _loadMarketCompare(selection, token);
-        _loadMarketIntel(selection, token);
       } else {
-        var errMsg = result.data.error || 'Forecast failed.';
-        if (result.data.available_markets && result.data.available_markets.length > 0) {
+        var errMsg = (result.data && (result.data.error || result.data.message)) || ('Forecast unavailable (HTTP ' + result.status + ').');
+        if (result.data && result.data.available_markets && result.data.available_markets.length > 0) {
           errMsg += '\n\nAvailable markets in this district: ' + result.data.available_markets.join(', ');
         }
         var msgEl = document.getElementById(IDS.errorMsg);
@@ -571,13 +593,24 @@ var KL_PriceForecast = (function () {
       }
     })
     .catch(function (err) {
-      if (!_isCurrent(token, selection) || err.name === 'AbortError') return;
+      clearTimeout(forecastTimer);
+      if (!_isCurrent(token, selection)) return;
+      // Always load market comparison and intelligence so user has real data
+      _loadMarketCompare(selection, token);
+      _loadMarketIntel(selection, token);
+
+      var isTimeout = err && (err.name === 'AbortError');
       var msgEl = document.getElementById(IDS.errorMsg);
-      if (msgEl) msgEl.textContent = 'Could not connect to forecast API. Start the backend: python backend/app.py\n\nError: ' + err.message;
+      if (msgEl) {
+        msgEl.textContent = isTimeout
+          ? 'Forecast request timed out after 25 seconds. The server may be busy or the model is unavailable on this instance.'
+          : 'Could not connect to forecast service: ' + (err.message || 'network error');
+      }
       _clearForecastDependentUi('Forecast unavailable for the current selection.');
       _setResultState('error');
     })
     .finally(function () {
+      clearTimeout(forecastTimer);
       if (!_isCurrent(token, selection)) return;
       requestState.forecastController = null;
       if (btn) { btn.disabled = false; btn.textContent = 'Generate Forecast'; }
@@ -604,7 +637,7 @@ var KL_PriceForecast = (function () {
 
     _abort('comparisonController');
     requestState.comparisonController = new AbortController();
-    fetch(API_BASE + '/api/market-compare?commodity=' + encodeURIComponent(commodity) +
+    fetch(_getApiBase() + '/api/market-compare?commodity=' + encodeURIComponent(commodity) +
           '&state=' + encodeURIComponent(state) + '&district=' + encodeURIComponent(district), {
             signal: requestState.comparisonController.signal,
           })
@@ -663,7 +696,7 @@ var KL_PriceForecast = (function () {
     });
     _abort('intelligenceController');
     requestState.intelligenceController = new AbortController();
-    fetch(API_BASE + '/api/market-intel?' + params.toString(), {
+    fetch(_getApiBase() + '/api/market-intel?' + params.toString(), {
       signal: requestState.intelligenceController.signal,
     })
       .then(function (res) {

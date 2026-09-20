@@ -765,7 +765,10 @@
       }
 
       // Try buyer-requirements endpoint (own requirements)
-      var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+      var API = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000'
+          ? 'http://127.0.0.1:5000/api'
+          : 'https://kisanlink-backend-42qd.onrender.com/api');
       var resp = await fetch(API + '/buyer-requirements/my', {
         headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
       });
@@ -811,7 +814,10 @@
     window.__klBuyerLots = {};   // drop the previous page of lots straight away
     try {
       var token = localStorage.getItem('kisanlink_auth_token');
-      var API   = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+      var API   = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000'
+          ? 'http://127.0.0.1:5000/api'
+          : 'https://kisanlink-backend-42qd.onrender.com/api');
       var url   = API + '/lots' + (commodity ? '?commodity=' + encodeURIComponent(commodity) : '');
       var headers = { 'Accept': 'application/json' };
       if (token) headers['Authorization'] = 'Bearer ' + token;

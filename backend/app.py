@@ -145,13 +145,37 @@ def _pipeline():
     pipe = store.get("pipeline")
     if pipe is not None:
         return pipe
+    if store.get("pipeline_failed"):
+        return None
+
+    # Check if Chronos is enabled on this instance.
+    # On resource-constrained production instances (e.g. Render free 512MB tier),
+    # loading PyTorch T5 causes memory exhaustion or worker timeout.
+    # Set ENABLE_CHRONOS=true (or KISANLINK_ENABLE_CHRONOS=true) to enable.
+    enable_chronos = (
+        current_app.config.get("TESTING", False)
+        or bool(store.get("load_chronos", False))
+        or os.environ.get("ENABLE_CHRONOS", os.environ.get("KISANLINK_ENABLE_CHRONOS", "false")).lower() in {"1", "true", "yes"}
+    )
+    if not enable_chronos:
+        store["pipeline_failed"] = "Chronos forecasting model is disabled on this server instance (instance memory limits)."
+        return None
+
     with _CHRONOS_LOCK:
         pipe = store.get("pipeline")          # another thread may have won
-        if pipe is None:
+        if pipe is not None:
+            return pipe
+        if store.get("pipeline_failed"):
+            return None
+        try:
             print("[KisanLink API] Loading Chronos model (first forecast request)...")
             pipe = load_model()
             store["pipeline"] = pipe
             print("[KisanLink API] Chronos model loaded.")
+        except Exception as exc:
+            print(f"[KisanLink API] Failed to load Chronos model: {exc}")
+            store["pipeline_failed"] = str(exc)
+            return None
     return pipe
 
 
@@ -363,6 +387,7 @@ def create_app(dataframe=None, pipeline=None, load_real_data=False, load_chronos
         "mandi_store": mandi_store,
         "dev_fixture": using_dev_fixture,
         "pipeline": pipeline,
+        "load_chronos": load_chronos,
         "buyers": buyers,
         "buyer_note": buyer_note,
         "ingestion_meta": {
@@ -378,6 +403,9 @@ def create_app(dataframe=None, pipeline=None, load_real_data=False, load_chronos
             ),
         },
     }
+
+    # Ensure application database tables (users, lots, offers, transactions) exist
+    _init_database()
 
     @app.route("/api/market-prices/diagnostics", methods=["GET"])
     def market_prices_diagnostics():
@@ -547,6 +575,7 @@ def create_app(dataframe=None, pipeline=None, load_real_data=False, load_chronos
 
         return asst.reply_for(intent if intent in asst.REPLIES else "unknown", lang), []
 
+    @app.route("/health", methods=["GET"])
     @app.route("/api/health", methods=["GET"])
     def health():
         """
@@ -971,7 +1000,13 @@ def register_routes(app):
 
         pipe = _pipeline()
         if pipe is None:
-            return _public_error("Forecast model is not loaded.", 503)
+            reason = _store().get("pipeline_failed") or "Forecast model is not loaded."
+            return jsonify({
+                "success": False,
+                "error": f"Chronos forecasting model is currently unavailable on this instance ({reason}). Real market comparison and historical trends are available below.",
+                "model_available": False,
+                "reason": "model_disabled_or_unavailable",
+            }), 503
 
         store = _store()
         mandi_store = store.get("mandi_store")
@@ -1947,6 +1982,7 @@ def register_routes(app):
 
 
     @app.route("/api/auth/me", methods=["GET"])
+    @app.route("/api/auth/profile", methods=["GET"])
     @_auth.login_required
     def auth_me():
         """Return the currently authenticated user's account + profile."""
@@ -2044,12 +2080,13 @@ def register_routes(app):
         if not commodity:
             return _public_error("'commodity' is required.")
         try:
-            qty = float(data.get("quantity_qtl", 0) or 0)
+            qty = float(data.get("quantity_qtl") or data.get("quantity") or 0)
         except (TypeError, ValueError):
             return _public_error("'quantity_qtl' must be a number.")
         if qty <= 0:
             return _public_error("'quantity_qtl' must be greater than zero.")
         payload = dict(data)
+        payload["quantity_qtl"] = qty
         if payload.get("image_data_url"):
             saved, img_err = _save_lot_image(payload.pop("image_data_url"))
             if img_err:
@@ -2822,6 +2859,17 @@ def register_routes(app):
                             "error": "The uploaded file could not be read."}), 400
 
         try:
+            enable_quality = (
+                current_app.config.get("TESTING", False)
+                or os.environ.get("ENABLE_QUALITY_MODEL", "false").lower() in {"1", "true", "yes"}
+            )
+            if not enable_quality:
+                return jsonify({
+                    "success": False,
+                    "reason": "quality_model_disabled",
+                    "error": "Photo condition analysis is disabled on this lightweight server instance. Please select your crop grade manually in Create Sale Lot.",
+                    "supported_crops": qi.supported_crops(),
+                }), 503
             result = qi.assess(data, crop)
         except qi.QualityUnavailable as exc:
             status = 422 if exc.reason in ("unsupported_crop", "invalid_image",
@@ -2844,16 +2892,20 @@ def register_routes(app):
         """Which crops can actually be graded on this server right now."""
         from ml import quality_inference as qi
         crops = qi.supported_crops()
+        enable_quality = (
+            current_app.config.get("TESTING", False)
+            or os.environ.get("ENABLE_QUALITY_MODEL", "false").lower() in {"1", "true", "yes"}
+        )
         return jsonify({
             "success": True,
-            "available": bool(crops),
+            "available": bool(crops) and enable_quality,
+            "models_enabled": enable_quality,
             "supported_crops": crops,
             "models_dir": "ml/quality_models",
             "note": (
                 "Photo grading is ready for: " + ", ".join(c.title() for c in crops)
-                if crops else
-                "No trained quality models are installed in ml/quality_models, "
-                "so photo grading is unavailable. Set the crop grade manually."
+                if (crops and enable_quality) else
+                "Photo condition analysis is inactive on this instance to conserve resources. Set quality manually."
             ),
         }), 200
 

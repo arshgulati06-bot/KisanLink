@@ -351,8 +351,11 @@ var KL_Chat = (function () {
   }
 
   function _apiBase() {
-    if (window.apiClient && window.apiClient.baseUrl) return window.apiClient.baseUrl;
-    var base = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+    if (window.apiClient && window.apiClient.baseUrl) return window.apiClient.baseUrl.replace(/\/$/, '');
+    var base = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+      (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000')
+        ? 'http://127.0.0.1:5000/api'
+        : 'https://kisanlink-backend-42qd.onrender.com/api');
     return base.replace(/\/$/, '');
   }
 

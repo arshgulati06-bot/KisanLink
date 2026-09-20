@@ -143,7 +143,9 @@ var KL_Step4 = (function () {
   function _fillCommoditySelects() {
     var API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
       ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
-      : 'http://localhost:5000';
+      : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000')
+          ? 'http://127.0.0.1:5000'
+          : 'https://kisanlink-backend-42qd.onrender.com');
 
     // The mandi archive loads in the background, so /api/commodities answers
     // 503 for the first moments after a cold start. Say so, wait for it, and

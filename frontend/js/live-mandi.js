@@ -309,9 +309,11 @@
         return;
       }
       var newest = rows[0].date || res.latest_date;
+      var recAge = daysOld(newest);
+      var ageStr = (recAge != null && recAge > 0) ? ' (' + recAge + ' days ago)' : '';
       setStatus('latest', 'LATEST AVAILABLE');
       setMeta(esc(why) + ' Showing the latest verified record from the local ' +
-              'mandi archive — <strong>' + esc(niceDate(newest)) + '</strong>. ' +
+              'mandi archive — <strong>' + esc(niceDate(newest)) + '</strong>' + ageStr + '. ' +
               'This is <strong>not</strong> a live quote.');
       renderCards(rows.map(function (r) {
         return {

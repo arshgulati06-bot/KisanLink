@@ -605,7 +605,9 @@ function renderBuyerMatchedSupply(commodity, lotQty, grade, state, expectedPrice
 
   const API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL)
     ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
-    : 'http://localhost:5000';
+    : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000')
+        ? 'http://127.0.0.1:5000'
+        : 'https://kisanlink-backend-42qd.onrender.com');
 
   fetch(API_BASE + '/api/buyer-match', {
     method: 'POST',

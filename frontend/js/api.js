@@ -687,7 +687,21 @@ window.getLearning           = getLearning;
 window.getHelplines          = getHelplines;
 window.getSeeds              = getSeeds;
 window.getLatestMarketPrices = getLatestMarketPrices;
-window.getLiveMarketPrices = getLiveMarketPrices;
+window.getLiveMarketPrices   = getLiveMarketPrices;
 window.getSellNowPlan        = getSellNowPlan;
 window.reverseGeocode        = reverseGeocode;
 window.getRoute              = getRoute;
+
+// Global exports — ML, Market Intelligence & Crop Quality
+window.assessCropQuality         = assessCropQuality;
+window.assessCropQualityApi      = assessCropQuality;
+window.getCropQualityStatus      = getCropQualityStatus;
+window.getPriceForecast          = getPriceForecast;
+window.getMarketIntel            = getMarketIntel;
+window.compareMarkets            = compareMarkets;
+window.getBuyerDemands           = getBuyerDemands;
+window.matchBuyers               = matchBuyers;
+window.getSaleWindow             = getSaleWindow;
+window.getIngestStatus           = getIngestStatus;
+window.calculateExpectedNetRealisation = calculateExpectedNetRealisation;
+window.getCommoditiesOnce        = getCommoditiesOnce;

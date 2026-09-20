@@ -61,7 +61,9 @@
   function apiBase() {
     return (window.apiClient && window.apiClient.baseUrl) ||
            (window.CONFIG && window.CONFIG.API_BASE_URL) ||
-           'http://localhost:5000/api';
+           (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000')
+             ? 'http://127.0.0.1:5000/api'
+             : 'https://kisanlink-backend-42qd.onrender.com/api');
   }
 
   function token() {
