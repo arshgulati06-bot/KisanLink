@@ -173,7 +173,11 @@
 
   /** Crop -> state -> district -> market, each narrowing the next. */
   function refreshDependents(changed) {
-    var base = (window.apiClient && window.apiClient.baseUrl) || '/api';
+    var base = (window.apiClient && window.apiClient.baseUrl) ||
+               (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+               (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000'
+                 ? '/api'
+                 : 'https://kisanlink-backend-42qd.onrender.com/api');
     var sel = selection();
     var chain = Promise.resolve();
     if (changed === 'commodity' || changed === 'init') {
@@ -335,7 +339,11 @@
   function fillPickers() {
     var crop = el('lmp-crop');
     if (!crop) return;
-    var base = (window.apiClient && window.apiClient.baseUrl) || '/api';
+    var base = (window.apiClient && window.apiClient.baseUrl) ||
+               (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+               (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000'
+                 ? '/api'
+                 : 'https://kisanlink-backend-42qd.onrender.com/api');
 
     // Shared with the other modules that need this list, so one dashboard
     // load fetches it once rather than three times.

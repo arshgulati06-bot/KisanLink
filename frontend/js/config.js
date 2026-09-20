@@ -13,9 +13,9 @@ const CONFIG = {
   IS_PROTOTYPE: true,
 
   // Backend API Base URL.
-  // In production (Vercel deployment), requests route to your Render backend API.
+  // In production (Vercel deployment), requests route to your live Render backend API.
   // You can also override at runtime with: window.KISANLINK_API_URL = 'https://<app>.onrender.com/api'
-  RENDER_BACKEND_URL: 'https://kisanlink-backend.onrender.com/api',
+  RENDER_BACKEND_URL: 'https://kisanlink-backend-42qd.onrender.com/api',
 
   API_BASE_URL: (function () {
     if (typeof window !== 'undefined' && window.KISANLINK_API_URL) {
@@ -28,7 +28,7 @@ const CONFIG = {
       return 'http://127.0.0.1:5000/api';          // local development
     }
     // Deployed frontend (e.g. https://kisan-link-two.vercel.app/)
-    return 'https://kisanlink-backend.onrender.com/api';
+    return 'https://kisanlink-backend-42qd.onrender.com/api';
   })(),
 
   // Request Timeout in milliseconds

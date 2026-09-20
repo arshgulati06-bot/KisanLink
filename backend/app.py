@@ -293,7 +293,19 @@ def _describe_sources():
 
 def create_app(dataframe=None, pipeline=None, load_real_data=False, load_chronos=False):
     app = Flask(__name__, static_folder=None)
-    CORS(app)
+    allowed_origins = [
+        "https://kisan-link-two.vercel.app",
+        r"^https:\/\/.*\.vercel\.app$",
+        r"^http:\/\/localhost(:\d+)?$",
+        r"^http:\/\/127\.0.0\.1(:\d+)?$",
+    ]
+    extra_cors = os.environ.get("CORS_ORIGINS", "")
+    if extra_cors:
+        for orig in extra_cors.split(","):
+            if orig.strip():
+                allowed_origins.append(orig.strip())
+
+    CORS(app, origins=allowed_origins, supports_credentials=True)
     # Whole-app cap: must clear the largest legitimate request (a crop photo),
     # not the smallest. Ingest enforces its own tighter limit below.
     app.config["MAX_CONTENT_LENGTH"] = ml_config.UPLOAD_MAX_BYTES

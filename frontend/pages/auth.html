@@ -403,7 +403,10 @@
   <script src="../js/api.js"></script>
   <script src="../js/i18n.js"></script>
   <script>
-    const API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+    const API_BASE = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://127.0.0.1:5000/api'
+        : 'https://kisanlink-backend-42qd.onrender.com/api');
 
     // ----------------------------------------------------------------
     // Tab switching
@@ -469,6 +472,23 @@
       });
     });
 
+    function formatAuthError(res, defaultMsg) {
+      if (!res) return defaultMsg || 'An unknown error occurred.';
+      if (res.status === 401 || res.status === 403) {
+        return (res.data && res.data.error) || 'Authentication failed. Please check your username and password.';
+      }
+      if (res.status === 404) {
+        return 'API endpoint not found (HTTP 404). Please verify backend deployment.';
+      }
+      if (res.status === 409) {
+        return (res.data && res.data.error) || 'That username is already taken.';
+      }
+      if (res.status >= 500) {
+        return (res.data && res.data.error) || ('Server error (HTTP ' + res.status + '). Please try again shortly.');
+      }
+      return (res.data && res.data.error) || defaultMsg || ('Request failed (HTTP ' + res.status + ').');
+    }
+
     // ----------------------------------------------------------------
     // Login
     // ----------------------------------------------------------------
@@ -486,17 +506,19 @@
       btn.disabled = true;
       btn.textContent = 'Signing in…';
 
-      fetch(API_BASE + '/auth/login', {
+      var targetUrl = API_BASE + '/auth/login';
+      fetch(targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ username: username, password: password })
       })
-      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+      .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d, status: r.status }; }); })
       .then(function(res) {
         btn.disabled = false;
         btn.textContent = 'Sign In';
         if (!res.ok || !res.data.success) {
-          showMsg('loginError', (res.data && res.data.error) || 'Login failed. Check your credentials.');
+          console.warn('[KisanLink Auth] Login rejected:', res.status, res.data);
+          showMsg('loginError', formatAuthError(res, 'Login failed. Check your credentials.'));
           return;
         }
         try { localStorage.setItem('kisanlink_auth_token', res.data.token); } catch(e) {}
@@ -511,7 +533,11 @@
       .catch(function(err) {
         btn.disabled = false;
         btn.textContent = 'Sign In';
-        showMsg('loginError', 'Cannot connect to KisanLink server. Make sure python backend/app.py is running.');
+        console.error('[KisanLink Auth] Network error contacting ' + targetUrl + ':', err);
+        var msg = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'Cannot connect to local KisanLink server. Make sure python backend/app.py is running on port 5000.'
+          : 'Cannot reach the KisanLink backend server. Please check your internet connection or try again in a moment.';
+        showMsg('loginError', msg);
       });
     }
 
@@ -548,7 +574,8 @@
       var body = { name: name, username: username, password: password, role: role, district: district, state: state };
       if (role === 'BUYER') { body.business_name = name; }
 
-      fetch(API_BASE + '/auth/register', {
+      var targetUrl = API_BASE + '/auth/register';
+      fetch(targetUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify(body)
@@ -558,9 +585,8 @@
         btn.disabled = false;
         btn.textContent = 'Create Account';
         if (!res.ok || !res.data.success) {
-          var msg = (res.data && res.data.error) || 'Registration failed.';
-          if (res.status === 409) msg = (res.data && res.data.error) || 'That username is already taken.';
-          showMsg('registerError', msg);
+          console.warn('[KisanLink Auth] Register rejected:', res.status, res.data);
+          showMsg('registerError', formatAuthError(res, 'Registration failed.'));
           return;
         }
         try { localStorage.setItem('kisanlink_auth_token', res.data.token); } catch(e) {}
@@ -572,10 +598,14 @@
           window.location.href = klPostAuthDestination(userRole);
         }, 900);
       })
-      .catch(function() {
+      .catch(function(err) {
         btn.disabled = false;
         btn.textContent = 'Create Account';
-        showMsg('registerError', 'Cannot connect to KisanLink server. Make sure python backend/app.py is running.');
+        console.error('[KisanLink Auth] Network error contacting ' + targetUrl + ':', err);
+        var msg = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'Cannot connect to local KisanLink server. Make sure python backend/app.py is running on port 5000.'
+          : 'Cannot reach the KisanLink backend server. Please check your internet connection or try again in a moment.';
+        showMsg('registerError', msg);
       });
     }
 

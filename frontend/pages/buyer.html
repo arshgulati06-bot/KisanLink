@@ -688,7 +688,10 @@
   <!-- Buyer Auth + Dynamic Loading -->
   <script>
   (function() {
-    var API = (window.CONFIG && window.CONFIG.API_BASE_URL) || 'http://localhost:5000/api';
+    var API = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://127.0.0.1:5000/api'
+        : 'https://kisanlink-backend-42qd.onrender.com/api');
 
     // Set buyer profile UI from user object
     function setBuyerProfile(user, profile) {
@@ -938,7 +941,9 @@
   (function fillBuyerCrops() {
     var API = (window.CONFIG && window.CONFIG.API_BASE_URL)
       ? window.CONFIG.API_BASE_URL.replace(/\/api\/?$/, '')
-      : 'http://localhost:5000';
+      : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+          ? 'http://localhost:5000'
+          : 'https://kisanlink-backend-42qd.onrender.com');
     fetch(API + '/api/commodities').then(function (r) { return r.json(); }).then(function (crops) {
       if (!Array.isArray(crops)) return;
       window.__klCommodities = crops;

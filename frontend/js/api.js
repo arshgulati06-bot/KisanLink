@@ -18,10 +18,13 @@ class ApiError extends Error {
 
 class ApiClient {
   constructor(config = window.CONFIG) {
-    this.baseUrl = (config && config.API_BASE_URL) ||
-      (window.location.port === '5000' ? '/api'
-        : window.location.protocol + '//' + window.location.hostname + ':5000/api');
-    this.timeout = (config && config.REQUEST_TIMEOUT_MS) || 60000; // 60s for ML inference
+    const isLocal = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '5000');
+    const defaultBase = isLocal
+      ? (window.location.port === '5000' ? '/api' : 'http://127.0.0.1:5000/api')
+      : 'https://kisanlink-backend-42qd.onrender.com/api';
+    this.baseUrl = (config && config.API_BASE_URL) || defaultBase;
+    this.timeout = (config && config.REQUEST_TIMEOUT_MS) || 90000; // 90s for cold starts and ML inference
   }
 
   getAuthToken() {

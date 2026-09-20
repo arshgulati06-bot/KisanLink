@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://kisanlink-backend-42qd.onrender.com/api/:path*"
+    }
+  ]
+}
